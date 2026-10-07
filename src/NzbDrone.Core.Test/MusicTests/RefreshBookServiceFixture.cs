@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using FizzWare.NBuilder;
+using FluentAssertions;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Core.Books;
@@ -71,6 +72,82 @@ namespace NzbDrone.Core.Test.MusicTests
             Mocker.GetMock<IProvideAuthorInfo>()
                 .Setup(s => s.GetAuthorInfo(remoteAuthor.ForeignAuthorId, It.IsAny<bool>()))
                 .Returns(remoteAuthor);
+        }
+
+        private Edition GivenLocalEdition(int id, bool monitored, bool hasFiles)
+        {
+            var edition = Builder<Edition>.CreateNew()
+                .With(e => e.Id = id)
+                .With(e => e.BookId = _book.Id)
+                .With(e => e.ForeignEditionId = id.ToString())
+                .With(e => e.Monitored = monitored)
+                .Build();
+
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(s => s.GetFilesByEdition(id))
+                .Returns(hasFiles ? Builder<BookFile>.CreateListOfSize(1).All().With(f => f.EditionId = id).BuildList() : new List<BookFile>());
+
+            return edition;
+        }
+
+        private void RefreshWithRemoteEditions(List<Edition> localEditions, List<Edition> remoteEditions)
+        {
+            var remoteBook = Builder<Book>.CreateNew()
+                .With(b => b.Id = 0)
+                .With(b => b.ForeignBookId = _book.ForeignBookId)
+                .With(b => b.AuthorMetadata = _book.AuthorMetadata.Value)
+                .With(b => b.Editions = remoteEditions)
+                .Build();
+
+            Mocker.GetMock<IEditionService>()
+                .Setup(s => s.GetEditionsForRefresh(_book.Id, It.IsAny<List<string>>()))
+                .Returns(localEditions);
+
+            Mocker.SetConstant<IRefreshEditionService>(Mocker.Resolve<RefreshEditionService>());
+
+            Subject.RefreshBookInfo(_book, new List<Book> { remoteBook }, _author, false);
+        }
+
+        private Edition RemoteEdition(string foreignEditionId, bool monitored)
+        {
+            return Builder<Edition>.CreateNew()
+                .With(e => e.Id = 0)
+                .With(e => e.ForeignEditionId = foreignEditionId)
+                .With(e => e.Monitored = monitored)
+                .Build();
+        }
+
+        [Test]
+        public void should_keep_monitored_edition_with_files_when_metadata_drops_it()
+        {
+            var withFiles = GivenLocalEdition(1, true, true);
+            var withoutFiles = GivenLocalEdition(2, false, false);
+
+            RefreshWithRemoteEditions(new List<Edition> { withFiles, withoutFiles },
+                                      new List<Edition> { RemoteEdition("2", false), RemoteEdition("3", true) });
+
+            Mocker.GetMock<IEditionService>()
+                .Verify(v => v.DeleteMany(It.Is<List<Edition>>(l => l.Contains(withFiles))), Times.Never());
+
+            withFiles.Monitored.Should().BeTrue();
+
+            Mocker.GetMock<IEditionService>()
+                .Verify(v => v.InsertMany(It.Is<List<Edition>>(l => l.Count == 1 && !l[0].Monitored)), Times.Once());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_still_delete_edition_without_files_when_metadata_drops_it()
+        {
+            var withFiles = GivenLocalEdition(1, true, true);
+            var withoutFiles = GivenLocalEdition(2, false, false);
+
+            RefreshWithRemoteEditions(new List<Edition> { withFiles, withoutFiles },
+                                      new List<Edition> { RemoteEdition("1", true) });
+
+            Mocker.GetMock<IEditionService>()
+                .Verify(v => v.DeleteMany(It.Is<List<Edition>>(l => l.Count == 1 && l.Contains(withoutFiles))), Times.Once());
         }
 
         private void RefreshWithBookMissingFromAuthorList()

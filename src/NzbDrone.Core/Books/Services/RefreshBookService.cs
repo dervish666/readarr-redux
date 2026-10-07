@@ -270,6 +270,20 @@ namespace NzbDrone.Core.Books
             remote.UseDbFieldsFrom(local);
         }
 
+        protected override void ProcessChildren(Book entity, SortedChildren children)
+        {
+            // Keep editions that still have files when the metadata source drops them. Deleting one orphans its
+            // files, and the book then reads as missing and gets grabbed again.
+            var withFiles = children.Deleted.Where(x => _mediaFileService.GetFilesByEdition(x.Id).Any()).ToList();
+
+            foreach (var edition in withFiles)
+            {
+                _logger.Warn("Edition {0} of {1} is no longer in the metadata but has files, keeping it", edition, entity);
+                children.Deleted.Remove(edition);
+                children.UpToDate.Add(edition);
+            }
+        }
+
         protected override void AddChildren(List<Edition> children)
         {
             // hack - add the chilren in refresh children so we can control monitored status
