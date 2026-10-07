@@ -33,7 +33,8 @@ namespace NzbDrone.Core.Configuration
             var packageInfoPath = Path.Combine(bin, "..", "package_info");
             var releaseInfoPath = Path.Combine(bin, "release_info");
 
-            PackageUpdateMechanism = UpdateMechanism.BuiltIn;
+            // The fork has no update server (see UpdatePackageProvider), so the built-in updater is never the default
+            PackageUpdateMechanism = UpdateMechanism.External;
 
             // ToDo Change to master as valid once released
             DefaultBranch = "develop";
@@ -45,7 +46,7 @@ namespace NzbDrone.Core.Configuration
                 PackageVersion = ReadValue(data, "PackageVersion");
                 PackageAuthor = ReadValue(data, "PackageAuthor");
                 PackageGlobalMessage = ReadValue(data, "PackageGlobalMessage");
-                PackageUpdateMechanism = ReadEnumValue(data, "UpdateMethod", UpdateMechanism.BuiltIn);
+                PackageUpdateMechanism = ReadEnumValue(data, "UpdateMethod", UpdateMechanism.External);
                 PackageUpdateMechanismMessage = ReadValue(data, "UpdateMethodMessage");
                 PackageBranch = ReadValue(data, "Branch");
 
