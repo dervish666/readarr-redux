@@ -697,9 +697,11 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                         var author = PollAuthor(newId);
                         var authorBook = author.Books.Value.SingleOrDefault(x => x.ForeignBookId == foreignBookId);
 
+                        // The author's works list can be truncated, so a book missing from it is not a confirmed
+                        // not-found. Only a 404 on the work itself is, and callers delete books on that.
                         if (authorBook == null)
                         {
-                            throw new BookNotFoundException(foreignBookId);
+                            throw new BookInfoException("Work {0} redirected to author {1}, whose works list does not include it", foreignBookId, newId);
                         }
 
                         var authorMetadata = new List<AuthorMetadata> { author.Metadata.Value };
