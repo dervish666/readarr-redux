@@ -38,7 +38,6 @@ namespace NzbDrone.Core.Books
         private readonly IRefreshSeriesService _refreshSeriesService;
         private readonly IEventAggregator _eventAggregator;
         private readonly IManageCommandQueue _commandQueueManager;
-        private readonly IMediaFileService _mediaFileService;
         private readonly IHistoryService _historyService;
         private readonly IRootFolderService _rootFolderService;
         private readonly ICheckIfAuthorShouldBeRefreshed _checkIfAuthorShouldBeRefreshed;
@@ -56,7 +55,6 @@ namespace NzbDrone.Core.Books
                                     IRefreshSeriesService refreshSeriesService,
                                     IEventAggregator eventAggregator,
                                     IManageCommandQueue commandQueueManager,
-                                    IMediaFileService mediaFileService,
                                     IHistoryService historyService,
                                     IRootFolderService rootFolderService,
                                     ICheckIfAuthorShouldBeRefreshed checkIfAuthorShouldBeRefreshed,
@@ -74,7 +72,6 @@ namespace NzbDrone.Core.Books
             _refreshSeriesService = refreshSeriesService;
             _eventAggregator = eventAggregator;
             _commandQueueManager = commandQueueManager;
-            _mediaFileService = mediaFileService;
             _historyService = historyService;
             _rootFolderService = rootFolderService;
             _checkIfAuthorShouldBeRefreshed = checkIfAuthorShouldBeRefreshed;
@@ -113,7 +110,11 @@ namespace NzbDrone.Core.Books
 
         protected override bool ShouldDelete(Author local)
         {
-            return !_mediaFileService.GetFilesByAuthor(local.Id).Any();
+            // Never delete an author because the metadata source answered not found. A wrong MetadataSource URL,
+            // a proxy that 404s unknown routes, or a mirror caching an upstream 404 all say that about authors
+            // that still exist, and a refresh has no second signal to tell them apart from a real removal.
+            // The base class logs an error for the author instead, and the user can delete it by hand.
+            return false;
         }
 
         protected override void LogProgress(Author local)
