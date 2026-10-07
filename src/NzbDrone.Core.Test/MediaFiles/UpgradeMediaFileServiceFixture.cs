@@ -54,16 +54,18 @@ namespace NzbDrone.Core.Test.MediaFiles
         private void GivenSingleTrackWithSingleTrackFile()
         {
             _localTrack.Book = Builder<Book>.CreateNew()
-                .With(e => e.BookFiles = new LazyLoaded<List<BookFile>>(
-                          new List<BookFile>
-                          {
-                              new BookFile
-                              {
-                                  Id = 1,
-                                  Path = Path.Combine(_rootPath, @"Season 01\30.rock.s01e01.avi"),
-                              }
-                          }))
                 .Build();
+
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(s => s.GetFilesByBook(_localTrack.Book.Id))
+                .Returns(new List<BookFile>
+                {
+                    new BookFile
+                    {
+                        Id = 1,
+                        Path = Path.Combine(_rootPath, @"Season 01\30.rock.s01e01.avi"),
+                    }
+                });
         }
 
         [Test]
