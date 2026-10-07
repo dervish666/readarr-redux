@@ -106,15 +106,21 @@ namespace NzbDrone.Core.Books
 
             var book = remote.SingleOrDefault(x => x.ForeignBookId == local.ForeignBookId);
 
-            if (book == null && ShouldDelete(local))
-            {
-                return result;
-            }
-
+            // Metadata sources can truncate an author's works list, so a book missing from it may still exist.
+            // Look the book up itself: only a not-found from that lookup leaves the entity null for deletion,
+            // and any other error propagates so the book is kept.
             if (book == null)
             {
                 data = GetSkyhookData(local);
-                book = data.Books.Value.SingleOrDefault(x => x.ForeignBookId == local.ForeignBookId);
+                book = data?.Books.Value.SingleOrDefault(x => x.ForeignBookId == local.ForeignBookId);
+
+                // The lookup found the work under another id (a Goodreads merge or canonical redirect). Merging
+                // would delete this book, so keep it as it is and leave the merge to the user.
+                if (book == null && data != null)
+                {
+                    _logger.Warn("Book {0} is now {1} in the metadata, keeping it under its old id", local, data.Books.Value.FirstOrDefault()?.ForeignBookId);
+                    result.Keep = true;
+                }
             }
 
             result.Entity = book;
@@ -272,6 +278,20 @@ namespace NzbDrone.Core.Books
             remote.UseDbFieldsFrom(local);
         }
 
+        protected override void ProcessChildren(Book entity, SortedChildren children)
+        {
+            // Keep editions that still have files when the metadata source drops them. Deleting one orphans its
+            // files, and the book then reads as missing and gets grabbed again.
+            var withFiles = children.Deleted.Where(x => _mediaFileService.GetFilesByEdition(x.Id).Any()).ToList();
+
+            foreach (var edition in withFiles)
+            {
+                _logger.Warn("Edition {0} of {1} is no longer in the metadata but has files, keeping it", edition, entity);
+                children.Deleted.Remove(edition);
+                children.UpToDate.Add(edition);
+            }
+        }
+
         protected override void AddChildren(List<Edition> children)
         {
             // hack - add the chilren in refresh children so we can control monitored status
@@ -338,7 +358,15 @@ namespace NzbDrone.Core.Books
             {
                 if (forceBookRefresh || _checkIfBookShouldBeRefreshed.ShouldRefresh(book))
                 {
-                    updated |= RefreshBookInfo(book, remoteBooks, remoteData, forceUpdateFileTags);
+                    try
+                    {
+                        updated |= RefreshBookInfo(book, remoteBooks, remoteData, forceUpdateFileTags);
+                    }
+                    catch (Exception e)
+                    {
+                        // Keep the book and carry on, so one failed lookup doesn't stop the whole author refreshing
+                        _logger.Error(e, "Couldn't refresh info for book {0}", book);
+                    }
                 }
                 else
                 {

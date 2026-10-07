@@ -33,8 +33,13 @@ namespace NzbDrone.Core.Books
             // for editions that need updating, just grab the remote edition and set db ids
             foreach (var edition in update)
             {
-                var remoteEdition = remoteEditions.Single(e => e.ForeignEditionId == edition.ForeignEditionId);
-                edition.UseMetadataFrom(remoteEdition);
+                // an edition kept for its files has no remote counterpart, but may still need its monitored flag saved
+                var remoteEdition = remoteEditions.SingleOrDefault(e => e.ForeignEditionId == edition.ForeignEditionId);
+
+                if (remoteEdition != null)
+                {
+                    edition.UseMetadataFrom(remoteEdition);
+                }
 
                 // make sure title is not null
                 edition.Title = edition.Title ?? "Unknown";

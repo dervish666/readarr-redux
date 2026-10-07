@@ -5,6 +5,7 @@ using FizzWare.NBuilder;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
+using NzbDrone.Common.Disk;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download;
@@ -244,6 +245,78 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             Mocker.GetMock<IUpgradeMediaFiles>()
                   .Verify(v => v.UpgradeBookFile(It.IsAny<BookFile>(), _approvedDecisions.First().Item, false), Times.Once());
+        }
+
+        [Test]
+        public void should_remove_old_files_once_when_upgrading_a_multi_part_book()
+        {
+            var first = _approvedDecisions.First().Item;
+            var book = first.Book;
+
+            var oldFiles = Enumerable.Range(1, 3).Select(i => new BookFile
+            {
+                Id = i,
+                EditionId = first.Edition.Id,
+                Part = i,
+                Path = Path.Combine(first.Author.Path, $"Book - Part {i}.mp3")
+            }).ToList();
+
+            var database = oldFiles.ToList();
+            var disk = oldFiles.ToDictionary(x => x.Path, x => "old");
+
+            // Identification loads the book's files once and every part shares the same Book
+            book.BookFiles = oldFiles.ToList();
+
+            var decisions = Enumerable.Range(1, 3).Select(i => new ImportDecision<LocalBook>(new LocalBook
+            {
+                Author = first.Author,
+                Book = book,
+                Edition = first.Edition,
+                Part = i,
+                PartCount = 3,
+                Path = Path.Combine(@"C:\Test\Downloads\Book".AsOsAgnostic(), $"part{i}.mp3"),
+                Quality = new QualityModel(Quality.MP3),
+                FileTrackInfo = new ParsedTrackInfo()
+            })).ToList();
+
+            var diskProvider = Mocker.GetMock<IDiskProvider>();
+            diskProvider.Setup(s => s.FolderExists(It.IsAny<string>())).Returns(true);
+            diskProvider.Setup(s => s.GetParentFolder(It.IsAny<string>())).Returns<string>(p => Path.GetDirectoryName(p));
+            diskProvider.Setup(s => s.FileExists(It.IsAny<string>())).Returns<string>(p => disk.ContainsKey(p));
+
+            Mocker.GetMock<IRecycleBinProvider>()
+                .Setup(s => s.DeleteFile(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((path, subfolder) => disk.Remove(path));
+
+            // The renamer puts each new part on the path the old part with the same number had
+            Mocker.GetMock<IMoveBookFiles>()
+                .Setup(s => s.MoveBookFile(It.IsAny<BookFile>(), It.IsAny<LocalBook>()))
+                .Returns((BookFile file, LocalBook localBook) =>
+                {
+                    file.Path = oldFiles.Single(o => o.Part == file.Part).Path;
+                    disk[file.Path] = "new";
+                    return file;
+                });
+
+            var mediaFileService = Mocker.GetMock<IMediaFileService>();
+            mediaFileService.Setup(s => s.GetFilesByBook(book.Id)).Returns(() => database.ToList());
+            mediaFileService.Setup(s => s.Delete(It.IsAny<BookFile>(), It.IsAny<DeleteMediaFileReason>()))
+                .Callback<BookFile, DeleteMediaFileReason>((file, reason) => database.RemoveAll(x => x.Id == file.Id));
+            mediaFileService.Setup(s => s.AddMany(It.IsAny<List<BookFile>>()))
+                .Callback<List<BookFile>>(files => database.AddRange(files));
+
+            Mocker.SetConstant<IUpgradeMediaFiles>(Mocker.Resolve<UpgradeMediaFileService>());
+
+            Subject.Import(decisions, true);
+
+            disk.Should().HaveCount(3);
+            disk.Values.Should().OnlyContain(x => x == "new");
+
+            Mocker.GetMock<IRecycleBinProvider>()
+                .Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Exactly(3));
+
+            // Each Delete publishes one BookFileDeletedEvent, which HistoryService writes as one history row
+            mediaFileService.Verify(v => v.Delete(It.IsAny<BookFile>(), DeleteMediaFileReason.Upgrade), Times.Exactly(3));
         }
 
         [Test]

@@ -47,7 +47,11 @@ namespace NzbDrone.Core.MediaFiles
         public BookFileMoveResult UpgradeBookFile(BookFile bookFile, LocalBook localBook, bool copyOnly = false)
         {
             var moveFileResult = new BookFileMoveResult();
-            var existingFiles = localBook.Book.BookFiles.Value;
+
+            // Read the book's files from the database, not the cached localBook.Book.BookFiles. Every part of a
+            // multi-part import shares that Book, so the cached list still holds files an earlier part removed,
+            // and their paths may now hold the new parts. New files are only added after every part has moved.
+            var existingFiles = _mediaFileService.GetFilesByBook(localBook.Book.Id);
 
             var rootFolderPath = _diskProvider.GetParentFolder(localBook.Author.Path);
             var rootFolder = _rootFolderService.GetBestRootFolder(rootFolderPath);

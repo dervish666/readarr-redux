@@ -245,6 +245,32 @@ namespace NzbDrone.Core.Test.ParserTests
             parseResult.BookTitle.Should().Be(expectedBook);
         }
 
+        [Test]
+        public void should_parse_with_search_criteria_when_other_books_have_no_or_several_monitored_editions()
+        {
+            GivenSearchCriteria("George R.R. Martin", "The Hero");
+
+            _books.Add(new Book
+            {
+                Title = "None Monitored",
+                Editions = new List<Edition> { new Edition { Title = "None Monitored" } }
+            });
+
+            _books.Add(new Book
+            {
+                Title = "Two Monitored",
+                Editions = new List<Edition>
+                {
+                    new Edition { Title = "Two Monitored", Monitored = true },
+                    new Edition { Title = "Two Monitored", Monitored = true }
+                }
+            });
+
+            var parseResult = Parser.Parser.ParseBookTitleWithSearchCriteria("The Hero George R R Martin", _author, _books);
+
+            parseResult.BookTitle.Should().Be("The Hero");
+        }
+
         [TestCase("Ed Sheeran", "I See Fire", "Ed Sheeran I See Fire[Mimp3.eu].mp3 FLAC")]
         [TestCase("Ed Sheeran", "Divide", "Ed Sheeran   ? Divide FLAC")]
         [TestCase("Ed Sheeran", "+", "Ed Sheeran + FLAC")]
