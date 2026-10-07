@@ -8,3 +8,5 @@ distribution/osx/Readarr text eol=lf
 # Custom for Visual Studio
 *.cs     diff=csharp
 *.sln    merge=union
+# Vendored NuGet packages
+*.nupkg binary

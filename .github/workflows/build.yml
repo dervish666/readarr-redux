@@ -1,0 +1,155 @@
+name: Build
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: '6.0.428'
+  NODE_VERSION: '20'
+  # Read by src/Directory.Build.props. RuntimeInfo treats a Revision above 10000 as a development build,
+  # which run_number stays below for a long while.
+  READARRVERSION: 0.5.0.${{ github.run_number }}
+  BUILD_SOURCEBRANCHNAME: ${{ github.ref_name }}
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+
+jobs:
+  frontend:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install
+        run: yarn install --frozen-lockfile --network-timeout 120000
+
+      - name: Lint
+        run: |
+          yarn lint
+          yarn stylelint-linux
+
+      - name: Build
+        run: yarn build --env production
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ui
+          path: _output/UI
+          if-no-files-found: error
+
+  backend:
+    needs: frontend
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        rid: [linux-x64, linux-arm64]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      # Without this the newest SDK preinstalled on the runner would do the build
+      - name: Pin SDK
+        run: echo "{\"sdk\":{\"version\":\"$DOTNET_VERSION\"}}" > global.json
+
+      - name: Build
+        run: ./build.sh --backend -r ${{ matrix.rid }} -f net6.0
+
+      # The arm64 test assemblies cannot run on an x64 runner
+      - name: Unit tests
+        if: matrix.rid == 'linux-x64'
+        run: |
+          tests=_tests/net6.0/linux-x64/publish
+          find "$tests" -name Readarr.Test.Dummy -exec chmod a+x {} \;
+          TEST_DIR="$tests" "$tests/test.sh" Linux Unit Test
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always() && matrix.rid == 'linux-x64'
+        with:
+          name: unit-test-results
+          path: TestResult.xml
+          if-no-files-found: ignore
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ui
+          path: _output/UI
+
+      - name: Package
+        env:
+          RID: ${{ matrix.rid }}
+        run: |
+          ./build.sh --packages -r "$RID" -f net6.0
+          name="Readarr.${BUILD_SOURCEBRANCHNAME//\//-}.${READARRVERSION}.linux-core-${RID#linux-}.tar.gz"
+          tar -czf "$name" -C "_artifacts/$RID/net6.0" Readarr
+          sha256sum "$name" > "$name.sha256"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Readarr-${{ matrix.rid }}
+          path: Readarr.*.tar.gz*
+          if-no-files-found: error
+
+  docker:
+    needs: backend
+    # Publish only from the default branch and from tags
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == format('refs/heads/{0}', github.event.repository.default_branch) || startsWith(github.ref, 'refs/tags/'))
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # GHCR image names must be lower case
+      - name: Image name
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/readarr" >> "$GITHUB_ENV"
+
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=raw,value=${{ env.READARRVERSION }}
+
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            READARRVERSION=${{ env.READARRVERSION }}
+            BUILD_SOURCEBRANCHNAME=${{ github.ref_name }}
+            SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

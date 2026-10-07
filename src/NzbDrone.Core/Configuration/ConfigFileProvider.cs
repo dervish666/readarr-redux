@@ -215,7 +215,7 @@ namespace NzbDrone.Core.Configuration
                 ? enumValue
                 : GetValueEnum("AuthenticationRequired", AuthenticationRequiredType.Enabled);
 
-        public bool AnalyticsEnabled => _logOptions.AnalyticsEnabled ?? GetValueBoolean("AnalyticsEnabled", true, persist: false);
+        public bool AnalyticsEnabled => _logOptions.AnalyticsEnabled ?? GetValueBoolean("AnalyticsEnabled", false, persist: false);
 
         // TODO: Change back to "master" for the first stable release
         public string Branch => _updateOptions.Branch ?? GetValue("Branch", "develop").ToLowerInvariant();

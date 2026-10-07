@@ -73,9 +73,15 @@
     <Company>readarr.com</Company>
     <Copyright>Copyright 2017-$([System.DateTime]::Now.ToString('yyyy')) readarr.com (GNU General Public v3)</Copyright>
 
-    <!-- Should be replaced by CI -->
-    <AssemblyVersion>10.0.0.*</AssemblyVersion>
-    <AssemblyConfiguration>$(Configuration)-dev</AssemblyConfiguration>
+    <!--
+      CI and the Dockerfile set READARRVERSION=0.5.0.<build number> and BUILD_SOURCEBRANCHNAME.
+      Any other build stamps 0.5.0.0. Keep Major below 10 and Revision at or below 10000:
+      RuntimeInfo treats anything else as an unofficial development build.
+    -->
+    <AssemblyVersion>$(READARRVERSION)</AssemblyVersion>
+    <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">0.5.0.0</AssemblyVersion>
+    <AssemblyConfiguration>$(BUILD_SOURCEBRANCHNAME)</AssemblyConfiguration>
+    <AssemblyConfiguration Condition="'$(AssemblyConfiguration)' == ''">$(Configuration)-dev</AssemblyConfiguration>
     <NeutralLanguage>en</NeutralLanguage>
 
     <GenerateAssemblyFileVersionAttribute>false</GenerateAssemblyFileVersionAttribute>
@@ -104,6 +110,17 @@
     <!-- Sentry uses this to link directly to GitHub at the exact version/file/line -->
     <!-- This is built-in on .NET 8 and can be removed once the project is updated -->
     <PackageReference Include="Microsoft.SourceLink.GitHub" />
+  </ItemGroup>
+
+  <!--
+    MimeKit 4.16 (from MailKit) needs these at 8.0, newer than the copies inside the .NET 6 runtime.
+    Every project publishes self-contained into the same folder, so a project without the package would
+    overwrite the 8.0 assembly with the runtime's 6.0 one and the app would fail to start. Every project
+    carries them for that reason. Drop this when moving off net6.0.
+  -->
+  <ItemGroup Condition="'$(ReadarrProject)'=='true'">
+    <PackageReference Include="System.Formats.Asn1" />
+    <PackageReference Include="System.Text.Encoding.CodePages" />
   </ItemGroup>
 
   <!-- Sentry specific configuration: Only in Release mode -->

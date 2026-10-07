@@ -138,7 +138,7 @@ function Updates() {
         {isPopulated || hasError ? null : <LoadingIndicator />}
 
         {noUpdates ? (
-          <Alert kind={kinds.INFO}>{translate('NoUpdatesAreAvailable')}</Alert>
+          <Alert kind={kinds.INFO}>{translate('NoInAppUpdates')}</Alert>
         ) : null}
 
         {hasUpdateToInstall ? (

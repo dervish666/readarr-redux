@@ -7,6 +7,7 @@ using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Messaging;
 using NzbDrone.Common.Reflection;
 using NzbDrone.Core.Lifecycle;
+using NzbDrone.Core.Localization;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 
@@ -30,6 +31,7 @@ namespace NzbDrone.Core.HealthCheck
         private readonly IServerSideNotificationService _serverSideNotificationService;
         private readonly IEventAggregator _eventAggregator;
         private readonly ICacheManager _cacheManager;
+        private readonly ILocalizationService _localizationService;
         private readonly Logger _logger;
 
         private readonly ICached<HealthCheck> _healthCheckResults;
@@ -42,12 +44,14 @@ namespace NzbDrone.Core.HealthCheck
                                   IEventAggregator eventAggregator,
                                   ICacheManager cacheManager,
                                   IRuntimeInfo runtimeInfo,
+                                  ILocalizationService localizationService,
                                   Logger logger)
         {
             _healthChecks = healthChecks.ToArray();
             _serverSideNotificationService = serverSideNotificationService;
             _eventAggregator = eventAggregator;
             _cacheManager = cacheManager;
+            _localizationService = localizationService;
             _logger = logger;
 
             _healthCheckResults = _cacheManager.GetCache<HealthCheck>(GetType());
@@ -83,13 +87,24 @@ namespace NzbDrone.Core.HealthCheck
 
             foreach (var healthCheck in healthChecks)
             {
-                if (healthCheck is IProvideHealthCheckWithMessage && message != null)
+                // One check throwing must not skip the checks after it or the completion event
+                try
                 {
-                    results.Add(((IProvideHealthCheckWithMessage)healthCheck).Check(message));
+                    if (healthCheck is IProvideHealthCheckWithMessage && message != null)
+                    {
+                        results.Add(((IProvideHealthCheckWithMessage)healthCheck).Check(message));
+                    }
+                    else
+                    {
+                        results.Add(healthCheck.Check());
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    results.Add(healthCheck.Check());
+                    var name = healthCheck.GetType().Name;
+
+                    _logger.Error(ex, "Health check {0} failed to run", name);
+                    results.Add(new HealthCheck(healthCheck.GetType(), HealthCheckResult.Error, string.Format(_localizationService.GetLocalizedString("HealthCheckFailedToRun"), name, ex.Message)));
                 }
             }
 
