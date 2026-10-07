@@ -112,6 +112,17 @@
     <PackageReference Include="Microsoft.SourceLink.GitHub" />
   </ItemGroup>
 
+  <!--
+    MimeKit 4.16 (from MailKit) needs these at 8.0, newer than the copies inside the .NET 6 runtime.
+    Every project publishes self-contained into the same folder, so a project without the package would
+    overwrite the 8.0 assembly with the runtime's 6.0 one and the app would fail to start. Every project
+    carries them for that reason. Drop this when moving off net6.0.
+  -->
+  <ItemGroup Condition="'$(ReadarrProject)'=='true'">
+    <PackageReference Include="System.Formats.Asn1" />
+    <PackageReference Include="System.Text.Encoding.CodePages" />
+  </ItemGroup>
+
   <!-- Sentry specific configuration: Only in Release mode -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <!-- https://docs.sentry.io/platforms/dotnet/configuration/msbuild/ -->
