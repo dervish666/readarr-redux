@@ -73,9 +73,15 @@
     <Company>readarr.com</Company>
     <Copyright>Copyright 2017-$([System.DateTime]::Now.ToString('yyyy')) readarr.com (GNU General Public v3)</Copyright>
 
-    <!-- Should be replaced by CI -->
-    <AssemblyVersion>10.0.0.*</AssemblyVersion>
-    <AssemblyConfiguration>$(Configuration)-dev</AssemblyConfiguration>
+    <!--
+      CI and the Dockerfile set READARRVERSION=0.5.0.<build number> and BUILD_SOURCEBRANCHNAME.
+      Any other build stamps 0.5.0.0. Keep Major below 10 and Revision at or below 10000:
+      RuntimeInfo treats anything else as an unofficial development build.
+    -->
+    <AssemblyVersion>$(READARRVERSION)</AssemblyVersion>
+    <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">0.5.0.0</AssemblyVersion>
+    <AssemblyConfiguration>$(BUILD_SOURCEBRANCHNAME)</AssemblyConfiguration>
+    <AssemblyConfiguration Condition="'$(AssemblyConfiguration)' == ''">$(Configuration)-dev</AssemblyConfiguration>
     <NeutralLanguage>en</NeutralLanguage>
 
     <GenerateAssemblyFileVersionAttribute>false</GenerateAssemblyFileVersionAttribute>

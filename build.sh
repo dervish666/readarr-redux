@@ -20,9 +20,8 @@ ProgressEnd()
 UpdateVersionNumber()
 {
     if [ "$READARRVERSION" != "" ]; then
+        # src/Directory.Build.props reads READARRVERSION and BUILD_SOURCEBRANCHNAME from the environment
         echo "Updating Version Info"
-        sed -i'' -e "s/<AssemblyVersion>[0-9.*]\+<\/AssemblyVersion>/<AssemblyVersion>$READARRVERSION<\/AssemblyVersion>/g" src/Directory.Build.props
-        sed -i'' -e "s/<AssemblyConfiguration>[\$()A-Za-z-]\+<\/AssemblyConfiguration>/<AssemblyConfiguration>${BUILD_SOURCEBRANCHNAME}<\/AssemblyConfiguration>/g" src/Directory.Build.props
         sed -i'' -e "s/<string>10.0.0.0<\/string>/<string>$READARRVERSION<\/string>/g" distribution/osx/Readarr.app/Contents/Info.plist
     fi
 }
