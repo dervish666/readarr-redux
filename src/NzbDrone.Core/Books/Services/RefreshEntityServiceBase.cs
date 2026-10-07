@@ -50,6 +50,9 @@ namespace NzbDrone.Core.Books
         {
             public TEntity Entity { get; set; }
             public List<AuthorMetadata> Metadata { get; set; }
+
+            // The metadata source still has the entity but it can't be refreshed this time: skip it, never delete it
+            public bool Keep { get; set; }
         }
 
         protected virtual void LogProgress(TEntity local)
@@ -123,6 +126,11 @@ namespace NzbDrone.Core.Books
 
             if (remote == null)
             {
+                if (data.Keep)
+                {
+                    return false;
+                }
+
                 if (ShouldDelete(local))
                 {
                     _logger.Warn($"{typeof(TEntity).Name} {local} not found in metadata and is being deleted");

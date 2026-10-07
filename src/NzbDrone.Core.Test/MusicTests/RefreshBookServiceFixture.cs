@@ -49,7 +49,7 @@ namespace NzbDrone.Core.Test.MusicTests
                 .Returns(new List<Edition>());
         }
 
-        private void GivenBookLookupReturnsBook()
+        private void GivenBookLookupReturnsBook(string foreignBookId = null)
         {
             var remoteAuthor = Builder<Author>.CreateNew()
                 .With(a => a.Metadata = Builder<AuthorMetadata>.CreateNew().Build())
@@ -57,7 +57,7 @@ namespace NzbDrone.Core.Test.MusicTests
 
             var remoteBook = Builder<Book>.CreateNew()
                 .With(b => b.Id = 0)
-                .With(b => b.ForeignBookId = _book.ForeignBookId)
+                .With(b => b.ForeignBookId = foreignBookId ?? _book.ForeignBookId)
                 .With(b => b.Editions = Builder<Edition>.CreateListOfSize(1)
                           .All()
                           .With(e => e.Id = 0)
@@ -167,6 +167,22 @@ namespace NzbDrone.Core.Test.MusicTests
 
             Mocker.GetMock<IBookService>()
                 .Verify(v => v.UpdateMany(It.Is<List<Book>>(l => l.Contains(_book))), Times.AtLeastOnce());
+        }
+
+        [Test]
+        public void should_keep_book_missing_from_author_list_if_book_lookup_finds_it_under_another_id()
+        {
+            GivenBookLookupReturnsBook("2");
+
+            RefreshWithBookMissingFromAuthorList();
+
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.DeleteBook(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never());
+
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.DeleteMany(It.IsAny<List<Book>>()), Times.Never());
+
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]

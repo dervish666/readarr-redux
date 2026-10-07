@@ -113,6 +113,14 @@ namespace NzbDrone.Core.Books
             {
                 data = GetSkyhookData(local);
                 book = data?.Books.Value.SingleOrDefault(x => x.ForeignBookId == local.ForeignBookId);
+
+                // The lookup found the work under another id (a Goodreads merge or canonical redirect). Merging
+                // would delete this book, so keep it as it is and leave the merge to the user.
+                if (book == null && data != null)
+                {
+                    _logger.Warn("Book {0} is now {1} in the metadata, keeping it under its old id", local, data.Books.Value.FirstOrDefault()?.ForeignBookId);
+                    result.Keep = true;
+                }
             }
 
             result.Entity = book;
