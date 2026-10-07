@@ -106,15 +106,13 @@ namespace NzbDrone.Core.Books
 
             var book = remote.SingleOrDefault(x => x.ForeignBookId == local.ForeignBookId);
 
-            if (book == null && ShouldDelete(local))
-            {
-                return result;
-            }
-
+            // Metadata sources can truncate an author's works list, so a book missing from it may still exist.
+            // Look the book up itself: only a not-found from that lookup leaves the entity null for deletion,
+            // and any other error propagates so the book is kept.
             if (book == null)
             {
                 data = GetSkyhookData(local);
-                book = data.Books.Value.SingleOrDefault(x => x.ForeignBookId == local.ForeignBookId);
+                book = data?.Books.Value.SingleOrDefault(x => x.ForeignBookId == local.ForeignBookId);
             }
 
             result.Entity = book;
@@ -338,7 +336,15 @@ namespace NzbDrone.Core.Books
             {
                 if (forceBookRefresh || _checkIfBookShouldBeRefreshed.ShouldRefresh(book))
                 {
-                    updated |= RefreshBookInfo(book, remoteBooks, remoteData, forceUpdateFileTags);
+                    try
+                    {
+                        updated |= RefreshBookInfo(book, remoteBooks, remoteData, forceUpdateFileTags);
+                    }
+                    catch (Exception e)
+                    {
+                        // Keep the book and carry on, so one failed lookup doesn't stop the whole author refreshing
+                        _logger.Error(e, "Couldn't refresh info for book {0}", book);
+                    }
                 }
                 else
                 {
