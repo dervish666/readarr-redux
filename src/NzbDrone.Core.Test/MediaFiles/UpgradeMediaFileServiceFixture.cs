@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using FizzWare.NBuilder;
 using FluentAssertions;
 using Moq;
@@ -212,6 +213,35 @@ namespace NzbDrone.Core.Test.MediaFiles
             _trackFile.Path.Should().Be(sourcePath);
 
             Mocker.GetMock<IRecycleBinProvider>().Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [Test]
+        public void should_use_a_separate_set_aside_folder_for_each_upgrade()
+        {
+            GivenSingleTrackWithSingleTrackFile();
+
+            // Back to back, as concurrent imports would be, so a clock-based name repeats
+            var folders = Enumerable.Range(0, 50)
+                .Select(i => Path.GetDirectoryName(Subject.UpgradeBookFile(_trackFile, _localTrack).SetAsideFiles.Single().Path))
+                .ToList();
+
+            folders.Should().OnlyHaveUniqueItems();
+        }
+
+        [Test]
+        public void should_never_delete_the_contents_of_a_set_aside_folder()
+        {
+            GivenSingleTrackWithSingleTrackFile();
+
+            // Another import could move a file in between an emptiness check and the delete
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(c => c.FolderEmpty(It.IsAny<string>()))
+                .Returns(true);
+
+            var result = Subject.UpgradeBookFile(_trackFile, _localTrack);
+            Subject.RemoveSetAsideFiles(result.SetAsideFiles);
+
+            Mocker.GetMock<IDiskProvider>().Verify(v => v.DeleteFolder(It.IsAny<string>(), It.IsAny<bool>()), Times.Never());
         }
 
         [Test]

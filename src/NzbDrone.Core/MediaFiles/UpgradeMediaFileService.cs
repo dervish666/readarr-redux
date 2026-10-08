@@ -23,7 +23,7 @@ namespace NzbDrone.Core.MediaFiles
     {
         // A hidden folder, so disk scans skip the files waiting in it
         public const string SetAsideFolderName = ".readarr-upgrade";
-        private const string SetAsideFolderFormat = "{0:yyyyMMdd-HHmmss-fff}";
+        private const string SetAsideFolderFormat = "{0:yyyyMMdd-HHmmss}-{1:N}";
 
         private readonly IRecycleBinProvider _recycleBinProvider;
         private readonly IMediaFileService _mediaFileService;
@@ -76,8 +76,9 @@ namespace NzbDrone.Core.MediaFiles
 
             // Old files are set aside, not deleted, until the new file is in place. If the move fails they go back
             // where they were, and the caller recycles them only once every part of the release has imported.
+            // The folder name is unique to this upgrade, so concurrent imports never share one.
             var setAside = new List<SetAsideBookFile>();
-            var setAsideFolder = string.Format(SetAsideFolderFormat, DateTime.UtcNow);
+            var setAsideFolder = string.Format(SetAsideFolderFormat, DateTime.UtcNow, Guid.NewGuid());
             var sourcePath = bookFile.Path;
 
             try
@@ -265,19 +266,17 @@ namespace NzbDrone.Core.MediaFiles
         {
             foreach (var folder in folders)
             {
-                // The per-upgrade folder, then the shared set-aside folder above it
+                // The per-upgrade folder, then the shared set-aside folder above it. Either may still hold files (one
+                // that couldn't be recycled, or another import's folder), and then it stays.
                 foreach (var path in new[] { folder, _diskProvider.GetParentFolder(folder) })
                 {
                     try
                     {
-                        if (_diskProvider.FolderExists(path) && _diskProvider.FolderEmpty(path))
-                        {
-                            _diskProvider.DeleteFolder(path, false);
-                        }
+                        _diskProvider.DeleteEmptyFolder(path);
                     }
                     catch (Exception e)
                     {
-                        _logger.Debug(e, "Unable to remove empty folder {0}", path);
+                        _logger.Debug(e, "Left set-aside folder {0} in place", path);
                     }
                 }
             }

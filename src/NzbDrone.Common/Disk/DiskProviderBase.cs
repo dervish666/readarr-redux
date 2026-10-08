@@ -331,6 +331,15 @@ namespace NzbDrone.Common.Disk
             _fileSystem.Directory.Delete(path, recursive);
         }
 
+        // Removes the folder only if it holds nothing. Unlike DeleteFolder, it never deletes what's inside: the OS
+        // refuses a folder that isn't empty, so a file that arrives after any earlier check is safe.
+        public void DeleteEmptyFolder(string path)
+        {
+            Ensure.That(path, () => path).IsValidPath(PathValidationType.CurrentOs);
+
+            _fileSystem.Directory.Delete(path, false);
+        }
+
         public string ReadAllText(string filePath)
         {
             Ensure.That(filePath, () => filePath).IsValidPath(PathValidationType.CurrentOs);
