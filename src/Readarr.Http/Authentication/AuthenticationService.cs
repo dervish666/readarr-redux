@@ -39,26 +39,35 @@ namespace Readarr.Http.Authentication
             // Forms and Basic both come through here. The address is the one the forwarded headers
             // middleware resolved from trusted proxies only.
             var clientAddress = request.GetRemoteIP();
-            var retryDelay = _loginThrottle.GetRetryDelay(clientAddress, username);
 
-            if (retryDelay > TimeSpan.Zero)
+            if (!_loginThrottle.TryBeginAttempt(clientAddress, username, out var retryDelay))
             {
                 LogThrottled(request, username, retryDelay);
 
                 return null;
             }
 
-            var user = _userService.FindUser(username, password);
+            User user;
+
+            try
+            {
+                user = _userService.FindUser(username, password);
+            }
+            catch
+            {
+                _loginThrottle.AbandonAttempt(clientAddress, username);
+                throw;
+            }
+
+            _loginThrottle.EndAttempt(clientAddress, username, user != null);
 
             if (user != null)
             {
-                _loginThrottle.RecordSuccess(clientAddress, username);
                 LogSuccess(request, username);
 
                 return user;
             }
 
-            _loginThrottle.RecordFailure(clientAddress, username);
             LogFailure(request, username);
 
             return null;

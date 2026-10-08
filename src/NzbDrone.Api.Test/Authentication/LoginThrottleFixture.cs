@@ -22,8 +22,14 @@ namespace NzbDrone.Api.Test.Authentication
         {
             for (var i = 0; i < times; i++)
             {
-                _subject.RecordFailure(address, username);
+                _subject.TryBeginAttempt(address, username, out _).Should().BeTrue();
+                _subject.EndAttempt(address, username, false);
             }
+        }
+
+        private bool Admitted(string address = Address, string username = "sam")
+        {
+            return _subject.TryBeginAttempt(address, username, out _);
         }
 
         [Test]
@@ -32,6 +38,7 @@ namespace NzbDrone.Api.Test.Authentication
             Fail(LoginThrottle.FreeAttempts - 1);
 
             _subject.GetRetryDelay(Address, "sam").Should().Be(TimeSpan.Zero);
+            Admitted().Should().BeTrue();
         }
 
         [Test]
@@ -39,10 +46,13 @@ namespace NzbDrone.Api.Test.Authentication
         {
             Fail(LoginThrottle.FreeAttempts);
             _subject.GetRetryDelay(Address, "sam").Should().Be(TimeSpan.FromSeconds(1));
+            Admitted().Should().BeFalse();
 
+            _subject.Now += TimeSpan.FromSeconds(1);
             Fail(1);
             _subject.GetRetryDelay(Address, "sam").Should().Be(TimeSpan.FromSeconds(2));
 
+            _subject.Now += TimeSpan.FromSeconds(2);
             Fail(1);
             _subject.GetRetryDelay(Address, "sam").Should().Be(TimeSpan.FromSeconds(4));
         }
@@ -50,7 +60,11 @@ namespace NzbDrone.Api.Test.Authentication
         [Test]
         public void should_cap_the_delay()
         {
-            Fail(LoginThrottle.FreeAttempts + 50);
+            for (var i = 0; i < 50; i++)
+            {
+                _subject.Now += LoginThrottle.MaxDelay;
+                Fail(1);
+            }
 
             _subject.GetRetryDelay(Address, "sam").Should().Be(LoginThrottle.MaxDelay);
         }
@@ -58,41 +72,78 @@ namespace NzbDrone.Api.Test.Authentication
         [Test]
         public void should_allow_again_once_the_delay_has_passed()
         {
-            Fail(LoginThrottle.FreeAttempts + 50);
+            Fail(LoginThrottle.FreeAttempts);
 
-            _subject.Now += LoginThrottle.MaxDelay;
+            _subject.Now += TimeSpan.FromSeconds(1);
 
-            _subject.GetRetryDelay(Address, "sam").Should().Be(TimeSpan.Zero);
+            Admitted().Should().BeTrue();
+        }
+
+        [Test]
+        public void should_count_attempts_still_in_flight()
+        {
+            for (var i = 0; i < LoginThrottle.FreeAttempts; i++)
+            {
+                Admitted().Should().BeTrue();
+            }
+
+            Admitted().Should().BeFalse();
+        }
+
+        [Test]
+        public void should_admit_one_check_at_a_time_once_throttled()
+        {
+            Fail(LoginThrottle.FreeAttempts);
+            _subject.Now += TimeSpan.FromSeconds(1);
+
+            Admitted().Should().BeTrue();
+            Admitted().Should().BeFalse();
+        }
+
+        [Test]
+        public void abandoned_attempt_should_free_its_slot_without_counting()
+        {
+            for (var i = 0; i < LoginThrottle.FreeAttempts; i++)
+            {
+                Admitted().Should().BeTrue();
+            }
+
+            _subject.AbandonAttempt(Address, "sam");
+
+            Admitted().Should().BeTrue();
         }
 
         [Test]
         public void should_forget_failures_after_a_quiet_spell()
         {
-            Fail(LoginThrottle.FreeAttempts + 3);
+            Fail(LoginThrottle.FreeAttempts);
 
             _subject.Now += LoginThrottle.ForgetAfter + TimeSpan.FromSeconds(1);
-            Fail(1);
 
             _subject.GetRetryDelay(Address, "sam").Should().Be(TimeSpan.Zero);
+            Fail(LoginThrottle.FreeAttempts - 1);
+            Admitted().Should().BeTrue();
         }
 
         [Test]
         public void should_clear_on_success()
         {
-            Fail(LoginThrottle.FreeAttempts + 3);
+            Fail(LoginThrottle.FreeAttempts - 1);
 
-            _subject.RecordSuccess(Address, "sam");
+            Admitted().Should().BeTrue();
+            _subject.EndAttempt(Address, "sam", true);
 
-            _subject.GetRetryDelay(Address, "sam").Should().Be(TimeSpan.Zero);
+            Fail(LoginThrottle.FreeAttempts - 1);
+            Admitted().Should().BeTrue();
         }
 
         [Test]
         public void should_not_affect_other_addresses_or_users()
         {
-            Fail(LoginThrottle.FreeAttempts + 3);
+            Fail(LoginThrottle.FreeAttempts);
 
-            _subject.GetRetryDelay("192.168.0.50", "sam").Should().Be(TimeSpan.Zero);
-            _subject.GetRetryDelay(Address, "someone").Should().Be(TimeSpan.Zero);
+            Admitted("192.168.0.50").Should().BeTrue();
+            Admitted(username: "someone").Should().BeTrue();
         }
 
         [Test]

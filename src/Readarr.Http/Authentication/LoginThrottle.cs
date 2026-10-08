@@ -7,14 +7,18 @@ namespace Readarr.Http.Authentication
     public interface ILoginThrottle
     {
         TimeSpan GetRetryDelay(string clientAddress, string username);
-        void RecordFailure(string clientAddress, string username);
-        void RecordSuccess(string clientAddress, string username);
+        bool TryBeginAttempt(string clientAddress, string username, out TimeSpan retryDelay);
+        void EndAttempt(string clientAddress, string username, bool succeeded);
+        void AbandonAttempt(string clientAddress, string username);
     }
 
     // Slows password guessing per client address and username. After a few free failures each
     // further failure doubles the wait before the next attempt is checked, up to a cap. Nothing
     // is permanent: a success or a quiet spell clears it, and other addresses are unaffected, so
     // a guesser can't lock the real user out.
+    //
+    // An attempt is reserved before the password is checked and counts against the limit while
+    // it runs, so parallel requests can't all slip through before the first failure is recorded.
     public class LoginThrottle : ILoginThrottle
     {
         public const int FreeAttempts = 5;
@@ -36,18 +40,11 @@ namespace Readarr.Http.Authentication
 
             lock (attempts)
             {
-                if (attempts.Failures < FreeAttempts || now - attempts.LastFailure > ForgetAfter)
-                {
-                    return TimeSpan.Zero;
-                }
-
-                var remaining = attempts.LastFailure + GetDelay(attempts.Failures) - now;
-
-                return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
+                return GetRetryDelay(attempts, now);
             }
         }
 
-        public void RecordFailure(string clientAddress, string username)
+        public bool TryBeginAttempt(string clientAddress, string username, out TimeSpan retryDelay)
         {
             var now = GetUtcNow();
 
@@ -60,19 +57,60 @@ namespace Readarr.Http.Authentication
 
             lock (attempts)
             {
+                retryDelay = GetRetryDelay(attempts, now);
+
+                if (retryDelay > TimeSpan.Zero)
+                {
+                    return false;
+                }
+
+                attempts.InFlight++;
+
+                return true;
+            }
+        }
+
+        public void EndAttempt(string clientAddress, string username, bool succeeded)
+        {
+            var key = GetKey(clientAddress, username);
+
+            if (succeeded)
+            {
+                _attempts.TryRemove(key, out _);
+
+                return;
+            }
+
+            if (!_attempts.TryGetValue(key, out var attempts))
+            {
+                return;
+            }
+
+            var now = GetUtcNow();
+
+            lock (attempts)
+            {
                 if (now - attempts.LastFailure > ForgetAfter)
                 {
                     attempts.Failures = 0;
                 }
 
+                attempts.InFlight = Math.Max(attempts.InFlight - 1, 0);
                 attempts.Failures++;
                 attempts.LastFailure = now;
             }
         }
 
-        public void RecordSuccess(string clientAddress, string username)
+        // The check never finished (an error, not a wrong password), so release the slot uncounted
+        public void AbandonAttempt(string clientAddress, string username)
         {
-            _attempts.TryRemove(GetKey(clientAddress, username), out _);
+            if (_attempts.TryGetValue(GetKey(clientAddress, username), out var attempts))
+            {
+                lock (attempts)
+                {
+                    attempts.InFlight = Math.Max(attempts.InFlight - 1, 0);
+                }
+            }
         }
 
         protected virtual DateTime GetUtcNow()
@@ -80,9 +118,29 @@ namespace Readarr.Http.Authentication
             return DateTime.UtcNow;
         }
 
+        private static TimeSpan GetRetryDelay(Attempts attempts, DateTime now)
+        {
+            var failures = now - attempts.LastFailure > ForgetAfter ? 0 : attempts.Failures;
+
+            if (failures + attempts.InFlight < FreeAttempts)
+            {
+                return TimeSpan.Zero;
+            }
+
+            // Past the free attempts only one check runs at a time
+            if (attempts.InFlight > 0)
+            {
+                return GetDelay(failures + attempts.InFlight);
+            }
+
+            var remaining = attempts.LastFailure + GetDelay(failures) - now;
+
+            return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
+        }
+
         private static TimeSpan GetDelay(int failures)
         {
-            var exponent = Math.Min(failures - FreeAttempts, 10);
+            var exponent = Math.Clamp(failures - FreeAttempts, 0, 10);
             var delay = TimeSpan.FromSeconds(Math.Pow(2, exponent));
 
             return delay < MaxDelay ? delay : MaxDelay;
@@ -95,7 +153,7 @@ namespace Readarr.Http.Authentication
 
         private void RemoveStale(DateTime now)
         {
-            foreach (var key in _attempts.Where(a => now - a.Value.LastFailure > ForgetAfter).Select(a => a.Key).ToList())
+            foreach (var key in _attempts.Where(a => a.Value.InFlight == 0 && now - a.Value.LastFailure > ForgetAfter).Select(a => a.Key).ToList())
             {
                 _attempts.TryRemove(key, out _);
             }
@@ -110,6 +168,7 @@ namespace Readarr.Http.Authentication
         private class Attempts
         {
             public int Failures { get; set; }
+            public int InFlight { get; set; }
             public DateTime LastFailure { get; set; }
         }
     }

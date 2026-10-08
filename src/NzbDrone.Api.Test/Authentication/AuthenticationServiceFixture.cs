@@ -1,5 +1,7 @@
 using System;
+using System.Linq;
 using System.Net;
+using System.Threading;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Moq;
@@ -64,6 +66,36 @@ namespace NzbDrone.Api.Test.Authentication
 
             Mocker.GetMock<IUserService>()
                 .Verify(v => v.FindUser(It.IsAny<string>(), It.IsAny<string>()), Times.Exactly(LoginThrottle.FreeAttempts));
+        }
+
+        [Test]
+        public void parallel_guesses_should_not_get_past_the_free_attempts()
+        {
+            var entered = 0;
+            var gate = new ManualResetEventSlim(false);
+
+            Mocker.GetMock<IUserService>()
+                .Setup(s => s.FindUser("sam", It.Is<string>(p => p != "hunter2")))
+                .Callback(() =>
+                {
+                    Interlocked.Increment(ref entered);
+                    gate.Wait(TimeSpan.FromSeconds(10));
+                })
+                .Returns((User)null);
+
+            var subject = Subject;
+            var threads = Enumerable.Range(0, 20)
+                .Select(i => new Thread(() => subject.Login(Request("203.0.113.5"), "sam", "wrong" + i)))
+                .ToList();
+
+            threads.ForEach(t => t.Start());
+
+            // Give every thread time to reach the password check before any of them finishes
+            Thread.Sleep(500);
+            gate.Set();
+            threads.ForEach(t => t.Join());
+
+            entered.Should().BeLessOrEqualTo(LoginThrottle.FreeAttempts);
         }
 
         [Test]
