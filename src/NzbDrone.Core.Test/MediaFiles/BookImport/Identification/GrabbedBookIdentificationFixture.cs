@@ -82,6 +82,14 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport.Identification
         }
 
         [Test]
+        public void should_not_pin_releases_whose_titles_differ_only_in_numbering()
+        {
+            var files = Identify(Files("The Book 1", 3, "one"), Files("The Book 2", 3, "two"));
+
+            files.Should().OnlyContain(x => x.Book == null);
+        }
+
+        [Test]
         public void should_not_pin_a_release_whose_tags_name_different_books()
         {
             // Grouping tolerates a minority of odd tags, so a pack can still come out as one release
