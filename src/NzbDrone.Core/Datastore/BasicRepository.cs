@@ -400,6 +400,7 @@ namespace NzbDrone.Core.Datastore
             catch (Exception e)
             {
                 e.Data.Add("SQL", SqlBuilderExtensions.GetSqlLogString(sql, model));
+                throw;
             }
         }
 
@@ -419,6 +420,7 @@ namespace NzbDrone.Core.Datastore
             catch (Exception e)
             {
                 e.Data.Add("SQL", SqlBuilderExtensions.GetSqlLogString(sql, models));
+                throw;
             }
         }
 
