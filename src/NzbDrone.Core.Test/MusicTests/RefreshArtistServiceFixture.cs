@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.Linq;
 using FizzWare.NBuilder;
+using FluentAssertions;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.Extensions;
@@ -318,6 +320,68 @@ namespace NzbDrone.Core.Test.MusicTests
 
             Mocker.GetMock<IBookService>()
                 .Verify(v => v.UpdateMany(It.Is<List<Book>>(x => x.Count == _books.Count)));
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_move_history_to_the_retained_author_before_deleting_the_duplicate()
+        {
+            var existing = _author;
+
+            var clash = _author.JsonClone();
+            clash.Id = 100;
+            clash.Metadata = existing.Metadata.Value.JsonClone();
+            clash.Metadata.Value.Id = 101;
+            clash.Metadata.Value.ForeignAuthorId = clash.Metadata.Value.ForeignAuthorId + 1;
+
+            var newAuthorInfo = clash.JsonClone();
+            newAuthorInfo.Metadata = clash.Metadata.Value.JsonClone();
+            newAuthorInfo.Books = _remoteBooks;
+
+            GivenNewAuthorInfo(newAuthorInfo);
+
+            // History rows live in a list behind the real HistoryService
+            var history = Builder<EntityHistory>.CreateListOfSize(3)
+                .All()
+                .With(h => h.AuthorId = existing.Id)
+                .BuildList();
+
+            var historyRepository = Mocker.GetMock<IHistoryRepository>();
+            historyRepository.Setup(x => x.GetByAuthor(It.IsAny<int>(), It.IsAny<EntityHistoryEventType?>()))
+                .Returns((int authorId, EntityHistoryEventType? type) => history.Where(h => h.AuthorId == authorId).ToList());
+            historyRepository.Setup(x => x.DeleteForAuthor(It.IsAny<int>()))
+                .Callback((int authorId) => history.RemoveAll(h => h.AuthorId == authorId));
+
+            var historyService = Mocker.Resolve<HistoryService>();
+            Mocker.SetConstant<IHistoryService>(historyService);
+
+            Mocker.GetMock<IAuthorService>(MockBehavior.Strict)
+                .Setup(x => x.FindById(clash.Metadata.Value.ForeignAuthorId))
+                .Returns(clash);
+
+            Mocker.GetMock<IBookService>(MockBehavior.Strict)
+                .Setup(x => x.GetBooksByAuthor(existing.Id))
+                .Returns(_books);
+
+            Mocker.GetMock<IBookService>(MockBehavior.Strict)
+                .Setup(x => x.UpdateMany(It.IsAny<List<Book>>()));
+
+            Mocker.GetMock<IBookService>(MockBehavior.Strict)
+                .Setup(x => x.GetBooksForRefresh(clash.AuthorMetadataId, It.IsAny<List<string>>()))
+                .Returns(_books);
+
+            AllowAuthorUpdate();
+
+            // DeleteAuthor publishes AuthorDeletedEvent, and HistoryService handles it synchronously
+            Mocker.GetMock<IAuthorService>(MockBehavior.Strict)
+                .Setup(x => x.DeleteAuthor(existing.Id, It.IsAny<bool>(), false))
+                .Callback((int id, bool deleteFiles, bool addExclusion) => historyService.Handle(new AuthorDeletedEvent(existing, deleteFiles, addExclusion)));
+
+            Subject.Execute(new RefreshAuthorCommand(_author.Id));
+
+            history.Should().HaveCount(3);
+            history.Should().OnlyContain(h => h.AuthorId == clash.Id);
 
             ExceptionVerification.ExpectedWarns(1);
         }
