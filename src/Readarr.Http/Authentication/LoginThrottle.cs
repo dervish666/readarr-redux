@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Readarr.Http.Authentication
@@ -14,81 +14,92 @@ namespace Readarr.Http.Authentication
 
     // Slows password guessing. Failures are counted per client address and username, and
     // separately per address across all usernames. After the free failures each further failure
-    // doubles the wait before the next attempt is checked, up to a cap. Nothing is permanent: a
-    // success or a quiet spell clears it, and other addresses are unaffected, so a guesser can't
-    // lock the real user out.
+    // doubles the wait before the next attempt is checked, up to a cap, and only one check runs at
+    // a time. Below that, checks in flight don't count, so concurrent good requests (Basic auth
+    // sends credentials with each one) aren't refused; a fixed cap on checks in flight bounds the
+    // burst that can arrive before the first failure is recorded. Nothing is permanent: a success
+    // or a quiet spell clears it, and other addresses are unaffected.
     //
-    // An attempt is reserved before the password is checked and counts against the limit while
-    // it runs, so parallel requests can't all slip through before the first failure is recorded.
+    // All state sits behind one lock, so admission, recording and eviction can't interleave.
     public class LoginThrottle : ILoginThrottle
     {
         public const int FreeAttempts = 5;
         public const int SourceFreeAttempts = 20;
         public const int MaxEntries = 10000;
+        public const int MaxConcurrentChecks = 32;
         public static readonly TimeSpan MaxDelay = TimeSpan.FromSeconds(30);
         public static readonly TimeSpan ForgetAfter = TimeSpan.FromMinutes(15);
 
-        private readonly ConcurrentDictionary<string, Attempts> _byUser = new ConcurrentDictionary<string, Attempts>();
-        private readonly ConcurrentDictionary<string, Attempts> _bySource = new ConcurrentDictionary<string, Attempts>();
+        private static readonly TimeSpan BusyDelay = TimeSpan.FromSeconds(1);
+
+        private readonly object _sync = new object();
+        private readonly Dictionary<string, Attempts> _byUser = new Dictionary<string, Attempts>();
+        private readonly Dictionary<string, Attempts> _bySource = new Dictionary<string, Attempts>();
 
         public TimeSpan GetRetryDelay(string clientAddress, string username)
         {
             var now = GetUtcNow();
 
-            return Max(Peek(_byUser, GetKey(clientAddress, username), FreeAttempts, now),
-                       Peek(_bySource, clientAddress ?? string.Empty, SourceFreeAttempts, now));
+            lock (_sync)
+            {
+                return Max(GetRetryDelay(Find(_byUser, GetKey(clientAddress, username)), FreeAttempts, now),
+                           GetRetryDelay(Find(_bySource, GetSourceKey(clientAddress)), SourceFreeAttempts, now));
+            }
         }
 
         public bool TryBeginAttempt(string clientAddress, string username, out TimeSpan retryDelay)
         {
             var now = GetUtcNow();
-            var source = GetOrAdd(_bySource, clientAddress ?? string.Empty, SourceFreeAttempts, now);
-            var user = GetOrAdd(_byUser, GetKey(clientAddress, username), FreeAttempts, now);
+            var userKey = GetKey(clientAddress, username);
+            var sourceKey = GetSourceKey(clientAddress);
 
-            // Always the address first, then the username, so two requests can't deadlock
-            lock (source)
+            lock (_sync)
             {
-                lock (user)
+                var user = Find(_byUser, userKey);
+                var source = Find(_bySource, sourceKey);
+
+                retryDelay = Max(GetRetryDelay(user, FreeAttempts, now), GetRetryDelay(source, SourceFreeAttempts, now));
+
+                if (retryDelay > TimeSpan.Zero)
                 {
-                    retryDelay = Max(GetRetryDelay(user, FreeAttempts, now), GetRetryDelay(source, SourceFreeAttempts, now));
-
-                    if (retryDelay > TimeSpan.Zero)
-                    {
-                        return false;
-                    }
-
-                    source.InFlight++;
-                    user.InFlight++;
-
-                    return true;
+                    return false;
                 }
+
+                // No room without dropping an active ban or a check in flight: refuse rather than forget
+                if ((user == null && !TryAdd(_byUser, userKey, FreeAttempts, now, out user)) ||
+                    (source == null && !TryAdd(_bySource, sourceKey, SourceFreeAttempts, now, out source)))
+                {
+                    retryDelay = MaxDelay;
+
+                    return false;
+                }
+
+                user.InFlight++;
+                source.InFlight++;
+
+                return true;
             }
         }
 
         public void EndAttempt(string clientAddress, string username, bool succeeded)
         {
-            var sourceKey = clientAddress ?? string.Empty;
-            var userKey = GetKey(clientAddress, username);
-
-            if (succeeded)
-            {
-                _byUser.TryRemove(userKey, out _);
-                _bySource.TryRemove(sourceKey, out _);
-
-                return;
-            }
-
             var now = GetUtcNow();
 
-            RecordFailure(_bySource, sourceKey, now);
-            RecordFailure(_byUser, userKey, now);
+            lock (_sync)
+            {
+                End(_byUser, GetKey(clientAddress, username), succeeded, now);
+                End(_bySource, GetSourceKey(clientAddress), succeeded, now);
+            }
         }
 
         // The check never finished (an error, not a wrong password), so release the slot uncounted
         public void AbandonAttempt(string clientAddress, string username)
         {
-            Release(_bySource, clientAddress ?? string.Empty);
-            Release(_byUser, GetKey(clientAddress, username));
+            lock (_sync)
+            {
+                Release(_byUser, GetKey(clientAddress, username));
+                Release(_bySource, GetSourceKey(clientAddress));
+            }
         }
 
         protected virtual DateTime GetUtcNow()
@@ -96,68 +107,83 @@ namespace Readarr.Http.Authentication
             return DateTime.UtcNow;
         }
 
-        private static TimeSpan Peek(ConcurrentDictionary<string, Attempts> map, string key, int freeAttempts, DateTime now)
-        {
-            if (!map.TryGetValue(key, out var attempts))
-            {
-                return TimeSpan.Zero;
-            }
-
-            lock (attempts)
-            {
-                return GetRetryDelay(attempts, freeAttempts, now);
-            }
-        }
-
-        private static void RecordFailure(ConcurrentDictionary<string, Attempts> map, string key, DateTime now)
+        private static void End(Dictionary<string, Attempts> map, string key, bool succeeded, DateTime now)
         {
             if (!map.TryGetValue(key, out var attempts))
             {
                 return;
             }
 
-            lock (attempts)
+            attempts.InFlight = Math.Max(attempts.InFlight - 1, 0);
+
+            if (succeeded)
             {
-                if (now - attempts.LastFailure > ForgetAfter)
+                // Other checks on this key may still be running; their outcomes still need a home
+                attempts.Failures = 0;
+
+                if (attempts.InFlight == 0)
                 {
-                    attempts.Failures = 0;
+                    map.Remove(key);
                 }
 
-                attempts.InFlight = Math.Max(attempts.InFlight - 1, 0);
-                attempts.Failures++;
-                attempts.LastFailure = now;
+                return;
             }
+
+            if (now - attempts.LastFailure > ForgetAfter)
+            {
+                attempts.Failures = 0;
+            }
+
+            attempts.Failures++;
+            attempts.LastFailure = now;
         }
 
-        private static void Release(ConcurrentDictionary<string, Attempts> map, string key)
+        private static void Release(Dictionary<string, Attempts> map, string key)
         {
             if (map.TryGetValue(key, out var attempts))
             {
-                lock (attempts)
+                attempts.InFlight = Math.Max(attempts.InFlight - 1, 0);
+
+                if (attempts.InFlight == 0 && attempts.Failures == 0)
                 {
-                    attempts.InFlight = Math.Max(attempts.InFlight - 1, 0);
+                    map.Remove(key);
                 }
             }
         }
 
         private static TimeSpan GetRetryDelay(Attempts attempts, int freeAttempts, DateTime now)
         {
-            var failures = CurrentFailures(attempts, now);
-
-            if (failures + attempts.InFlight < freeAttempts)
+            if (attempts == null)
             {
                 return TimeSpan.Zero;
             }
 
-            // Past the free attempts only one check runs at a time
+            if (attempts.InFlight >= MaxConcurrentChecks)
+            {
+                return BusyDelay;
+            }
+
+            var failures = CurrentFailures(attempts, now);
+
+            if (failures < freeAttempts)
+            {
+                return TimeSpan.Zero;
+            }
+
+            // Past the free attempts only one check runs at a time, and only after the wait
             if (attempts.InFlight > 0)
             {
-                return GetDelay(failures + attempts.InFlight, freeAttempts);
+                return GetDelay(failures, freeAttempts);
             }
 
             var remaining = attempts.LastFailure + GetDelay(failures, freeAttempts) - now;
 
             return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
+        }
+
+        private static bool IsBanned(Attempts attempts, int freeAttempts, DateTime now)
+        {
+            return CurrentFailures(attempts, now) >= freeAttempts;
         }
 
         private static int CurrentFailures(Attempts attempts, DateTime now)
@@ -183,45 +209,47 @@ namespace Readarr.Http.Authentication
             return $"{clientAddress}|{username?.ToLowerInvariant()}";
         }
 
-        private static Attempts GetOrAdd(ConcurrentDictionary<string, Attempts> map, string key, int freeAttempts, DateTime now)
+        private static string GetSourceKey(string clientAddress)
         {
-            if (map.TryGetValue(key, out var existing))
+            return clientAddress ?? string.Empty;
+        }
+
+        private static Attempts Find(Dictionary<string, Attempts> map, string key)
+        {
+            return map.TryGetValue(key, out var attempts) ? attempts : null;
+        }
+
+        // Keeps the map bounded without forgetting anything that matters. Only entries with no
+        // check in flight and no active ban can go, oldest first; if none can, the new key is refused.
+        private static bool TryAdd(Dictionary<string, Attempts> map, string key, int freeAttempts, DateTime now, out Attempts attempts)
+        {
+            if (map.Count >= MaxEntries)
             {
-                return existing;
+                var excess = map.Count - (MaxEntries * 9 / 10);
+
+                var victims = map.Where(e => e.Value.InFlight == 0 && !IsBanned(e.Value, freeAttempts, now))
+                                 .OrderBy(e => e.Value.LastFailure)
+                                 .Take(excess)
+                                 .Select(e => e.Key)
+                                 .ToList();
+
+                foreach (var victim in victims)
+                {
+                    map.Remove(victim);
+                }
             }
 
             if (map.Count >= MaxEntries)
             {
-                MakeRoom(map, freeAttempts, now);
+                attempts = null;
+
+                return false;
             }
 
-            return map.GetOrAdd(key, _ => new Attempts());
-        }
+            attempts = new Attempts();
+            map[key] = attempts;
 
-        // Keeps the map bounded without giving up the throttles that matter: forgotten entries and
-        // ones below their limit go first, and an active throttle is only dropped when nothing else
-        // is left, oldest first. Entries with a check in flight are never dropped.
-        private static void MakeRoom(ConcurrentDictionary<string, Attempts> map, int freeAttempts, DateTime now)
-        {
-            var target = MaxEntries * 9 / 10;
-            var excess = map.Count - target;
-
-            if (excess <= 0)
-            {
-                return;
-            }
-
-            var victims = map.Where(e => e.Value.InFlight == 0)
-                             .OrderBy(e => CurrentFailures(e.Value, now) >= freeAttempts ? 1 : 0)
-                             .ThenBy(e => e.Value.LastFailure)
-                             .Take(excess)
-                             .Select(e => e.Key)
-                             .ToList();
-
-            foreach (var key in victims)
-            {
-                map.TryRemove(key, out _);
-            }
+            return true;
         }
 
         private class Attempts

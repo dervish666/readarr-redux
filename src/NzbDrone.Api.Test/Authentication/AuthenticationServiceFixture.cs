@@ -68,24 +68,31 @@ namespace NzbDrone.Api.Test.Authentication
                 .Verify(v => v.FindUser(It.IsAny<string>(), It.IsAny<string>()), Times.Exactly(LoginThrottle.FreeAttempts));
         }
 
-        [Test]
-        public void parallel_guesses_should_not_get_past_the_free_attempts()
+        // Runs the logins on their own threads while every password check blocks, so they overlap
+        private (int Entered, int Succeeded) RunParallel(int count, string password)
         {
             var entered = 0;
+            var succeeded = 0;
             var gate = new ManualResetEventSlim(false);
 
             Mocker.GetMock<IUserService>()
-                .Setup(s => s.FindUser("sam", It.Is<string>(p => p != "hunter2")))
+                .Setup(s => s.FindUser("sam", It.IsAny<string>()))
                 .Callback(() =>
                 {
                     Interlocked.Increment(ref entered);
                     gate.Wait(TimeSpan.FromSeconds(10));
                 })
-                .Returns((User)null);
+                .Returns<string, string>((u, p) => p == "hunter2" ? _user : null);
 
             var subject = Subject;
-            var threads = Enumerable.Range(0, 20)
-                .Select(i => new Thread(() => subject.Login(Request("203.0.113.5"), "sam", "wrong" + i)))
+            var threads = Enumerable.Range(0, count)
+                .Select(i => new Thread(() =>
+                {
+                    if (subject.Login(Request("203.0.113.5"), "sam", password ?? "wrong" + i) != null)
+                    {
+                        Interlocked.Increment(ref succeeded);
+                    }
+                }))
                 .ToList();
 
             threads.ForEach(t => t.Start());
@@ -95,7 +102,28 @@ namespace NzbDrone.Api.Test.Authentication
             gate.Set();
             threads.ForEach(t => t.Join());
 
-            entered.Should().BeLessOrEqualTo(LoginThrottle.FreeAttempts);
+            return (entered, succeeded);
+        }
+
+        [Test]
+        public void concurrent_valid_logins_should_all_succeed()
+        {
+            RunParallel(20, "hunter2").Succeeded.Should().Be(20);
+        }
+
+        [Test]
+        public void parallel_guesses_before_any_failure_should_be_capped()
+        {
+            RunParallel(LoginThrottle.MaxConcurrentChecks + 10, null).Entered.Should().BeLessOrEqualTo(LoginThrottle.MaxConcurrentChecks);
+        }
+
+        [Test]
+        public void parallel_guesses_once_throttled_should_be_checked_one_at_a_time()
+        {
+            FailLogins("203.0.113.5", LoginThrottle.FreeAttempts);
+            Thread.Sleep(TimeSpan.FromSeconds(1.2));
+
+            RunParallel(20, null).Entered.Should().Be(1);
         }
 
         [Test]
