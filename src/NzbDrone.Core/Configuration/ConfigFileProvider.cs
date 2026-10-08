@@ -14,18 +14,17 @@ using NzbDrone.Core.Authentication;
 using NzbDrone.Core.Configuration.Events;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Lifecycle;
-using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Update;
 
 namespace NzbDrone.Core.Configuration
 {
-    public interface IConfigFileProvider : IHandleAsync<ApplicationStartedEvent>,
-        IExecute<ResetApiKeyCommand>
+    public interface IConfigFileProvider : IHandleAsync<ApplicationStartedEvent>
     {
         Dictionary<string, object> GetConfigDictionary();
         void SaveConfigDictionary(Dictionary<string, object> configValues);
         void EnsureDefaultConfigFile();
+        void ResetApiKey();
 
         string BindAddress { get; }
         int Port { get; }
@@ -473,7 +472,8 @@ namespace NzbDrone.Core.Configuration
             DeleteOldValues();
         }
 
-        public void Execute(ResetApiKeyCommand message)
+        // Called by ApiKeyResetService once existing sessions are revoked
+        public void ResetApiKey()
         {
             SetValue("ApiKey", GenerateApiKey());
         }

@@ -19,6 +19,9 @@ namespace Readarr.Api.V1.Config
     [V1ApiController("config/host")]
     public class HostConfigController : RestController<HostConfigResource>
     {
+        // Sent in place of the stored hash, and read back on save as "password unchanged"
+        public const string PasswordPlaceholder = "********";
+
         private readonly IConfigFileProvider _configFileProvider;
         private readonly IConfigService _configService;
         private readonly IUserService _userService;
@@ -87,7 +90,7 @@ namespace Readarr.Api.V1.Config
         {
             var user = _userService.FindUser();
 
-            if (user != null && user.Password == resource.Password)
+            if (user != null && resource.Password == PasswordPlaceholder)
             {
                 return true;
             }
@@ -114,7 +117,7 @@ namespace Readarr.Api.V1.Config
             var user = _userService.FindUser();
 
             resource.Username = user?.Username ?? string.Empty;
-            resource.Password = user?.Password ?? string.Empty;
+            resource.Password = user != null ? PasswordPlaceholder : string.Empty;
             resource.PasswordConfirmation = string.Empty;
 
             return resource;
@@ -132,7 +135,7 @@ namespace Readarr.Api.V1.Config
 
             if (resource.Username.IsNotNullOrWhiteSpace() && resource.Password.IsNotNullOrWhiteSpace())
             {
-                _userService.Upsert(resource.Username, resource.Password);
+                _userService.Upsert(resource.Username, resource.Password == PasswordPlaceholder ? null : resource.Password);
             }
 
             return Accepted(resource.Id);

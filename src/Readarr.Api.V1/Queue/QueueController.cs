@@ -137,7 +137,30 @@ namespace Readarr.Api.V1.Queue
         public PagingResource<QueueResource> GetQueue([FromQuery] PagingRequestResource paging, bool includeUnknownAuthorItems = false, bool includeAuthor = false, bool includeBook = false)
         {
             var pagingResource = new PagingResource<QueueResource>(paging);
-            var pagingSpec = pagingResource.MapToPagingSpec<QueueResource, NzbDrone.Core.Queue.Queue>("timeleft", SortDirection.Ascending);
+            var pagingSpec = pagingResource.MapToPagingSpec<QueueResource, NzbDrone.Core.Queue.Queue>(
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "authorMetadata.sortName",
+                    "authors.sortName",
+                    "authors.sortNameLastFirst",
+                    "book",
+                    "book.releaseDate",
+                    "book.title",
+                    "books.releaseDate",
+                    "books.title",
+                    "downloadClient",
+                    "estimatedCompletionTime",
+                    "indexer",
+                    "progress",
+                    "protocol",
+                    "quality",
+                    "size",
+                    "status",
+                    "timeleft",
+                    "title"
+                },
+                "timeleft",
+                SortDirection.Ascending);
 
             return pagingSpec.ApplyToPage((spec) => GetQueue(spec, includeUnknownAuthorItems), (q) => MapToResource(q, includeAuthor, includeBook));
         }
@@ -216,6 +239,7 @@ namespace Readarr.Api.V1.Queue
                 case "status":
                     return q => q.Status;
                 case "authors.sortName":
+                case "authorMetadata.sortName":
                     return q => q.Author?.Metadata.Value.SortName ?? q.Title;
                 case "authors.sortNameLastFirst":
                     return q => q.Author?.Metadata.Value.SortNameLastFirst ?? string.Empty;
@@ -224,8 +248,10 @@ namespace Readarr.Api.V1.Queue
                 case "book":
                     return q => q.Book;
                 case "book.title":
+                case "books.title":
                     return q => q.Book?.Title ?? string.Empty;
                 case "book.releaseDate":
+                case "books.releaseDate":
                     return q => q.Book?.ReleaseDate ?? DateTime.MinValue;
                 case "quality":
                     return q => q.Quality;

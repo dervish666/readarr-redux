@@ -154,7 +154,17 @@ namespace NzbDrone.Core.Jobs
                 currentDefinition.Priority = defaultTask.Priority;
 
                 _cache.Set(currentDefinition.TypeName, currentDefinition);
-                _scheduledTaskRepository.Upsert(currentDefinition);
+
+                // The task is scheduled from the cache either way; a failed save must not stop the
+                // tasks after it being registered
+                try
+                {
+                    _scheduledTaskRepository.Upsert(currentDefinition);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Warn(ex, "Failed to save scheduled task '{0}', it will still run this session", currentDefinition.TypeName);
+                }
             }
         }
 

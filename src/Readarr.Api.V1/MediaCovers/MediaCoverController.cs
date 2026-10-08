@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
@@ -25,10 +26,15 @@ namespace Readarr.Api.V1.MediaCovers
             _mimeTypeProvider = new FileExtensionContentTypeProvider();
         }
 
-        [HttpGet(@"author/{authorId:int}/{filename:regex((.+)\.(jpg|png|gif))}")]
+        [HttpGet(@"author/{authorId:int}/{filename:regex(^[[^/\\]]+\.(jpg|png|gif)$)}")]
         public IActionResult GetAuthorMediaCover(int authorId, string filename)
         {
-            var filePath = Path.Combine(_appFolderInfo.GetAppDataPath(), "MediaCover", authorId.ToString(), filename);
+            var filePath = GetCoverPath(Path.Combine(_appFolderInfo.GetAppDataPath(), "MediaCover", authorId.ToString()), filename);
+
+            if (filePath == null)
+            {
+                return NotFound();
+            }
 
             if (!_diskProvider.FileExists(filePath) || _diskProvider.GetFileSize(filePath) == 0)
             {
@@ -46,10 +52,15 @@ namespace Readarr.Api.V1.MediaCovers
             return PhysicalFile(filePath, GetContentType(filePath));
         }
 
-        [HttpGet(@"book/{bookId:int}/{filename:regex((.+)\.(jpg|png|gif))}")]
+        [HttpGet(@"book/{bookId:int}/{filename:regex(^[[^/\\]]+\.(jpg|png|gif)$)}")]
         public IActionResult GetBookMediaCover(int bookId, string filename)
         {
-            var filePath = Path.Combine(_appFolderInfo.GetAppDataPath(), "MediaCover", "Books", bookId.ToString(), filename);
+            var filePath = GetCoverPath(Path.Combine(_appFolderInfo.GetAppDataPath(), "MediaCover", "Books", bookId.ToString()), filename);
+
+            if (filePath == null)
+            {
+                return NotFound();
+            }
 
             if (!_diskProvider.FileExists(filePath) || _diskProvider.GetFileSize(filePath) == 0)
             {
@@ -65,6 +76,21 @@ namespace Readarr.Api.V1.MediaCovers
             }
 
             return PhysicalFile(filePath, GetContentType(filePath));
+        }
+
+        // Covers are plain file names. Reject either separator and anything that resolves outside
+        // the cover folder, since a backslash is a separator on Windows and survives routing.
+        private static string GetCoverPath(string folder, string filename)
+        {
+            if (filename == null || filename.IndexOfAny(new[] { '/', '\\' }) >= 0)
+            {
+                return null;
+            }
+
+            var root = Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            var filePath = Path.GetFullPath(Path.Combine(folder, filename));
+
+            return filePath.StartsWith(root, StringComparison.Ordinal) ? filePath : null;
         }
 
         private string GetContentType(string filePath)

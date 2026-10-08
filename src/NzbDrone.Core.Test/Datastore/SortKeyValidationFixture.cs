@@ -12,6 +12,8 @@ namespace NzbDrone.Core.Test.Datastore
         [TestCase("amissingtable.id")]
         [TestCase("table.table.column")]
         [TestCase("column; DROP TABLE Commands;--")]
+        [TestCase("id\" DESC; DELETE FROM \"Commands\"; --")]
+        [TestCase("commands.id\" DESC; --")]
         public void should_return_false_for_invalid_sort_key(string sortKey)
         {
             TableMapping.Mapper.IsValidSortKey(sortKey).Should().BeFalse();
@@ -21,6 +23,15 @@ namespace NzbDrone.Core.Test.Datastore
         [TestCase("Id")]
         [TestCase("id")]
         [TestCase("commands.id")]
+        [TestCase("authorMetadata.sortName")]
+        [TestCase("books.title")]
+        [TestCase("books.releaseDate")]
+        [TestCase("books.lastSearchTime")]
+        [TestCase("releaseDate")]
+        [TestCase("date")]
+        [TestCase("sourceTitle")]
+        [TestCase("indexer")]
+        [TestCase("time")]
         public void should_return_true_for_valid_sort_key(string sortKey)
         {
             TableMapping.Mapper.IsValidSortKey(sortKey).Should().BeTrue();

@@ -324,5 +324,49 @@ namespace NzbDrone.Core.Test.Datastore
             data.TotalRecords.Should().Be(_basicList.Count);
             data.Records.Should().BeEquivalentTo(_basicList.OrderByDescending(x => x.Id).Skip((page - 1) * 2).Take(2));
         }
+
+        [Test]
+        public void update_should_throw_when_the_database_rejects_it()
+        {
+            Subject.InsertMany(_basicList);
+            _basicList[1].TypeName = _basicList[0].TypeName;
+
+            var e = Assert.Catch<Exception>(() => Subject.Update(_basicList[1]));
+
+            e.Data.Contains("SQL").Should().BeTrue();
+        }
+
+        [Test]
+        public void update_many_should_throw_when_the_database_rejects_it()
+        {
+            Subject.InsertMany(_basicList);
+            _basicList[1].TypeName = _basicList[0].TypeName;
+
+            Assert.Catch<Exception>(() => Subject.UpdateMany(_basicList));
+        }
+
+        [Test]
+        public void set_fields_should_throw_when_the_database_rejects_it()
+        {
+            Subject.InsertMany(_basicList);
+            _basicList[1].TypeName = _basicList[0].TypeName;
+
+            Assert.Catch<Exception>(() => Subject.SetFields(_basicList[1], x => x.TypeName));
+        }
+
+        [TestCase("amissingcolumn")]
+        [TestCase("Id\" DESC; DELETE FROM \"ScheduledTasks\"; --")]
+        [TestCase("ScheduledTasks.Id\" DESC; DELETE FROM \"ScheduledTasks\"; --")]
+        [TestCase("(SELECT 1)")]
+        public void get_paged_should_fall_back_to_id_for_invalid_sort_key(string sortKey)
+        {
+            Subject.InsertMany(_basicList);
+            var data = Subject.GetPaged(new PagingSpec<ScheduledTask>() { Page = 1, PageSize = 2, SortKey = sortKey, SortDirection = SortDirection.Descending });
+
+            Subject.All().Should().HaveCount(_basicList.Count);
+            data.SortKey.Should().Be("ScheduledTasks.Id");
+            data.TotalRecords.Should().Be(_basicList.Count);
+            data.Records.Should().BeEquivalentTo(_basicList.OrderByDescending(x => x.Id).Take(2));
+        }
     }
 }

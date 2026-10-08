@@ -213,6 +213,16 @@ namespace NzbDrone.Common.Test
         }
 
         [Test]
+        public void reset_api_key_should_change_key()
+        {
+            var oldKey = Subject.ApiKey;
+
+            Subject.ResetApiKey();
+
+            Subject.ApiKey.Should().NotBe(oldKey);
+        }
+
+        [Test]
         public void should_throw_if_config_file_contains_invalid_xml()
         {
             _configFileContents = "{ \"key\": \"value\" }";

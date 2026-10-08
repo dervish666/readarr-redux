@@ -16,6 +16,16 @@ namespace NzbDrone.Core.Datastore
     {
         private static readonly Logger Logger = NzbDroneLogger.GetLogger(typeof(SqlBuilderExtensions));
 
+        // The UI password hash and its salt and cost; together they are an offline cracking target,
+        // and this output reaches both the SQL trace log and failed-query diagnostics
+        private static readonly HashSet<string> RedactedParameters = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Password",
+            "Salt",
+            "Iterations",
+            "ExpectedPassword"
+        };
+
         public static bool LogSql { get; set; }
 
         public static SqlBuilder Select(this SqlBuilder builder, params Type[] types)
@@ -134,6 +144,12 @@ namespace NzbDrone.Core.Datastore
 
             foreach (var p in parameters.ToDictionary())
             {
+                if (RedactedParameters.Contains(p.Key))
+                {
+                    sb.AppendFormat("{0} = [(removed)]", p.Key).AppendLine();
+                    continue;
+                }
+
                 var val = (p.Value is string) ? string.Format("\"{0}\"", p.Value) : p.Value;
                 sb.AppendFormat("{0} = [{1}]", p.Key, val.ToJson() ?? "NULL").AppendLine();
             }
