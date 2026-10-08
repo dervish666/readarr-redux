@@ -171,6 +171,30 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             var incompleteBooks = decisions.Where(d => !d.Approved && d.Item?.Book != null)
                 .Select(d => d.Item.Book.ForeignBookId)
                 .ToHashSet();
+
+            // A file rejected before identification has no book, so it could be a part of any book in the batch by
+            // the same author (or any book at all, if it has no author either). Treat all of those as incomplete.
+            var unidentified = decisions.Where(d => !d.Approved && (d.Item?.Book == null || d.Item.Edition == null)).ToList();
+
+            foreach (var decision in decisions.Where(d => d.Approved && d.Item.Book != null))
+            {
+                if (unidentified.Any(d => d.Item?.Author == null || d.Item.Author.AuthorMetadataId == decision.Item.Book.AuthorMetadataId))
+                {
+                    incompleteBooks.Add(decision.Item.Book.ForeignBookId);
+                }
+            }
+
+            // A gap in a book's part numbers means a part never arrived
+            foreach (var book in decisions.Where(d => d.Item?.Book != null).GroupBy(d => d.Item.Book.ForeignBookId))
+            {
+                var parts = book.Select(d => d.Item.Part).Where(p => p > 0).Distinct().ToList();
+
+                if (parts.Any() && parts.Max() > parts.Count)
+                {
+                    incompleteBooks.Add(book.Key);
+                }
+            }
+
             var importedPaths = new HashSet<string>(PathEqualityComparer.Instance);
 
             foreach (var importDecision in qualifiedImports)

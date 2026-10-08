@@ -409,6 +409,47 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void should_keep_the_old_files_when_a_file_in_the_batch_could_not_be_identified()
+        {
+            var disk = new Dictionary<string, string>();
+            var database = new List<BookFile>();
+            var decisions = GivenMultiPartUpgrade(disk, database);
+
+            // The third part failed before identification, so it has no book to mark incomplete
+            var unidentified = new ImportDecision<LocalBook>(new LocalBook { Path = decisions[2].Item.Path }, new Rejection("Unable to parse file"));
+            decisions[2] = unidentified;
+
+            Subject.Import(decisions, true);
+
+            disk.Values.Where(x => x == "old").Should().HaveCount(3);
+
+            Mocker.GetMock<IRecycleBinProvider>()
+                .Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_keep_the_old_files_when_a_part_is_missing_from_the_download()
+        {
+            var disk = new Dictionary<string, string>();
+            var database = new List<BookFile>();
+            var decisions = GivenMultiPartUpgrade(disk, database);
+
+            // Parts 1 and 3 arrived, part 2 never did
+            decisions.RemoveAt(1);
+
+            Subject.Import(decisions, true);
+
+            disk.Values.Where(x => x == "old").Should().HaveCount(3);
+
+            Mocker.GetMock<IRecycleBinProvider>()
+                .Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
         public void should_keep_the_old_files_when_a_part_of_a_multi_part_upgrade_was_skipped()
         {
             var disk = new Dictionary<string, string>();
