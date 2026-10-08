@@ -262,6 +262,9 @@ namespace NzbDrone.Core.Test.ParserTests
         [TestCase("Kristen Britain", "Green Rider", "1", "Mirror Sight (Green Rider, #5) - Kristen Britain [MP3]")]
         [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain.Green Rider.8.Falling in a Sea of Stars.m4b")]
         [TestCase("Orson Scott Card", "Pathfinder", "1", "Orson Scott Card - Ruins Pathfinder, Book 2 (Unabridged) MP3")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Book 6 - Green Rider - Firebrand")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Green Rider 1-3 MP3")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Green Rider, Books 1-3")]
         public void should_not_parse_a_later_book_in_a_series_named_after_the_searched_book(string searchAuthor, string searchBook, string position, string report)
         {
             GivenSearchCriteriaInSeries(searchAuthor, searchBook, position);
@@ -276,6 +279,11 @@ namespace NzbDrone.Core.Test.ParserTests
         [TestCase("Kristen Britain", "Green Rider", "1", "Green Rider (Green Rider, #1) - Kristen Britain [MP3]")]
         [TestCase("Orson Scott Card", "Ruins", "2", "Orson Scott Card - Ruins Pathfinder, Book 2 (Unabridged) MP3")]
         [TestCase("Orson Scott Card", "Pathfinder", "1", "Orson Scott Card - Pathfinder (2010) MP3")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Green Rider - 64 Kbps MP3")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Green Rider 12 CDs MP3")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Book 1 - Green Rider")]
+        [TestCase("Kristen Britain", "Firebrand", "6", "Kristen Britain - Book 6 - Green Rider - Firebrand")]
+        [TestCase("Kristen Britain", "Green Rider", "1-3", "Kristen Britain - Green Rider 1-3 MP3")]
         public void should_parse_the_searched_book_when_the_series_position_agrees(string searchAuthor, string searchBook, string position, string report)
         {
             GivenSearchCriteriaInSeries(searchAuthor, searchBook, position);
