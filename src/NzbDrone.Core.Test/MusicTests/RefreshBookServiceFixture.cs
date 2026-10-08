@@ -1,9 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
 using FizzWare.NBuilder;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
+using NzbDrone.Common.Http;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Books.Commands;
 using NzbDrone.Core.Exceptions;
@@ -218,6 +222,74 @@ namespace NzbDrone.Core.Test.MusicTests
                 .Verify(v => v.DeleteBook(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never());
 
             ExceptionVerification.ExpectedErrors(1);
+        }
+
+        private List<Book> GivenBooksMissingFromAuthorList(int count)
+        {
+            return Enumerable.Range(1, count).Select(i => Builder<Book>.CreateNew()
+                    .With(b => b.Id = i)
+                    .With(b => b.ForeignBookId = $"missing{i}")
+                    .With(b => b.AuthorMetadata = _book.AuthorMetadata.Value)
+                    .With(b => b.Author = _author)
+                    .With(b => b.AddOptions = new AddBookOptions { AddType = BookAddType.Automatic })
+                    .Build())
+                .ToList();
+        }
+
+        [Test]
+        public void should_stop_looking_up_missing_books_after_repeated_transport_failures()
+        {
+            var books = GivenBooksMissingFromAuthorList(10);
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Setup(s => s.GetBookInfo(It.IsAny<string>()))
+                .Throws(new HttpRequestException("Connection refused"));
+
+            Subject.RefreshBookInfo(books, new List<Book>(), _author, true, false, null);
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Verify(v => v.GetBookInfo(It.IsAny<string>()), Times.Exactly(3));
+
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.DeleteBook(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never());
+
+            ExceptionVerification.ExpectedErrors(3);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_stop_looking_up_missing_books_after_repeated_rate_limits()
+        {
+            var books = GivenBooksMissingFromAuthorList(10);
+            var requests = 0;
+
+            // Every lookup goes through the real proxy, and the metadata source answers 429 to everything
+            Mocker.GetMock<IMetadataRequestBuilder>()
+                .Setup(s => s.GetRequestBuilder())
+                .Returns(new HttpRequestBuilder("http://rreading-glasses.local/{route}").CreateFactory());
+
+            Mocker.GetMock<IHttpClient>()
+                .Setup(s => s.Get(It.IsAny<HttpRequest>()))
+                .Returns((HttpRequest request) =>
+                {
+                    requests++;
+                    var headers = new HttpHeader();
+                    headers.Add("Retry-After", "0");
+                    return new HttpResponse(request, headers, string.Empty, HttpStatusCode.TooManyRequests);
+                });
+
+            Mocker.SetConstant<IProvideBookInfo>(Mocker.Resolve<BookInfoProxy>());
+
+            Subject.RefreshBookInfo(books, new List<Book>(), _author, true, false, null);
+
+            // Three lookups of 60 tries each, instead of all ten
+            requests.Should().Be(3 * 60);
+
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.DeleteBook(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never());
+
+            ExceptionVerification.ExpectedErrors(3);
+            ExceptionVerification.ExpectedWarns(4);
         }
 
         [Test]
