@@ -247,22 +247,12 @@ namespace NzbDrone.Core.MediaFiles
 
             foreach (var file in files)
             {
-                // A new file may already sit on the old path. Never move over it, keep the old one set aside instead.
-                if (_diskProvider.FileExists(file.OriginalPath))
+                if (PutBack(file))
                 {
-                    _logger.Debug("{0} now holds a new file, leaving the old one at {1}", file.OriginalPath, file.Path);
-                    kept.Add(file);
-                    continue;
-                }
-
-                try
-                {
-                    _diskProvider.MoveFile(file.Path, file.OriginalPath);
                     folders.Add(_diskProvider.GetParentFolder(file.Path));
                 }
-                catch (Exception e)
+                else
                 {
-                    _logger.Error(e, "Unable to put existing book file back at {0}, it is still at {1}", file.OriginalPath, file.Path);
                     kept.Add(file);
                 }
             }
@@ -270,6 +260,43 @@ namespace NzbDrone.Core.MediaFiles
             RemoveEmptySetAsideFolders(folders);
 
             return kept;
+        }
+
+        // A new file may sit on the old path, or land there at any moment, and must never be replaced. A check and
+        // a rename can't promise that (rename replaces whatever is there), so the backup is hardlinked into place,
+        // or copied with an exclusive create when it can't be linked. Both fail if the path is taken. Only then is
+        // the backup removed.
+        private bool PutBack(SetAsideBookFile file)
+        {
+            try
+            {
+                if (!_diskProvider.TryCreateHardLink(file.Path, file.OriginalPath))
+                {
+                    if (_diskProvider.FileExists(file.OriginalPath))
+                    {
+                        _logger.Warn("{0} already holds another file, so the old one stays at {1}", file.OriginalPath, file.Path);
+                        return false;
+                    }
+
+                    _diskProvider.CopyFile(file.Path, file.OriginalPath, false);
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.Warn(e, "Couldn't put the old file back at {0} without replacing what's there, so it stays at {1}", file.OriginalPath, file.Path);
+                return false;
+            }
+
+            try
+            {
+                _diskProvider.DeleteFile(file.Path);
+            }
+            catch (Exception e)
+            {
+                _logger.Warn(e, "Put the old file back at {0}, but couldn't remove its backup at {1}", file.OriginalPath, file.Path);
+            }
+
+            return true;
         }
 
         private void RemoveEmptySetAsideFolders(IEnumerable<string> folders)

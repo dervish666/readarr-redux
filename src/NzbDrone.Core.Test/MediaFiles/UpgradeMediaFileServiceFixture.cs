@@ -69,6 +69,43 @@ namespace NzbDrone.Core.Test.MediaFiles
                 });
         }
 
+        // FileExists, MoveFile, link(2) and unlink against an in-memory disk. Like the real calls, a move or a link
+        // onto an existing file fails.
+        private void GivenDisk(Dictionary<string, string> disk)
+        {
+            var diskProvider = Mocker.GetMock<IDiskProvider>();
+
+            diskProvider.Setup(c => c.FileExists(It.IsAny<string>()))
+                .Returns<string>(p => disk.ContainsKey(p));
+
+            diskProvider.Setup(c => c.MoveFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
+                .Callback<string, string, bool>((source, destination, overwrite) =>
+                {
+                    if (disk.ContainsKey(destination))
+                    {
+                        throw new IOException($"{destination} already exists");
+                    }
+
+                    disk[destination] = disk[source];
+                    disk.Remove(source);
+                });
+
+            diskProvider.Setup(c => c.TryCreateHardLink(It.IsAny<string>(), It.IsAny<string>()))
+                .Returns<string, string>((source, destination) =>
+                {
+                    if (disk.ContainsKey(destination))
+                    {
+                        return false;
+                    }
+
+                    disk[destination] = disk[source];
+                    return true;
+                });
+
+            diskProvider.Setup(c => c.DeleteFile(It.IsAny<string>()))
+                .Callback<string>(p => disk.Remove(p));
+        }
+
         [Test]
         public void should_delete_single_track_file_once()
         {
@@ -139,18 +176,7 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             var oldPath = Path.Combine(_rootPath, @"Season 01\30.rock.s01e01.avi");
             var disk = new Dictionary<string, string> { { oldPath, "old" } };
-
-            Mocker.GetMock<IDiskProvider>()
-                .Setup(c => c.FileExists(It.IsAny<string>()))
-                .Returns<string>(p => disk.ContainsKey(p));
-
-            Mocker.GetMock<IDiskProvider>()
-                .Setup(c => c.MoveFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
-                .Callback<string, string, bool>((source, destination, overwrite) =>
-                {
-                    disk[destination] = disk[source];
-                    disk.Remove(source);
-                });
+            GivenDisk(disk);
 
             Mocker.GetMock<IRecycleBinProvider>()
                 .Setup(c => c.DeleteFile(It.IsAny<string>(), It.IsAny<string>()))
@@ -177,23 +203,7 @@ namespace NzbDrone.Core.Test.MediaFiles
             var sourcePath = @"C:\Test\Downloads\new.avi".AsOsAgnostic();
             var disk = new Dictionary<string, string> { { oldPath, "old" }, { sourcePath, "new" } };
             _trackFile.Path = sourcePath;
-
-            Mocker.GetMock<IDiskProvider>()
-                .Setup(c => c.FileExists(It.IsAny<string>()))
-                .Returns<string>(p => disk.ContainsKey(p));
-
-            Mocker.GetMock<IDiskProvider>()
-                .Setup(c => c.MoveFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
-                .Callback<string, string, bool>((source, destination, overwrite) =>
-                {
-                    if (disk.ContainsKey(destination))
-                    {
-                        throw new IOException($"{destination} already exists");
-                    }
-
-                    disk[destination] = disk[source];
-                    disk.Remove(source);
-                });
+            GivenDisk(disk);
 
             // The file lands on the old path, then reading its date back off a flaky share fails
             Mocker.GetMock<IMoveBookFiles>()
@@ -242,6 +252,66 @@ namespace NzbDrone.Core.Test.MediaFiles
             Subject.RemoveSetAsideFiles(result.SetAsideFiles);
 
             Mocker.GetMock<IDiskProvider>().Verify(v => v.DeleteFolder(It.IsAny<string>(), It.IsAny<bool>()), Times.Never());
+        }
+
+        [Test]
+        public void should_not_overwrite_a_file_that_lands_while_putting_the_old_one_back()
+        {
+            var original = Path.Combine(_rootPath, "Book", "Author - Book (1).mp3");
+            var backup = Path.Combine(_rootPath, "Book", UpgradeMediaFileService.SetAsideFolderName, "op", "Author - Book (1).mp3");
+            var disk = new Dictionary<string, string> { { backup, "old" }, { original, "new" } };
+
+            // The new file lands after any existence check has already said the path is free
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(c => c.FileExists(It.IsAny<string>()))
+                .Returns(false);
+
+            // A rename replaces whatever is at the destination, as rename(2) does
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(c => c.MoveFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
+                .Callback<string, string, bool>((source, destination, overwrite) =>
+                {
+                    disk[destination] = disk[source];
+                    disk.Remove(source);
+                });
+
+            // link(2) and an exclusive-create copy refuse an existing destination
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(c => c.TryCreateHardLink(It.IsAny<string>(), It.IsAny<string>()))
+                .Returns<string, string>((source, destination) =>
+                {
+                    if (disk.ContainsKey(destination))
+                    {
+                        return false;
+                    }
+
+                    disk[destination] = disk[source];
+                    return true;
+                });
+
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(c => c.CopyFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
+                .Callback<string, string, bool>((source, destination, overwrite) =>
+                {
+                    if (disk.ContainsKey(destination))
+                    {
+                        throw new IOException($"{destination} already exists");
+                    }
+
+                    disk[destination] = disk[source];
+                });
+
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(c => c.DeleteFile(It.IsAny<string>()))
+                .Callback<string>(p => disk.Remove(p));
+
+            var kept = Subject.RestoreSetAsideFiles(new List<SetAsideBookFile> { new SetAsideBookFile { OriginalPath = original, Path = backup } });
+
+            disk.Should().Contain(original, "new");
+            disk.Should().Contain(backup, "old");
+            kept.Should().HaveCount(1);
+
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]

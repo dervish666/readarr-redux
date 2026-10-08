@@ -290,6 +290,18 @@ namespace NzbDrone.Core.Test.MediaFiles
                     disk[destination] = disk[source];
                     disk.Remove(source);
                 });
+            diskProvider.Setup(s => s.TryCreateHardLink(It.IsAny<string>(), It.IsAny<string>()))
+                .Returns<string, string>((source, destination) =>
+                {
+                    if (disk.ContainsKey(destination))
+                    {
+                        return false;
+                    }
+
+                    disk[destination] = disk[source];
+                    return true;
+                });
+            diskProvider.Setup(s => s.DeleteFile(It.IsAny<string>())).Callback<string>(p => disk.Remove(p));
 
             Mocker.GetMock<IRecycleBinProvider>()
                 .Setup(s => s.DeleteFile(It.IsAny<string>(), It.IsAny<string>()))
@@ -362,7 +374,7 @@ namespace NzbDrone.Core.Test.MediaFiles
             Mocker.GetMock<IRecycleBinProvider>()
                 .Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
 
-            ExceptionVerification.ExpectedWarns(2);
+            ExceptionVerification.ExpectedWarns(4);
         }
 
         [Test]
@@ -384,6 +396,7 @@ namespace NzbDrone.Core.Test.MediaFiles
                 .Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
 
             ExceptionVerification.ExpectedErrors(1);
+            ExceptionVerification.ExpectedWarns(3);
         }
 
         [Test]
@@ -405,7 +418,7 @@ namespace NzbDrone.Core.Test.MediaFiles
             Mocker.GetMock<IRecycleBinProvider>()
                 .Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
 
-            ExceptionVerification.ExpectedWarns(1);
+            ExceptionVerification.ExpectedWarns(3);
         }
 
         [Test]
@@ -426,7 +439,7 @@ namespace NzbDrone.Core.Test.MediaFiles
             Mocker.GetMock<IRecycleBinProvider>()
                 .Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
 
-            ExceptionVerification.ExpectedWarns(1);
+            ExceptionVerification.ExpectedWarns(3);
         }
 
         [Test]
@@ -446,7 +459,7 @@ namespace NzbDrone.Core.Test.MediaFiles
             Mocker.GetMock<IRecycleBinProvider>()
                 .Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
 
-            ExceptionVerification.ExpectedWarns(1);
+            ExceptionVerification.ExpectedWarns(3);
         }
 
         [Test]
@@ -466,7 +479,7 @@ namespace NzbDrone.Core.Test.MediaFiles
             Mocker.GetMock<IRecycleBinProvider>()
                 .Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
 
-            ExceptionVerification.ExpectedWarns(1);
+            ExceptionVerification.ExpectedWarns(3);
         }
 
         // Books A and B have the same title, so both are renamed onto one path. Book B still has a row for that
@@ -521,6 +534,18 @@ namespace NzbDrone.Core.Test.MediaFiles
                     disk[destination] = disk[source];
                     disk.Remove(source);
                 });
+            diskProvider.Setup(s => s.TryCreateHardLink(It.IsAny<string>(), It.IsAny<string>()))
+                .Returns<string, string>((source, destination) =>
+                {
+                    if (disk.ContainsKey(destination))
+                    {
+                        return false;
+                    }
+
+                    disk[destination] = disk[source];
+                    return true;
+                });
+            diskProvider.Setup(s => s.DeleteFile(It.IsAny<string>())).Callback<string>(p => disk.Remove(p));
 
             Mocker.GetMock<IRecycleBinProvider>()
                 .Setup(s => s.DeleteFile(It.IsAny<string>(), It.IsAny<string>()))

@@ -52,6 +52,32 @@ namespace NzbDrone.Common.Test.DiskTests
         }
 
         [Test]
+        public void TryCreateHardLink_should_not_replace_an_existing_file()
+        {
+            var source = GetTempFilePath();
+            var destination = GetTempFilePath();
+            File.WriteAllText(source, "old");
+            File.WriteAllText(destination, "new");
+
+            Subject.TryCreateHardLink(source, destination).Should().BeFalse();
+
+            File.ReadAllText(destination).Should().Be("new");
+        }
+
+        [Test]
+        public void CopyFile_without_overwrite_should_not_replace_an_existing_file()
+        {
+            var source = GetTempFilePath();
+            var destination = GetTempFilePath();
+            File.WriteAllText(source, "old");
+            File.WriteAllText(destination, "new");
+
+            Assert.Throws<IOException>(() => Subject.CopyFile(source, destination, false));
+
+            File.ReadAllText(destination).Should().Be("new");
+        }
+
+        [Test]
         public void directory_exist_should_be_able_to_find_existing_folder()
         {
             Subject.FolderExists(TempFolder).Should().BeTrue();
