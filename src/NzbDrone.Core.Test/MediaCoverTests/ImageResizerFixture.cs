@@ -7,6 +7,7 @@ using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Core.Test.Framework;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace NzbDrone.Core.Test.MediaCoverTests
 {
@@ -59,6 +60,55 @@ namespace NzbDrone.Core.Test.MediaCoverTests
             Assert.Throws(Is.InstanceOf<Exception>(), () => Subject.Resize(mainFile, resizedFile, 170));
 
             File.Exists(resizedFile).Should().BeFalse();
+        }
+
+        [Test]
+        public void should_refuse_to_decode_tiff()
+        {
+            var mainFile = Path.Combine(TempFolder, "cover.tif");
+            var resizedFile = Path.Combine(TempFolder, "cover-170.jpg");
+
+            using (var image = new Image<Rgba32>(64, 64))
+            {
+                image.SaveAsTiff(mainFile);
+            }
+
+            Assert.Throws<UnknownImageFormatException>(() => Subject.Resize(mainFile, resizedFile, 32));
+
+            File.Exists(resizedFile).Should().BeFalse();
+        }
+
+        [Test]
+        public void should_refuse_to_encode_tiff()
+        {
+            var mainFile = Path.Combine(TempFolder, "logo.png");
+            var resizedFile = Path.Combine(TempFolder, "logo-170.tif");
+
+            File.Copy(GetTestPath("Files/1024.png"), mainFile);
+
+            Assert.Throws(Is.InstanceOf<Exception>(), () => Subject.Resize(mainFile, resizedFile, 170));
+
+            File.Exists(resizedFile).Should().BeFalse();
+        }
+
+        [Test]
+        public void should_resize_jpeg()
+        {
+            var mainFile = Path.Combine(TempFolder, "cover.jpg");
+            var resizedFile = Path.Combine(TempFolder, "cover-180.jpg");
+
+            using (var image = new Image<Rgba32>(300, 450))
+            {
+                image.SaveAsJpeg(mainFile);
+            }
+
+            Subject.Resize(mainFile, resizedFile, 180);
+
+            using (var image = Image.Load(resizedFile))
+            {
+                image.Height.Should().Be(180);
+                image.Width.Should().Be(120);
+            }
         }
     }
 }
