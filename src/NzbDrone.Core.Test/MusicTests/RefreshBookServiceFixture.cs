@@ -5,6 +5,7 @@ using FluentAssertions;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Core.Books;
+using NzbDrone.Core.Books.Commands;
 using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MetadataSource;
@@ -212,6 +213,60 @@ namespace NzbDrone.Core.Test.MusicTests
                 .Throws(new BookInfoException("Unexpected error fetching book data"));
 
             RefreshWithBookMissingFromAuthorList();
+
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.DeleteBook(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never());
+
+            ExceptionVerification.ExpectedErrors(1);
+        }
+
+        [Test]
+        public void should_keep_book_when_refresh_book_lookup_returns_not_found()
+        {
+            Mocker.GetMock<IBookService>()
+                .Setup(s => s.GetBook(_book.Id))
+                .Returns(_book);
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Setup(s => s.GetBookInfo(_book.ForeignBookId))
+                .Throws(new BookNotFoundException(_book.ForeignBookId));
+
+            Subject.Execute(new RefreshBookCommand(_book.Id));
+
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.DeleteBook(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never());
+
+            ExceptionVerification.ExpectedErrors(1);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_refresh_the_other_books_when_one_lookup_fails_in_a_bulk_refresh()
+        {
+            var failing = Builder<Book>.CreateNew()
+                .With(b => b.Id = 2)
+                .With(b => b.ForeignBookId = "2")
+                .With(b => b.AuthorMetadata = _book.AuthorMetadata.Value)
+                .With(b => b.Author = _author)
+                .Build();
+
+            Mocker.GetMock<IBookService>()
+                .Setup(s => s.GetBooks(It.IsAny<IEnumerable<int>>()))
+                .Returns(new List<Book> { failing, _book });
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Setup(s => s.GetBookInfo(failing.ForeignBookId))
+                .Throws(new BookInfoException("Unexpected error fetching book data"));
+
+            GivenBookLookupReturnsBook();
+
+            Subject.Execute(new BulkRefreshBookCommand(new List<int> { failing.Id, _book.Id }));
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Verify(v => v.GetBookInfo(_book.ForeignBookId), Times.Once());
+
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.UpdateMany(It.Is<List<Book>>(l => l.Contains(_book))), Times.AtLeastOnce());
 
             Mocker.GetMock<IBookService>()
                 .Verify(v => v.DeleteBook(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never());

@@ -386,6 +386,12 @@ namespace NzbDrone.Core.Books
         {
             var data = GetSkyhookData(book);
 
+            if (data == null)
+            {
+                _logger.Warn("Book {0} wasn't found in the metadata, keeping it as it is", book);
+                return false;
+            }
+
             return RefreshBookInfo(book, data.Books, data, false);
         }
 
@@ -395,7 +401,15 @@ namespace NzbDrone.Core.Books
 
             foreach (var book in books)
             {
-                RefreshBookInfo(book);
+                try
+                {
+                    RefreshBookInfo(book);
+                }
+                catch (Exception e)
+                {
+                    // Keep the book and carry on with the rest
+                    _logger.Error(e, "Couldn't refresh info for book {0}", book);
+                }
             }
         }
 
