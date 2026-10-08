@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using NLog;
 using NzbDrone.Common.Disk;
@@ -11,6 +12,7 @@ namespace Readarr.Api.V1.Logs
     public abstract class LogFileControllerBase : Controller
     {
         protected const string LOGFILE_ROUTE = @"/(?<filename>[-.a-zA-Z0-9]+?\.txt)";
+        private static readonly Regex LogFileNameRegex = new Regex(@"^[-.a-zA-Z0-9]+\.txt$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         protected string _resource;
 
         private readonly IDiskProvider _diskProvider;
@@ -50,9 +52,16 @@ namespace Readarr.Api.V1.Logs
             return result.OrderByDescending(l => l.LastWriteTime).ToList();
         }
 
-        [HttpGet(@"{filename:regex([[-.a-zA-Z0-9]]+?\.txt)}")]
+        [HttpGet(@"{filename:regex(^[[-.a-zA-Z0-9]]+?\.txt$)}")]
         public IActionResult GetLogFileResponse(string filename)
         {
+            // Route constraints are easy to loosen by accident, so check again here: a plain file
+            // name with no separator of either kind can't leave the log folder
+            if (filename == null || !LogFileNameRegex.IsMatch(filename))
+            {
+                return NotFound();
+            }
+
             LogManager.Flush();
 
             var filePath = GetLogFilePath(filename);

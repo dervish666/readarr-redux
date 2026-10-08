@@ -26,13 +26,29 @@ namespace Readarr.Http.Frontend.Mappers
             _caseSensitive = RuntimeInfo.IsProduction ? DiskProviderBase.PathStringComparison : StringComparison.OrdinalIgnoreCase;
         }
 
-        public abstract string Map(string resourceUrl);
+        protected abstract string FolderPath { get; }
+        protected abstract string MapPath(string resourceUrl);
 
         public abstract bool CanHandle(string resourceUrl);
+
+        public string Map(string resourceUrl)
+        {
+            var filePath = Path.GetFullPath(MapPath(resourceUrl));
+            var parentPath = Path.GetFullPath(FolderPath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+
+            return filePath.StartsWith(parentPath, StringComparison.Ordinal) ? filePath : null;
+        }
 
         public IActionResult GetResponse(string resourceUrl)
         {
             var filePath = Map(resourceUrl);
+
+            if (filePath == null)
+            {
+                _logger.Warn("Request for {0} resolves outside its folder", resourceUrl);
+
+                return null;
+            }
 
             if (_diskProvider.FileExists(filePath, _caseSensitive))
             {
