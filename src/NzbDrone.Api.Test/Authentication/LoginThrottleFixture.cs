@@ -147,6 +147,35 @@ namespace NzbDrone.Api.Test.Authentication
         }
 
         [Test]
+        public void flooding_other_keys_should_not_clear_an_active_throttle()
+        {
+            Fail(LoginThrottle.FreeAttempts);
+
+            for (var i = 0; i <= LoginThrottle.MaxEntries; i++)
+            {
+                // Distinct addresses, so a per-address limit can't be what stops the flood
+                var address = $"198.51.{i / 250}.{i % 250}";
+
+                _subject.TryBeginAttempt(address, "user" + i, out _);
+                _subject.EndAttempt(address, "user" + i, false);
+            }
+
+            Admitted().Should().BeFalse();
+        }
+
+        [Test]
+        public void one_address_trying_many_usernames_should_be_throttled()
+        {
+            for (var i = 0; i < LoginThrottle.SourceFreeAttempts; i++)
+            {
+                Fail(1, username: "user" + i);
+            }
+
+            Admitted(username: "fresh").Should().BeFalse();
+            Admitted("192.168.0.50", "fresh").Should().BeTrue();
+        }
+
+        [Test]
         public void should_ignore_username_case()
         {
             Fail(LoginThrottle.FreeAttempts, username: "SAM");
