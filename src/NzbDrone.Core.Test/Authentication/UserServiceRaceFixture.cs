@@ -99,6 +99,30 @@ namespace NzbDrone.Core.Test.Authentication
         }
 
         [Test]
+        public void work_factor_rehash_should_not_undo_a_concurrent_password_change()
+        {
+            // PBKDF2-HMAC-SHA512 of "password" with salt "salt" and 1 iteration (first 32 bytes)
+            Db.Insert(new User
+            {
+                Identifier = Guid.NewGuid(),
+                Username = "sam",
+                Salt = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("salt")),
+                Iterations = 1,
+                Password = Convert.ToBase64String(Convert.FromHexString("867f70cf1ade02cff3752599a3a53dc4af34c7a669815ae5d513554e1c8cf252"))
+            });
+
+            OnNextRead(u =>
+            {
+                u.Password = "changed".SHA256Hash();
+                u.Salt = null;
+            });
+
+            Subject.FindUser("sam", "password");
+
+            StoredUser().Password.Should().Be("changed".SHA256Hash());
+        }
+
+        [Test]
         public void revoke_should_fail_loudly_when_the_identifier_is_not_stored()
         {
             Subject.Add("sam", "hunter2");

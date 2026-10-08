@@ -21,7 +21,8 @@ namespace NzbDrone.Core.Authentication
 
     public class UserService : IUserService
     {
-        private const int ITERATIONS = 10000;
+        // OWASP's current figure for PBKDF2-HMAC-SHA512 (Sonarr still uses 10,000)
+        private const int ITERATIONS = 220000;
         private const int SALT_SIZE = 128 / 8;
         private const int NUMBER_OF_BYTES = 256 / 8;
 
@@ -121,8 +122,8 @@ namespace NzbDrone.Core.Authentication
                 return null;
             }
 
-            // The rehash below only lands if the stored hash is unchanged since the read; if another
-            // request changed it in between, check again against what is stored now
+            // A rehash only lands if the stored hash is unchanged since the read; if another request
+            // changed it in between, check again against what is stored now
             for (var attempt = 0; attempt < 2; attempt++)
             {
                 var user = _repo.FindUser(username.ToLowerInvariant());
@@ -132,17 +133,20 @@ namespace NzbDrone.Core.Authentication
                     return null;
                 }
 
-                if (!user.Salt.IsNullOrWhiteSpace())
-                {
-                    return VerifyHashedPassword(user, password) ? user : null;
-                }
+                var salted = !user.Salt.IsNullOrWhiteSpace();
+                var verified = salted ? VerifyHashedPassword(user, password) : user.Password == password.SHA256Hash();
 
-                // Legacy unsalted SHA-256 hash: on a match, upgrade it to a salted hash
-                if (user.Password != password.SHA256Hash())
+                if (!verified)
                 {
                     return null;
                 }
 
+                if (salted && user.Iterations >= ITERATIONS)
+                {
+                    return user;
+                }
+
+                // Legacy unsalted SHA-256, or a salted hash below today's work factor: rehash it
                 var storedPassword = user.Password;
                 SetUserHashedPassword(user, password);
 

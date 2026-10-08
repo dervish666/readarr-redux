@@ -40,7 +40,7 @@ namespace NzbDrone.Core.Test.Authentication
 
             user.Username.Should().Be("sam");
             user.Salt.Should().NotBeNullOrWhiteSpace();
-            user.Iterations.Should().Be(10000);
+            user.Iterations.Should().Be(220000);
             user.Password.Should().NotBe("hunter2".SHA256Hash());
             Convert.FromBase64String(user.Password).Should().HaveCount(32);
         }
@@ -75,7 +75,7 @@ namespace NzbDrone.Core.Test.Authentication
 
             var user = StoredUser();
             user.Salt.Should().NotBeNullOrWhiteSpace();
-            user.Iterations.Should().Be(10000);
+            user.Iterations.Should().Be(220000);
             user.Password.Should().NotBe("hunter2".SHA256Hash());
 
             Subject.FindUser("sam", "hunter2").Should().NotBeNull();
@@ -108,6 +108,46 @@ namespace NzbDrone.Core.Test.Authentication
             });
 
             Subject.FindUser("sam", "password").Should().NotBeNull();
+        }
+
+        [Test]
+        public void salted_hash_with_old_work_factor_should_be_rehashed_on_login()
+        {
+            // PBKDF2-HMAC-SHA512 of "password" with salt "salt" and 1 iteration (first 32 bytes)
+            Db.Insert(new User
+            {
+                Identifier = Guid.NewGuid(),
+                Username = "sam",
+                Salt = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("salt")),
+                Iterations = 1,
+                Password = Convert.ToBase64String(Convert.FromHexString("867f70cf1ade02cff3752599a3a53dc4af34c7a669815ae5d513554e1c8cf252"))
+            });
+
+            Subject.FindUser("sam", "password").Should().NotBeNull();
+
+            var user = StoredUser();
+            user.Iterations.Should().Be(220000);
+            user.Salt.Should().NotBe(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("salt")));
+
+            Subject.FindUser("sam", "password").Should().NotBeNull();
+            Subject.FindUser("sam", "wrong").Should().BeNull();
+        }
+
+        [Test]
+        public void wrong_password_should_not_rehash_old_work_factor()
+        {
+            Db.Insert(new User
+            {
+                Identifier = Guid.NewGuid(),
+                Username = "sam",
+                Salt = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("salt")),
+                Iterations = 1,
+                Password = Convert.ToBase64String(Convert.FromHexString("867f70cf1ade02cff3752599a3a53dc4af34c7a669815ae5d513554e1c8cf252"))
+            });
+
+            Subject.FindUser("sam", "wrong").Should().BeNull();
+
+            StoredUser().Iterations.Should().Be(1);
         }
 
         [Test]
