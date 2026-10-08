@@ -147,11 +147,23 @@ namespace NzbDrone.Core.Authentication
                 }
 
                 // Legacy unsalted SHA-256, or a salted hash below today's work factor: rehash it
-                var storedPassword = user.Password;
+                var (storedPassword, storedSalt, storedIterations) = (user.Password, user.Salt, user.Iterations);
                 SetUserHashedPassword(user, password);
 
-                if (_repo.UpdatePasswordHash(user, storedPassword))
+                try
                 {
+                    if (_repo.UpdatePasswordHash(user, storedPassword))
+                    {
+                        return user;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // The password was right; the upgrade is opportunistic and is tried again next login
+                    _logger.Warn(ex, "Could not store the upgraded password hash, keeping the old one for now");
+
+                    (user.Password, user.Salt, user.Iterations) = (storedPassword, storedSalt, storedIterations);
+
                     return user;
                 }
             }

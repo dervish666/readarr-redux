@@ -6,6 +6,7 @@ using NzbDrone.Core.Authentication;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Test.Framework;
+using NzbDrone.Test.Common;
 
 namespace NzbDrone.Core.Test.Authentication
 {
@@ -123,6 +124,21 @@ namespace NzbDrone.Core.Test.Authentication
         }
 
         [Test]
+        public void login_should_succeed_when_the_hash_upgrade_cannot_be_written()
+        {
+            GivenLegacyUser("hunter2");
+            _repo.HashUpdateFailure = new InvalidOperationException("attempt to write a readonly database");
+
+            Subject.FindUser("sam", "hunter2").Should().NotBeNull();
+            Subject.FindUser("sam", "wrong").Should().BeNull();
+
+            var stored = StoredUser();
+            stored.Password.Should().Be("hunter2".SHA256Hash());
+            stored.Salt.Should().BeNull();
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
         public void revoke_should_fail_loudly_when_the_identifier_is_not_stored()
         {
             Subject.Add("sam", "hunter2");
@@ -163,6 +179,17 @@ namespace NzbDrone.Core.Test.Authentication
         }
 
         public Action OnRead { get; set; }
+        public Exception HashUpdateFailure { get; set; }
+
+        public new bool UpdatePasswordHash(User user, string expectedPassword)
+        {
+            if (HashUpdateFailure != null)
+            {
+                throw HashUpdateFailure;
+            }
+
+            return base.UpdatePasswordHash(user, expectedPassword);
+        }
 
         public new User SingleOrDefault()
         {
