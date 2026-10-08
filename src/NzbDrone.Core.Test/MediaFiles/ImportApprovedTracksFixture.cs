@@ -247,8 +247,8 @@ namespace NzbDrone.Core.Test.MediaFiles
                   .Verify(v => v.UpgradeBookFile(It.IsAny<BookFile>(), _approvedDecisions.First().Item, false), Times.Once());
         }
 
-        [Test]
-        public void should_remove_old_files_once_when_upgrading_a_multi_part_book()
+        // Three old parts in the library and the database, three new parts in the download folder
+        private List<ImportDecision<LocalBook>> GivenMultiPartUpgrade(Dictionary<string, string> disk, List<BookFile> database)
         {
             var first = _approvedDecisions.First().Item;
             var book = first.Book;
@@ -261,8 +261,8 @@ namespace NzbDrone.Core.Test.MediaFiles
                 Path = Path.Combine(first.Author.Path, $"Book - Part {i}.mp3")
             }).ToList();
 
-            var database = oldFiles.ToList();
-            var disk = oldFiles.ToDictionary(x => x.Path, x => "old");
+            database.AddRange(oldFiles);
+            oldFiles.ForEach(x => disk[x.Path] = "old");
 
             // Identification loads the book's files once and every part shares the same Book
             book.BookFiles = oldFiles.ToList();
@@ -283,6 +283,12 @@ namespace NzbDrone.Core.Test.MediaFiles
             diskProvider.Setup(s => s.FolderExists(It.IsAny<string>())).Returns(true);
             diskProvider.Setup(s => s.GetParentFolder(It.IsAny<string>())).Returns<string>(p => Path.GetDirectoryName(p));
             diskProvider.Setup(s => s.FileExists(It.IsAny<string>())).Returns<string>(p => disk.ContainsKey(p));
+            diskProvider.Setup(s => s.MoveFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
+                .Callback<string, string, bool>((source, destination, overwrite) =>
+                {
+                    disk[destination] = disk[source];
+                    disk.Remove(source);
+                });
 
             Mocker.GetMock<IRecycleBinProvider>()
                 .Setup(s => s.DeleteFile(It.IsAny<string>(), It.IsAny<string>()))
@@ -293,7 +299,14 @@ namespace NzbDrone.Core.Test.MediaFiles
                 .Setup(s => s.MoveBookFile(It.IsAny<BookFile>(), It.IsAny<LocalBook>()))
                 .Returns((BookFile file, LocalBook localBook) =>
                 {
-                    file.Path = oldFiles.Single(o => o.Part == file.Part).Path;
+                    var destination = oldFiles.Single(o => o.Part == file.Part).Path;
+
+                    if (disk.ContainsKey(destination))
+                    {
+                        throw new DestinationAlreadyExistsException($"Destination {destination} already exists.");
+                    }
+
+                    file.Path = destination;
                     disk[file.Path] = "new";
                     return file;
                 });
@@ -307,6 +320,16 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             Mocker.SetConstant<IUpgradeMediaFiles>(Mocker.Resolve<UpgradeMediaFileService>());
 
+            return decisions;
+        }
+
+        [Test]
+        public void should_remove_old_files_once_when_upgrading_a_multi_part_book()
+        {
+            var disk = new Dictionary<string, string>();
+            var database = new List<BookFile>();
+            var decisions = GivenMultiPartUpgrade(disk, database);
+
             Subject.Import(decisions, true);
 
             disk.Should().HaveCount(3);
@@ -316,7 +339,29 @@ namespace NzbDrone.Core.Test.MediaFiles
                 .Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Exactly(3));
 
             // Each Delete publishes one BookFileDeletedEvent, which HistoryService writes as one history row
-            mediaFileService.Verify(v => v.Delete(It.IsAny<BookFile>(), DeleteMediaFileReason.Upgrade), Times.Exactly(3));
+            Mocker.GetMock<IMediaFileService>().Verify(v => v.Delete(It.IsAny<BookFile>(), DeleteMediaFileReason.Upgrade), Times.Exactly(3));
+        }
+
+        [Test]
+        public void should_keep_the_old_files_when_a_part_of_a_multi_part_upgrade_fails()
+        {
+            var disk = new Dictionary<string, string>();
+            var database = new List<BookFile>();
+            var decisions = GivenMultiPartUpgrade(disk, database);
+
+            // The second part can't be moved, e.g. the disk filled up
+            Mocker.GetMock<IMoveBookFiles>()
+                .Setup(s => s.MoveBookFile(It.Is<BookFile>(f => f.Part == 2), It.IsAny<LocalBook>()))
+                .Throws(new IOException("There is not enough space on the disk."));
+
+            Subject.Import(decisions, true);
+
+            disk.Values.Where(x => x == "old").Should().HaveCount(3);
+
+            Mocker.GetMock<IRecycleBinProvider>()
+                .Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+
+            ExceptionVerification.ExpectedWarns(2);
         }
 
         [Test]

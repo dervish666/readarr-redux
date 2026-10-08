@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using NLog;
 using NzbDrone.Common.Disk;
@@ -12,10 +15,15 @@ namespace NzbDrone.Core.MediaFiles
     public interface IUpgradeMediaFiles
     {
         BookFileMoveResult UpgradeBookFile(BookFile bookFile, LocalBook localBook, bool copyOnly = false);
+        void RemoveSetAsideFiles(IEnumerable<SetAsideBookFile> files);
     }
 
     public class UpgradeMediaFileService : IUpgradeMediaFiles
     {
+        // A hidden folder, so disk scans skip the files waiting in it
+        public const string SetAsideFolderName = ".readarr-upgrade";
+        private const string SetAsideFolderFormat = "{0:yyyyMMdd-HHmmss-fff}";
+
         private readonly IRecycleBinProvider _recycleBinProvider;
         private readonly IMediaFileService _mediaFileService;
         private readonly IMetadataTagService _metadataTagService;
@@ -65,60 +73,162 @@ namespace NzbDrone.Core.MediaFiles
                 throw new RootFolderNotFoundException($"Root folder '{rootFolderPath}' was not found.");
             }
 
-            foreach (var file in existingFiles)
+            // Old files are set aside, not deleted, until the new file is in place. If the move fails they go back
+            // where they were, and the caller recycles them only once every part of the release has imported.
+            var setAside = new List<SetAsideBookFile>();
+            var setAsideFolder = string.Format(SetAsideFolderFormat, DateTime.UtcNow);
+
+            try
             {
-                var bookFilePath = file.Path;
-                var subfolder = rootFolderPath.GetRelativePath(_diskProvider.GetParentFolder(bookFilePath));
-
-                bookFile.CalibreId = file.CalibreId;
-
-                if (_diskProvider.FileExists(bookFilePath))
+                foreach (var file in existingFiles)
                 {
-                    _logger.Debug("Removing existing book file: {0} CalibreId: {1}", file, file.CalibreId);
+                    var bookFilePath = file.Path;
+                    var subfolder = rootFolderPath.GetRelativePath(_diskProvider.GetParentFolder(bookFilePath));
 
-                    if (!isCalibre)
+                    bookFile.CalibreId = file.CalibreId;
+
+                    if (_diskProvider.FileExists(bookFilePath))
                     {
-                        _recycleBinProvider.DeleteFile(bookFilePath, subfolder);
-                    }
-                    else
-                    {
-                        var existing = _calibre.GetBook(file.CalibreId, settings);
-                        var existingFormats = existing.Formats.Keys;
-                        _logger.Debug($"Removing existing formats {existingFormats.ConcatToString()} from calibre");
-                        _calibre.RemoveFormats(file.CalibreId, existingFormats, settings);
+                        _logger.Debug("Removing existing book file: {0} CalibreId: {1}", file, file.CalibreId);
+
+                        if (!isCalibre)
+                        {
+                            setAside.Add(SetAside(bookFilePath, subfolder, setAsideFolder));
+                        }
+                        else
+                        {
+                            var existing = _calibre.GetBook(file.CalibreId, settings);
+                            var existingFormats = existing.Formats.Keys;
+                            _logger.Debug($"Removing existing formats {existingFormats.ConcatToString()} from calibre");
+                            _calibre.RemoveFormats(file.CalibreId, existingFormats, settings);
+                        }
                     }
                 }
 
+                if (!isCalibre)
+                {
+                    if (copyOnly)
+                    {
+                        moveFileResult.BookFile = _bookFileMover.CopyBookFile(bookFile, localBook);
+                    }
+                    else
+                    {
+                        moveFileResult.BookFile = _bookFileMover.MoveBookFile(bookFile, localBook);
+                    }
+                }
+                else
+                {
+                    var source = bookFile.Path;
+
+                    moveFileResult.BookFile = _calibre.AddAndConvert(bookFile, settings);
+
+                    if (!copyOnly)
+                    {
+                        _diskProvider.DeleteFile(source);
+                    }
+                }
+            }
+            catch
+            {
+                PutBack(setAside);
+                throw;
+            }
+
+            foreach (var file in existingFiles)
+            {
                 moveFileResult.OldFiles.Add(file);
                 _mediaFileService.Delete(file, DeleteMediaFileReason.Upgrade);
             }
 
+            moveFileResult.SetAsideFiles = setAside;
+
             if (!isCalibre)
             {
-                if (copyOnly)
-                {
-                    moveFileResult.BookFile = _bookFileMover.CopyBookFile(bookFile, localBook);
-                }
-                else
-                {
-                    moveFileResult.BookFile = _bookFileMover.MoveBookFile(bookFile, localBook);
-                }
-
                 _metadataTagService.WriteTags(bookFile, true);
-            }
-            else
-            {
-                var source = bookFile.Path;
-
-                moveFileResult.BookFile = _calibre.AddAndConvert(bookFile, settings);
-
-                if (!copyOnly)
-                {
-                    _diskProvider.DeleteFile(source);
-                }
             }
 
             return moveFileResult;
+        }
+
+        public void RemoveSetAsideFiles(IEnumerable<SetAsideBookFile> files)
+        {
+            var folders = new HashSet<string>();
+
+            foreach (var file in files)
+            {
+                try
+                {
+                    _recycleBinProvider.DeleteFile(file.Path, file.RecycleBinSubfolder);
+                }
+                catch (Exception e)
+                {
+                    _logger.Warn(e, "Unable to remove replaced book file {0}, it is still at {1}", file.OriginalPath, file.Path);
+                }
+
+                folders.Add(_diskProvider.GetParentFolder(file.Path));
+            }
+
+            RemoveEmptySetAsideFolders(folders);
+        }
+
+        private SetAsideBookFile SetAside(string path, string subfolder, string setAsideFolder)
+        {
+            var folder = Path.Combine(_diskProvider.GetParentFolder(path), SetAsideFolderName, setAsideFolder);
+            var destination = Path.Combine(folder, Path.GetFileName(path));
+
+            _logger.Debug("Setting aside existing book file {0} until its replacement is in place", path);
+
+            _diskProvider.CreateFolder(folder);
+            _diskProvider.MoveFile(path, destination);
+
+            return new SetAsideBookFile
+            {
+                OriginalPath = path,
+                Path = destination,
+                RecycleBinSubfolder = subfolder
+            };
+        }
+
+        private void PutBack(List<SetAsideBookFile> files)
+        {
+            var folders = new HashSet<string>();
+
+            foreach (var file in files)
+            {
+                try
+                {
+                    _diskProvider.MoveFile(file.Path, file.OriginalPath);
+                    folders.Add(_diskProvider.GetParentFolder(file.Path));
+                }
+                catch (Exception e)
+                {
+                    _logger.Error(e, "Unable to put existing book file back at {0}, it is still at {1}", file.OriginalPath, file.Path);
+                }
+            }
+
+            RemoveEmptySetAsideFolders(folders);
+        }
+
+        private void RemoveEmptySetAsideFolders(IEnumerable<string> folders)
+        {
+            foreach (var folder in folders)
+            {
+                // The per-upgrade folder, then the shared set-aside folder above it
+                foreach (var path in new[] { folder, _diskProvider.GetParentFolder(folder) })
+                {
+                    try
+                    {
+                        if (_diskProvider.FolderExists(path) && _diskProvider.FolderEmpty(path))
+                        {
+                            _diskProvider.DeleteFolder(path, false);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.Debug(e, "Unable to remove empty folder {0}", path);
+                    }
+                }
+            }
         }
     }
 }

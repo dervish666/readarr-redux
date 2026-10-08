@@ -73,9 +73,24 @@ namespace NzbDrone.Core.Test.MediaFiles
         {
             GivenSingleTrackWithSingleTrackFile();
 
-            Subject.UpgradeBookFile(_trackFile, _localTrack);
+            var result = Subject.UpgradeBookFile(_trackFile, _localTrack);
+            Subject.RemoveSetAsideFiles(result.SetAsideFiles);
 
             Mocker.GetMock<IRecycleBinProvider>().Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Once());
+        }
+
+        [Test]
+        public void should_set_the_old_file_aside_until_the_caller_removes_it()
+        {
+            GivenSingleTrackWithSingleTrackFile();
+
+            var result = Subject.UpgradeBookFile(_trackFile, _localTrack);
+
+            result.SetAsideFiles.Should().HaveCount(1);
+            result.SetAsideFiles[0].Path.Should().Contain(UpgradeMediaFileService.SetAsideFolderName);
+
+            Mocker.GetMock<IDiskProvider>().Verify(v => v.MoveFile(Path.Combine(_rootPath, @"Season 01\30.rock.s01e01.avi"), result.SetAsideFiles[0].Path, false), Times.Once());
+            Mocker.GetMock<IRecycleBinProvider>().Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
         }
 
         [Test]
@@ -114,6 +129,42 @@ namespace NzbDrone.Core.Test.MediaFiles
             Subject.UpgradeBookFile(_trackFile, _localTrack);
 
             Mocker.GetMock<IRecycleBinProvider>().Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [Test]
+        public void should_put_the_old_file_back_when_the_new_file_cannot_be_moved()
+        {
+            GivenSingleTrackWithSingleTrackFile();
+
+            var oldPath = Path.Combine(_rootPath, @"Season 01\30.rock.s01e01.avi");
+            var disk = new Dictionary<string, string> { { oldPath, "old" } };
+
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(c => c.FileExists(It.IsAny<string>()))
+                .Returns<string>(p => disk.ContainsKey(p));
+
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(c => c.MoveFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
+                .Callback<string, string, bool>((source, destination, overwrite) =>
+                {
+                    disk[destination] = disk[source];
+                    disk.Remove(source);
+                });
+
+            Mocker.GetMock<IRecycleBinProvider>()
+                .Setup(c => c.DeleteFile(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((path, subfolder) => disk.Remove(path));
+
+            Mocker.GetMock<IMoveBookFiles>()
+                .Setup(c => c.MoveBookFile(It.IsAny<BookFile>(), It.IsAny<LocalBook>()))
+                .Throws(new IOException("There is not enough space on the disk."));
+
+            Assert.Throws<IOException>(() => Subject.UpgradeBookFile(_trackFile, _localTrack));
+
+            disk.Should().Contain(oldPath, "old");
+
+            Mocker.GetMock<IRecycleBinProvider>().Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+            Mocker.GetMock<IMediaFileService>().Verify(v => v.Delete(It.IsAny<BookFile>(), It.IsAny<DeleteMediaFileReason>()), Times.Never());
         }
 
         [Test]

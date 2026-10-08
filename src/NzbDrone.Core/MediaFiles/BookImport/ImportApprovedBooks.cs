@@ -163,11 +163,14 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
             var filesToAdd = new List<BookFile>(qualifiedImports.Count);
             var trackImportedEvents = new List<TrackImportedEvent>(qualifiedImports.Count);
+            var setAsideFiles = new Dictionary<int, List<SetAsideBookFile>>();
+            var failedBookIds = new HashSet<int>();
 
             foreach (var importDecision in qualifiedImports)
             {
                 var localTrack = importDecision.Item;
                 var oldFiles = new List<BookFile>();
+                var imported = false;
 
                 try
                 {
@@ -234,6 +237,14 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
                         var moveResult = _bookFileUpgrader.UpgradeBookFile(bookFile, localTrack, copyOnly);
                         oldFiles = moveResult.OldFiles;
+
+                        if (!setAsideFiles.TryGetValue(localTrack.Book.Id, out var bookSetAsideFiles))
+                        {
+                            bookSetAsideFiles = new List<SetAsideBookFile>();
+                            setAsideFiles[localTrack.Book.Id] = bookSetAsideFiles;
+                        }
+
+                        bookSetAsideFiles.AddRange(moveResult.SetAsideFiles);
                     }
                     else
                     {
@@ -267,6 +278,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     // create all the import events here, but we can't publish until the trackfiles have been
                     // inserted and ids created
                     trackImportedEvents.Add(new TrackImportedEvent(localTrack, bookFile, oldFiles, !localTrack.ExistingFile, downloadClientItem));
+                    imported = true;
                 }
                 catch (RootFolderNotFoundException e)
                 {
@@ -305,6 +317,26 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     _logger.Warn(e, "Couldn't import book " + localTrack);
                     importResults.Add(new ImportResult(importDecision, "Failed to import book."));
                 }
+
+                if (!imported)
+                {
+                    failedBookIds.Add(localTrack.Book.Id);
+                }
+            }
+
+            // Only drop the files an upgrade replaced once every part of the new release is in place
+            foreach (var bookSetAsideFiles in setAsideFiles)
+            {
+                if (failedBookIds.Contains(bookSetAsideFiles.Key))
+                {
+                    _logger.Warn("Not every file for {0} imported, so the {1} files it was replacing were kept in {2}",
+                        qualifiedImports.First(x => x.Item.Book.Id == bookSetAsideFiles.Key).Item.Book,
+                        bookSetAsideFiles.Value.Count,
+                        bookSetAsideFiles.Value.Select(x => Path.GetDirectoryName(x.Path)).Distinct().ConcatToString(", "));
+                    continue;
+                }
+
+                _bookFileUpgrader.RemoveSetAsideFiles(bookSetAsideFiles.Value);
             }
 
             var watch = new System.Diagnostics.Stopwatch();
