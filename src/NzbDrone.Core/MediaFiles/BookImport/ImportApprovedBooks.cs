@@ -335,6 +335,33 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 }
             }
 
+            var watch = new System.Diagnostics.Stopwatch();
+            watch.Start();
+
+            try
+            {
+                _mediaFileService.AddMany(filesToAdd);
+            }
+            catch
+            {
+                // Without the new rows the import didn't take, so nothing it replaced may be recycled
+                foreach (var bookSetAsideFiles in setAsideFiles.Values)
+                {
+                    var kept = _bookFileUpgrader.RestoreSetAsideFiles(bookSetAsideFiles);
+
+                    if (kept.Any())
+                    {
+                        _logger.Error("Couldn't save the imported book files, so the {0} files they replaced were kept in {1}",
+                            kept.Count,
+                            kept.Select(x => Path.GetDirectoryName(x.Path)).Distinct().ConcatToString(", "));
+                    }
+                }
+
+                throw;
+            }
+
+            _logger.Debug("Inserted new trackfiles in {0}ms", watch.ElapsedMilliseconds);
+
             // Only drop the files an upgrade replaced once every part of the new release is in place
             foreach (var bookSetAsideFiles in setAsideFiles)
             {
@@ -354,11 +381,6 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
                 _bookFileUpgrader.RemoveSetAsideFiles(bookSetAsideFiles.Value);
             }
-
-            var watch = new System.Diagnostics.Stopwatch();
-            watch.Start();
-            _mediaFileService.AddMany(filesToAdd);
-            _logger.Debug("Inserted new trackfiles in {0}ms", watch.ElapsedMilliseconds);
 
             // now that trackfiles have been inserted and ids generated, publish the import events
             foreach (var trackImportedEvent in trackImportedEvents)

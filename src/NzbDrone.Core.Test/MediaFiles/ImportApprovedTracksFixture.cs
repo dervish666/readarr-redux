@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -362,6 +363,27 @@ namespace NzbDrone.Core.Test.MediaFiles
                 .Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
 
             ExceptionVerification.ExpectedWarns(2);
+        }
+
+        [Test]
+        public void should_keep_the_old_files_when_the_new_rows_cannot_be_saved()
+        {
+            var disk = new Dictionary<string, string>();
+            var database = new List<BookFile>();
+            var decisions = GivenMultiPartUpgrade(disk, database);
+
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(s => s.AddMany(It.IsAny<List<BookFile>>()))
+                .Throws(new InvalidOperationException("database or disk is full"));
+
+            Assert.Throws<InvalidOperationException>(() => Subject.Import(decisions, true));
+
+            disk.Values.Where(x => x == "old").Should().HaveCount(3);
+
+            Mocker.GetMock<IRecycleBinProvider>()
+                .Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+
+            ExceptionVerification.ExpectedErrors(1);
         }
 
         [Test]
