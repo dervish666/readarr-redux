@@ -53,7 +53,8 @@ namespace NzbDrone.Core.MediaFiles
                 {
                     _logger.Debug("External directory scan request for known download {0}. [{1}]", message.DownloadClientId, message.Path);
 
-                    var importResults = _downloadedTracksImportService.ProcessPath(message.Path, message.ImportMode, trackedDownload.RemoteBook.Author, trackedDownload.DownloadItem);
+                    var grabbedBook = trackedDownload.RemoteBook?.Books?.Count == 1 ? trackedDownload.RemoteBook.Books[0] : null;
+                    var importResults = _downloadedTracksImportService.ProcessPath(message.Path, message.ImportMode, trackedDownload.RemoteBook.Author, trackedDownload.DownloadItem, grabbedBook);
 
                     _completedDownloadService.VerifyImport(trackedDownload, importResults);
 

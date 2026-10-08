@@ -89,7 +89,8 @@ namespace NzbDrone.Core.Download
             trackedDownload.State = TrackedDownloadState.Importing;
 
             var outputPath = trackedDownload.ImportItem.OutputPath.FullPath;
-            var importResults = _downloadedTracksImportService.ProcessPath(outputPath, ImportMode.Auto, trackedDownload.RemoteBook?.Author, trackedDownload.DownloadItem);
+            var grabbedBook = trackedDownload.RemoteBook?.Books?.Count == 1 ? trackedDownload.RemoteBook.Books[0] : null;
+            var importResults = _downloadedTracksImportService.ProcessPath(outputPath, ImportMode.Auto, trackedDownload.RemoteBook?.Author, trackedDownload.DownloadItem, grabbedBook);
 
             if (importResults.Empty())
             {
