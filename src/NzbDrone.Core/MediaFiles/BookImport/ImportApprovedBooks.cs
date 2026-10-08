@@ -245,7 +245,6 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
                         var moveResult = _bookFileUpgrader.UpgradeBookFile(bookFile, localTrack, copyOnly, importedPaths);
                         oldFiles = moveResult.OldFiles;
-                        importedPaths.Add(bookFile.Path);
 
                         if (moveResult.SetAsideFiles.Any())
                         {

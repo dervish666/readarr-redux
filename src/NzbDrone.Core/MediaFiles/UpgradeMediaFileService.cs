@@ -78,6 +78,7 @@ namespace NzbDrone.Core.MediaFiles
             // where they were, and the caller recycles them only once every part of the release has imported.
             var setAside = new List<SetAsideBookFile>();
             var setAsideFolder = string.Format(SetAsideFolderFormat, DateTime.UtcNow);
+            var sourcePath = bookFile.Path;
 
             try
             {
@@ -124,18 +125,25 @@ namespace NzbDrone.Core.MediaFiles
                 }
                 else
                 {
-                    var source = bookFile.Path;
-
                     moveFileResult.BookFile = _calibre.AddAndConvert(bookFile, settings);
 
                     if (!copyOnly)
                     {
-                        _diskProvider.DeleteFile(source);
+                        _diskProvider.DeleteFile(sourcePath);
                     }
                 }
+
+                importedPaths?.Add(bookFile.Path);
             }
             catch
             {
+                // The mover sets bookFile.Path as soon as the file lands, before the date and permission steps that
+                // can still throw. Take the new file back off the old path before putting the old files back.
+                if (!isCalibre && !bookFile.Path.PathEquals(sourcePath))
+                {
+                    UndoTransfer(bookFile, sourcePath, copyOnly, importedPaths);
+                }
+
                 RestoreSetAsideFiles(setAside);
                 throw;
             }
@@ -193,6 +201,32 @@ namespace NzbDrone.Core.MediaFiles
                 Path = destination,
                 RecycleBinSubfolder = subfolder
             };
+        }
+
+        private void UndoTransfer(BookFile bookFile, string sourcePath, bool copyOnly, ICollection<string> importedPaths)
+        {
+            var destination = bookFile.Path;
+
+            try
+            {
+                if (copyOnly)
+                {
+                    // A copy or hardlink: the download still has the original
+                    _diskProvider.DeleteFile(destination);
+                }
+                else
+                {
+                    _diskProvider.MoveFile(destination, sourcePath);
+                }
+
+                bookFile.Path = sourcePath;
+            }
+            catch (Exception e)
+            {
+                // The new file stays where it landed, so no other book's upgrade may take it for an old file
+                _logger.Error(e, "Unable to undo the import of {0}, the new file is still at {1}", sourcePath, destination);
+                importedPaths?.Add(destination);
+            }
         }
 
         public List<SetAsideBookFile> RestoreSetAsideFiles(IEnumerable<SetAsideBookFile> files)

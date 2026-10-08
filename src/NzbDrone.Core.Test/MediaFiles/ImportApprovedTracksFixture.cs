@@ -406,15 +406,14 @@ namespace NzbDrone.Core.Test.MediaFiles
             ExceptionVerification.ExpectedWarns(1);
         }
 
-        [Test]
-        public void should_not_remove_a_file_another_book_just_imported_to_a_path_in_its_stale_rows()
+        // Books A and B have the same title, so both are renamed onto one path. Book B still has a row for that
+        // path from a file that has since gone missing. A is imported first.
+        private List<ImportDecision<LocalBook>> GivenTwoBooksSharingAPath(Dictionary<string, string> disk, List<BookFile> database, out string sharedPath, out BookFile staleRow)
         {
             var first = _approvedDecisions.First().Item;
             var author = first.Author;
-            var sharedPath = Path.Combine(author.Path, "Visitors", "Orson Scott Card - Visitors.m4b");
+            sharedPath = Path.Combine(author.Path, "Visitors", "Orson Scott Card - Visitors.m4b");
 
-            // Two books with the same title land on the same path. Book B still has a row for that path
-            // from a file that has since gone missing.
             var bookA = Builder<Book>.CreateNew().With(b => b.Id = 65263).With(b => b.ForeignBookId = "A").With(b => b.Author = author).Build();
             var bookB = Builder<Book>.CreateNew().With(b => b.Id = 97553).With(b => b.ForeignBookId = "B").With(b => b.Author = author).Build();
             var editionA = Builder<Edition>.CreateNew().With(e => e.Id = 1).With(e => e.Book = bookA).With(e => e.Monitored = true).Build();
@@ -422,9 +421,8 @@ namespace NzbDrone.Core.Test.MediaFiles
             bookA.Editions = new List<Edition> { editionA };
             bookB.Editions = new List<Edition> { editionB };
 
-            var staleRow = new BookFile { Id = 10, EditionId = editionB.Id, Path = sharedPath };
-            var database = new List<BookFile> { staleRow };
-            var disk = new Dictionary<string, string>();
+            staleRow = new BookFile { Id = 10, EditionId = editionB.Id, Path = sharedPath };
+            database.Add(staleRow);
 
             var decisionA = new ImportDecision<LocalBook>(new LocalBook
             {
@@ -465,12 +463,14 @@ namespace NzbDrone.Core.Test.MediaFiles
                 .Setup(s => s.DeleteFile(It.IsAny<string>(), It.IsAny<string>()))
                 .Callback<string, string>((path, subfolder) => disk.Remove(path));
 
+            var shared = sharedPath;
+
             // A is renamed onto the shared path, B onto its own
             Mocker.GetMock<IMoveBookFiles>()
                 .Setup(s => s.MoveBookFile(It.IsAny<BookFile>(), It.IsAny<LocalBook>()))
                 .Returns((BookFile file, LocalBook localBook) =>
                 {
-                    file.Path = localBook.Book.ForeignBookId == "A" ? sharedPath : Path.Combine(author.Path, "Visitors (2)", "Orson Scott Card - Visitors.m4b");
+                    file.Path = localBook.Book.ForeignBookId == "A" ? shared : Path.Combine(author.Path, "Visitors (2)", "Orson Scott Card - Visitors.m4b");
                     disk[file.Path] = localBook.Book.ForeignBookId;
                     return file;
                 });
@@ -487,7 +487,17 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             Mocker.SetConstant<IUpgradeMediaFiles>(Mocker.Resolve<UpgradeMediaFileService>());
 
-            Subject.Import(new List<ImportDecision<LocalBook>> { decisionA, decisionB }, true);
+            return new List<ImportDecision<LocalBook>> { decisionA, decisionB };
+        }
+
+        [Test]
+        public void should_not_remove_a_file_another_book_just_imported_to_a_path_in_its_stale_rows()
+        {
+            var disk = new Dictionary<string, string>();
+            var database = new List<BookFile>();
+            var decisions = GivenTwoBooksSharingAPath(disk, database, out var sharedPath, out var staleRow);
+
+            Subject.Import(decisions, true);
 
             disk.Should().Contain(sharedPath, "A");
 
@@ -495,6 +505,39 @@ namespace NzbDrone.Core.Test.MediaFiles
             database.Should().NotContain(staleRow);
 
             ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_not_remove_a_file_another_book_left_behind_when_its_import_failed()
+        {
+            var disk = new Dictionary<string, string>();
+            var database = new List<BookFile>();
+            var decisions = GivenTwoBooksSharingAPath(disk, database, out var sharedPath, out _);
+            var sourceA = decisions[0].Item.Path;
+            disk[sourceA] = "A";
+
+            // A lands on the shared path, then the date read after the move fails...
+            Mocker.GetMock<IMoveBookFiles>()
+                .Setup(s => s.MoveBookFile(It.Is<BookFile>(f => f.Path == sourceA), It.IsAny<LocalBook>()))
+                .Callback<BookFile, LocalBook>((file, localBook) =>
+                {
+                    disk[sharedPath] = disk[file.Path];
+                    disk.Remove(file.Path);
+                    file.Path = sharedPath;
+                })
+                .Throws(new IOException("Input/output error"));
+
+            // ...and so does moving it back to the download folder
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(s => s.MoveFile(sharedPath, sourceA, It.IsAny<bool>()))
+                .Throws(new IOException("Input/output error"));
+
+            Subject.Import(decisions, true);
+
+            disk.Should().Contain(sharedPath, "A");
+
+            ExceptionVerification.ExpectedErrors(1);
+            ExceptionVerification.ExpectedWarns(2);
         }
 
         [Test]

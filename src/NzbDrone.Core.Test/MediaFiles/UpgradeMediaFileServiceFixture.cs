@@ -168,6 +168,53 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void should_undo_the_move_when_a_step_after_it_fails()
+        {
+            GivenSingleTrackWithSingleTrackFile();
+
+            var oldPath = Path.Combine(_rootPath, @"Season 01\30.rock.s01e01.avi");
+            var sourcePath = @"C:\Test\Downloads\new.avi".AsOsAgnostic();
+            var disk = new Dictionary<string, string> { { oldPath, "old" }, { sourcePath, "new" } };
+            _trackFile.Path = sourcePath;
+
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(c => c.FileExists(It.IsAny<string>()))
+                .Returns<string>(p => disk.ContainsKey(p));
+
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(c => c.MoveFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
+                .Callback<string, string, bool>((source, destination, overwrite) =>
+                {
+                    if (disk.ContainsKey(destination))
+                    {
+                        throw new IOException($"{destination} already exists");
+                    }
+
+                    disk[destination] = disk[source];
+                    disk.Remove(source);
+                });
+
+            // The file lands on the old path, then reading its date back off a flaky share fails
+            Mocker.GetMock<IMoveBookFiles>()
+                .Setup(c => c.MoveBookFile(It.IsAny<BookFile>(), It.IsAny<LocalBook>()))
+                .Callback<BookFile, LocalBook>((file, localBook) =>
+                {
+                    disk[oldPath] = disk[file.Path];
+                    disk.Remove(file.Path);
+                    file.Path = oldPath;
+                })
+                .Throws(new IOException("Input/output error"));
+
+            Assert.Throws<IOException>(() => Subject.UpgradeBookFile(_trackFile, _localTrack));
+
+            disk.Should().Contain(sourcePath, "new");
+            disk.Should().Contain(oldPath, "old");
+            _trackFile.Path.Should().Be(sourcePath);
+
+            Mocker.GetMock<IRecycleBinProvider>().Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [Test]
         public void should_return_old_track_file_in_oldFiles()
         {
             GivenSingleTrackWithSingleTrackFile();
