@@ -14,6 +14,7 @@ using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Test.Framework;
+using NzbDrone.Test.Common;
 
 namespace NzbDrone.Core.Test.Download
 {
@@ -86,6 +87,22 @@ namespace NzbDrone.Core.Test.Download
             await Subject.DownloadReport(_parseResult, null);
 
             VerifyEventPublished<BookGrabbedEvent>();
+        }
+
+        [Test]
+        public async Task Download_report_should_still_publish_grab_when_recording_provider_status_fails()
+        {
+            var mock = WithUsenetClient();
+            mock.Setup(s => s.Download(It.IsAny<RemoteBook>(), It.IsAny<IIndexer>()));
+
+            Mocker.GetMock<IDownloadClientStatusService>()
+                .Setup(s => s.RecordSuccess(It.IsAny<int>()))
+                .Throws(new InvalidOperationException("database is locked"));
+
+            await Subject.DownloadReport(_parseResult, null);
+
+            VerifyEventPublished<BookGrabbedEvent>();
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]

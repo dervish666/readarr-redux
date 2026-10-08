@@ -56,7 +56,15 @@ namespace NzbDrone.Core.Http
                 cached.Value = result.Content;
                 cached.StatusCode = (int)result.StatusCode;
 
-                _repo.Upsert(cached);
+                // The response is good whether or not it can be cached
+                try
+                {
+                    _repo.Upsert(cached);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Warn(ex, "Failed to cache response for [GET] {0}", request.Url);
+                }
             }
 
             return result;

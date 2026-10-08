@@ -96,8 +96,6 @@ namespace NzbDrone.Core.Download
             try
             {
                 downloadClientId = await downloadClient.Download(remoteBook, indexer);
-                _downloadClientStatusService.RecordSuccess(downloadClient.Definition.Id);
-                _indexerStatusService.RecordSuccess(remoteBook.Release.IndexerId);
             }
             catch (ReleaseUnavailableException)
             {
@@ -126,6 +124,18 @@ namespace NzbDrone.Core.Download
                 }
 
                 throw;
+            }
+
+            // The client has the release now, so failing to note that in provider status must not
+            // turn the grab into a failure (no grabbed event, and another release picked)
+            try
+            {
+                _downloadClientStatusService.RecordSuccess(downloadClient.Definition.Id);
+                _indexerStatusService.RecordSuccess(remoteBook.Release.IndexerId);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "Release {0} was sent to {1} but its provider status could not be updated", remoteBook, downloadClient.Definition.Name);
             }
 
             var bookGrabbedEvent = new BookGrabbedEvent(remoteBook);
