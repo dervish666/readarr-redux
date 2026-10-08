@@ -5,8 +5,6 @@ using NLog;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
-using NzbDrone.Core.Configuration.Events;
-using NzbDrone.Core.Messaging.Events;
 
 namespace NzbDrone.Core.Authentication
 {
@@ -18,9 +16,10 @@ namespace NzbDrone.Core.Authentication
         User FindUser();
         User FindUser(string username, string password);
         User FindUser(Guid identifier);
+        void RevokeSessions();
     }
 
-    public class UserService : IUserService, IHandle<ApiKeyChangedEvent>
+    public class UserService : IUserService
     {
         private const int ITERATIONS = 10000;
         private const int SALT_SIZE = 128 / 8;
@@ -68,22 +67,46 @@ namespace NzbDrone.Core.Authentication
             }
 
             var newUsername = username.ToLowerInvariant();
-            var credentialsChanged = newUsername != user.Username;
+            var passwordChanged = password != null && user.Password != password;
 
-            if (password != null && user.Password != password)
+            if (newUsername == user.Username && !passwordChanged)
             {
-                SetUserHashedPassword(user, password);
-                credentialsChanged = true;
+                // Nothing to save. Writing the row back could undo a revocation made since the read.
+                return user;
             }
 
             user.Username = newUsername;
 
-            if (credentialsChanged)
+            if (passwordChanged)
             {
-                RevokeSessions(user, "credentials changed");
+                SetUserHashedPassword(user, password);
             }
 
-            return Update(user);
+            // Login cookies carry the Identifier and are checked against it on each request, so
+            // a new one signs out every existing session
+            user.Identifier = Guid.NewGuid();
+            _repo.UpdateCredentials(user, passwordChanged);
+
+            _logger.Info("Signed out existing sessions, credentials changed");
+
+            return user;
+        }
+
+        // Throws if the new Identifier can't be stored, so callers can stop rather than carry on
+        // with the old sessions still valid
+        public void RevokeSessions()
+        {
+            var user = FindUser();
+
+            if (user == null)
+            {
+                return;
+            }
+
+            user.Identifier = Guid.NewGuid();
+            _repo.UpdateIdentifier(user);
+
+            _logger.Info("Signed out existing sessions");
         }
 
         public User FindUser()
@@ -98,29 +121,35 @@ namespace NzbDrone.Core.Authentication
                 return null;
             }
 
-            var user = _repo.FindUser(username.ToLowerInvariant());
-
-            if (user == null)
+            // The rehash below only lands if the stored hash is unchanged since the read; if another
+            // request changed it in between, check again against what is stored now
+            for (var attempt = 0; attempt < 2; attempt++)
             {
-                return null;
-            }
+                var user = _repo.FindUser(username.ToLowerInvariant());
 
-            if (user.Salt.IsNullOrWhiteSpace())
-            {
-                // Legacy unsalted SHA-256 hash: on a match, upgrade it to a salted hash
-                if (user.Password == password.SHA256Hash())
+                if (user == null)
                 {
-                    SetUserHashedPassword(user, password);
-
-                    return Update(user);
+                    return null;
                 }
 
-                return null;
-            }
+                if (!user.Salt.IsNullOrWhiteSpace())
+                {
+                    return VerifyHashedPassword(user, password) ? user : null;
+                }
 
-            if (VerifyHashedPassword(user, password))
-            {
-                return user;
+                // Legacy unsalted SHA-256 hash: on a match, upgrade it to a salted hash
+                if (user.Password != password.SHA256Hash())
+                {
+                    return null;
+                }
+
+                var storedPassword = user.Password;
+                SetUserHashedPassword(user, password);
+
+                if (_repo.UpdatePasswordHash(user, storedPassword))
+                {
+                    return user;
+                }
             }
 
             return null;
@@ -129,26 +158,6 @@ namespace NzbDrone.Core.Authentication
         public User FindUser(Guid identifier)
         {
             return _repo.FindUser(identifier);
-        }
-
-        public void Handle(ApiKeyChangedEvent message)
-        {
-            var user = FindUser();
-
-            if (user != null)
-            {
-                RevokeSessions(user, "API key reset");
-                Update(user);
-            }
-        }
-
-        // Login cookies carry the user's Identifier and are checked against it on each request,
-        // so a new Identifier signs out every existing session
-        private void RevokeSessions(User user, string reason)
-        {
-            user.Identifier = Guid.NewGuid();
-
-            _logger.Info("Signed out existing sessions, {0}", reason);
         }
 
         private static void SetUserHashedPassword(User user, string password)

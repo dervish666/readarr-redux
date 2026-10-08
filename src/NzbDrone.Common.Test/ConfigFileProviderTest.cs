@@ -9,7 +9,6 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Options;
 using NzbDrone.Core.Authentication;
 using NzbDrone.Core.Configuration;
-using NzbDrone.Core.Configuration.Events;
 using NzbDrone.Test.Common;
 
 namespace NzbDrone.Common.Test
@@ -214,14 +213,13 @@ namespace NzbDrone.Common.Test
         }
 
         [Test]
-        public void reset_api_key_should_change_key_and_publish_event()
+        public void reset_api_key_should_change_key()
         {
             var oldKey = Subject.ApiKey;
 
-            Subject.Execute(new ResetApiKeyCommand());
+            Subject.ResetApiKey();
 
             Subject.ApiKey.Should().NotBe(oldKey);
-            VerifyEventPublished<ApiKeyChangedEvent>();
         }
 
         [Test]

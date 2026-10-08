@@ -3,8 +3,6 @@ using System.Linq;
 using FluentAssertions;
 using NUnit.Framework;
 using NzbDrone.Core.Authentication;
-using NzbDrone.Core.Configuration.Events;
-using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Test.Framework;
 
 namespace NzbDrone.Core.Test.Authentication
@@ -172,14 +170,12 @@ namespace NzbDrone.Core.Test.Authentication
         }
 
         [Test]
-        public void api_key_reset_should_sign_out_existing_sessions()
+        public void revoke_sessions_should_sign_out_existing_sessions()
         {
             Subject.Add("sam", "hunter2");
             var before = StoredUser().Identifier;
 
-            var handler = Subject as IHandle<ApiKeyChangedEvent>;
-            handler.Should().NotBeNull();
-            handler.Handle(new ApiKeyChangedEvent());
+            Subject.RevokeSessions();
 
             StoredUser().Identifier.Should().NotBe(before);
             Subject.FindUser("sam", "hunter2").Should().NotBeNull();
