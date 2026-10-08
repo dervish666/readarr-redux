@@ -110,6 +110,24 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void should_pin_the_book_from_grab_history_not_the_parsed_title()
+        {
+            GivenExistingFolder(_downloadFolder);
+            GivenValidQueueItem();
+
+            var ruins = new Book { Id = 57560, Title = "Ruins" };
+            _trackedDownload.RemoteBook.Books = new List<Book> { new Book { Id = 57546, Title = "Pathfinder" } };
+
+            Mocker.GetMock<ICompletedDownloadService>()
+                  .Setup(s => s.GetGrabbedBook(_trackedDownload))
+                  .Returns(ruins);
+
+            Subject.Execute(new DownloadedBooksScanCommand() { Path = _downloadFolder, DownloadClientId = "sab1" });
+
+            Mocker.GetMock<IDownloadedBooksImportService>().Verify(c => c.ProcessPath(_downloadFolder, ImportMode.Auto, _trackedDownload.RemoteBook.Author, _trackedDownload.DownloadItem, ruins), Times.Once());
+        }
+
+        [Test]
         public void should_process_folder_without_downloadclientitem_if_not_available()
         {
             GivenExistingFolder(_downloadFolder);
