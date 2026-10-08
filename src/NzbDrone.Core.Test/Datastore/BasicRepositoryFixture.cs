@@ -324,5 +324,20 @@ namespace NzbDrone.Core.Test.Datastore
             data.TotalRecords.Should().Be(_basicList.Count);
             data.Records.Should().BeEquivalentTo(_basicList.OrderByDescending(x => x.Id).Skip((page - 1) * 2).Take(2));
         }
+
+        [TestCase("amissingcolumn")]
+        [TestCase("Id\" DESC; DELETE FROM \"ScheduledTasks\"; --")]
+        [TestCase("ScheduledTasks.Id\" DESC; DELETE FROM \"ScheduledTasks\"; --")]
+        [TestCase("(SELECT 1)")]
+        public void get_paged_should_fall_back_to_id_for_invalid_sort_key(string sortKey)
+        {
+            Subject.InsertMany(_basicList);
+            var data = Subject.GetPaged(new PagingSpec<ScheduledTask>() { Page = 1, PageSize = 2, SortKey = sortKey, SortDirection = SortDirection.Descending });
+
+            Subject.All().Should().HaveCount(_basicList.Count);
+            data.SortKey.Should().Be("ScheduledTasks.Id");
+            data.TotalRecords.Should().Be(_basicList.Count);
+            data.Records.Should().BeEquivalentTo(_basicList.OrderByDescending(x => x.Id).Take(2));
+        }
     }
 }

@@ -447,7 +447,9 @@ namespace NzbDrone.Core.Datastore
         {
             AddFilters(builder, pagingSpec);
 
-            if (pagingSpec.SortKey == null)
+            // The sort key ends up in ORDER BY as an identifier, so anything that is not a known
+            // table and column falls back to the primary key (CVE-2025-50983).
+            if (pagingSpec.SortKey == null || !TableMapping.Mapper.IsValidSortKey(pagingSpec.SortKey))
             {
                 pagingSpec.SortKey = $"{_table}.{_keyProperty.Name}";
             }
