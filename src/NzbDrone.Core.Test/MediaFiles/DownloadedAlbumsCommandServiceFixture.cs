@@ -128,6 +128,23 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void should_not_import_when_the_grabbed_book_is_gone()
+        {
+            GivenExistingFolder(_downloadFolder);
+            GivenValidQueueItem();
+
+            Mocker.GetMock<ICompletedDownloadService>()
+                  .Setup(s => s.GetGrabbedBook(_trackedDownload))
+                  .Throws(new GrabbedBookNotFoundException("The book this download was grabbed for (id 57560) no longer exists, manual import required"));
+
+            Subject.Execute(new DownloadedBooksScanCommand() { Path = _downloadFolder, DownloadClientId = "sab1" });
+
+            Mocker.GetMock<IDownloadedBooksImportService>().Verify(c => c.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>(), It.IsAny<Book>()), Times.Never());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
         public void should_process_folder_without_downloadclientitem_if_not_available()
         {
             GivenExistingFolder(_downloadFolder);

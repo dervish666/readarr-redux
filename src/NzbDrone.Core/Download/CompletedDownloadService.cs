@@ -92,10 +92,23 @@ namespace NzbDrone.Core.Download
                 return;
             }
 
+            Book grabbedBook;
+
+            try
+            {
+                grabbedBook = GetGrabbedBook(trackedDownload);
+            }
+            catch (GrabbedBookNotFoundException e)
+            {
+                trackedDownload.State = TrackedDownloadState.ImportFailed;
+                trackedDownload.Warn(e.Message);
+                return;
+            }
+
             trackedDownload.State = TrackedDownloadState.Importing;
 
             var outputPath = trackedDownload.ImportItem.OutputPath.FullPath;
-            var importResults = _downloadedTracksImportService.ProcessPath(outputPath, ImportMode.Auto, trackedDownload.RemoteBook?.Author, trackedDownload.DownloadItem, GetGrabbedBook(trackedDownload));
+            var importResults = _downloadedTracksImportService.ProcessPath(outputPath, ImportMode.Auto, trackedDownload.RemoteBook?.Author, trackedDownload.DownloadItem, grabbedBook);
 
             if (importResults.Empty())
             {
@@ -126,8 +139,9 @@ namespace NzbDrone.Core.Download
         }
 
         // The book this download was grabbed for, taken from the grab history rather than a fresh parse of the
-        // download title, which can map to a different book. Null unless the latest grab was for exactly one
-        // book that is still in the library under the download's author.
+        // download title, which can map to a different book. Null when there's no grab history or the latest grab
+        // was for several books. Throws when the grabbed book is gone or now belongs to another author, because
+        // matching the files freely could then land them on a neighbouring book.
         public Book GetGrabbedBook(TrackedDownload trackedDownload)
         {
             var downloadId = trackedDownload.DownloadItem?.DownloadId;
@@ -166,16 +180,14 @@ namespace NzbDrone.Core.Download
             }
             catch (ModelNotFoundException)
             {
-                _logger.Debug("Book {0} that download {1} was grabbed for is no longer in the library", bookIds[0], downloadId);
-                return null;
+                throw new GrabbedBookNotFoundException("The book this download was grabbed for (id {0}) no longer exists, manual import required", bookIds[0]);
             }
 
             var author = trackedDownload.RemoteBook?.Author;
 
             if (author != null && book.AuthorMetadataId != author.AuthorMetadataId)
             {
-                _logger.Debug("Book {0} that download {1} was grabbed for now belongs to another author", book, downloadId);
-                return null;
+                throw new GrabbedBookNotFoundException("The book this download was grabbed for ({0}) now belongs to another author, manual import required", book);
             }
 
             return book;

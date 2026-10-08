@@ -5,11 +5,14 @@ using NLog;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Instrumentation.Extensions;
+using NzbDrone.Core.Books;
+using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.MediaFiles.BookImport;
 using NzbDrone.Core.MediaFiles.Commands;
 using NzbDrone.Core.Messaging.Commands;
+using NzbDrone.Core.Parser.Model;
 
 namespace NzbDrone.Core.MediaFiles
 {
@@ -53,7 +56,18 @@ namespace NzbDrone.Core.MediaFiles
                 {
                     _logger.Debug("External directory scan request for known download {0}. [{1}]", message.DownloadClientId, message.Path);
 
-                    var grabbedBook = _completedDownloadService.GetGrabbedBook(trackedDownload);
+                    Book grabbedBook;
+
+                    try
+                    {
+                        grabbedBook = _completedDownloadService.GetGrabbedBook(trackedDownload);
+                    }
+                    catch (GrabbedBookNotFoundException e)
+                    {
+                        _logger.Warn(e.Message);
+                        return new List<ImportResult> { new ImportResult(new ImportDecision<LocalBook>(new LocalBook { Path = message.Path }, new Rejection(e.Message)), e.Message) };
+                    }
+
                     var importResults = _downloadedTracksImportService.ProcessPath(message.Path, message.ImportMode, trackedDownload.RemoteBook.Author, trackedDownload.DownloadItem, grabbedBook);
 
                     _completedDownloadService.VerifyImport(trackedDownload, importResults);

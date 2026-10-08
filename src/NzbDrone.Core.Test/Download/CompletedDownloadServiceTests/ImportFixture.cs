@@ -447,8 +447,9 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
         }
 
         [Test]
-        public void should_not_pin_a_book_when_the_grabbed_book_is_gone()
+        public void should_require_manual_import_when_the_grabbed_book_is_gone()
         {
+            // Matching the files freely could put Ruins over Pathfinder again
             var pathfinder = GivenBookInLibrary(57546, "Pathfinder");
             _trackedDownload.RemoteBook.Books = new List<Book> { pathfinder };
 
@@ -458,7 +459,29 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
 
             GivenGrabs(Grab(57560, DateTime.UtcNow));
 
-            ImportAndGetPinnedBook().Should().BeNull();
+            Subject.Import(_trackedDownload);
+
+            Mocker.GetMock<IDownloadedBooksImportService>()
+                  .Verify(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>(), It.IsAny<Book>()), Times.Never());
+
+            _trackedDownload.State.Should().Be(TrackedDownloadState.ImportFailed);
+            _trackedDownload.StatusMessages.SelectMany(x => x.Messages).Should().Contain(x => x.Contains("manual import required"));
+        }
+
+        [Test]
+        public void should_require_manual_import_when_the_grabbed_book_moved_to_another_author()
+        {
+            var ruins = GivenBookInLibrary(57560, "Ruins");
+            ruins.AuthorMetadataId = 999;
+
+            GivenGrabs(Grab(ruins.Id, DateTime.UtcNow));
+
+            Subject.Import(_trackedDownload);
+
+            Mocker.GetMock<IDownloadedBooksImportService>()
+                  .Verify(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>(), It.IsAny<Book>()), Times.Never());
+
+            _trackedDownload.State.Should().Be(TrackedDownloadState.ImportFailed);
         }
 
         [Test]
