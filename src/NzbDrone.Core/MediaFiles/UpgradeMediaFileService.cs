@@ -115,6 +115,16 @@ namespace NzbDrone.Core.MediaFiles
 
                 if (!isCalibre)
                 {
+                    // Claim the destination before the transfer starts: it can move the file and still throw, and the
+                    // path stays claimed either way so no other book's upgrade takes what's there for an old file.
+                    // Done after the set-aside above, which must still clear this book's own old file off that path.
+                    var destination = _bookFileMover.GetBookFilePath(bookFile, localBook);
+
+                    if (destination.IsNotNullOrWhiteSpace())
+                    {
+                        importedPaths?.Add(destination);
+                    }
+
                     if (copyOnly)
                     {
                         moveFileResult.BookFile = _bookFileMover.CopyBookFile(bookFile, localBook);

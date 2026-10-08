@@ -18,6 +18,7 @@ namespace NzbDrone.Core.MediaFiles
         BookFile MoveBookFile(BookFile bookFile, Author author);
         BookFile MoveBookFile(BookFile bookFile, LocalBook localBook);
         BookFile CopyBookFile(BookFile bookFile, LocalBook localBook);
+        string GetBookFilePath(BookFile bookFile, LocalBook localBook);
     }
 
     public class BookFileMovingService : IMoveBookFiles
@@ -69,10 +70,16 @@ namespace NzbDrone.Core.MediaFiles
             return TransferFile(bookFile, author, bookFile.Edition.Value.Book.Value, filePath, TransferMode.Move);
         }
 
-        public BookFile MoveBookFile(BookFile bookFile, LocalBook localBook)
+        // Where an imported file will land, so callers can claim the path before the transfer starts
+        public string GetBookFilePath(BookFile bookFile, LocalBook localBook)
         {
             var newFileName = _buildFileNames.BuildBookFileName(localBook.Author, localBook.Edition, bookFile);
-            var filePath = _buildFileNames.BuildBookFilePath(localBook.Author, localBook.Edition, newFileName, Path.GetExtension(localBook.Path));
+            return _buildFileNames.BuildBookFilePath(localBook.Author, localBook.Edition, newFileName, Path.GetExtension(localBook.Path));
+        }
+
+        public BookFile MoveBookFile(BookFile bookFile, LocalBook localBook)
+        {
+            var filePath = GetBookFilePath(bookFile, localBook);
 
             EnsureTrackFolder(bookFile, localBook, filePath);
 
@@ -83,8 +90,7 @@ namespace NzbDrone.Core.MediaFiles
 
         public BookFile CopyBookFile(BookFile bookFile, LocalBook localBook)
         {
-            var newFileName = _buildFileNames.BuildBookFileName(localBook.Author, localBook.Edition, bookFile);
-            var filePath = _buildFileNames.BuildBookFilePath(localBook.Author, localBook.Edition, newFileName, Path.GetExtension(localBook.Path));
+            var filePath = GetBookFilePath(bookFile, localBook);
 
             EnsureTrackFolder(bookFile, localBook, filePath);
 

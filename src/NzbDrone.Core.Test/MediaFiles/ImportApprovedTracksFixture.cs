@@ -604,6 +604,36 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void should_not_remove_a_file_another_book_moved_before_its_transfer_failed()
+        {
+            var disk = new Dictionary<string, string>();
+            var database = new List<BookFile>();
+            var decisions = GivenTwoBooksSharingAPath(disk, database, out var sharedPath, out _);
+            var sourceA = decisions[0].Item.Path;
+            disk[sourceA] = "A";
+
+            Mocker.GetMock<IMoveBookFiles>()
+                .Setup(s => s.GetBookFilePath(It.IsAny<BookFile>(), It.IsAny<LocalBook>()))
+                .Returns((BookFile file, LocalBook localBook) => localBook.Book.ForeignBookId == "A" ? sharedPath : Path.Combine(Path.GetDirectoryName(sharedPath), "Other.m4b"));
+
+            // The transfer moves A onto the shared path and then fails, before bookFile.Path is updated
+            Mocker.GetMock<IMoveBookFiles>()
+                .Setup(s => s.MoveBookFile(It.Is<BookFile>(f => f.Path == sourceA), It.IsAny<LocalBook>()))
+                .Callback<BookFile, LocalBook>((file, localBook) =>
+                {
+                    disk[sharedPath] = disk[file.Path];
+                    disk.Remove(file.Path);
+                })
+                .Throws(new IOException("Input/output error"));
+
+            Subject.Import(decisions, true);
+
+            disk.Should().Contain(sharedPath, "A");
+
+            ExceptionVerification.ExpectedWarns(2);
+        }
+
+        [Test]
         public void should_delete_existing_trackfiles_with_the_same_path()
         {
             Mocker.GetMock<IMediaFileService>()
