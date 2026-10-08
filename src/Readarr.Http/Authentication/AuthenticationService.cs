@@ -1,3 +1,4 @@
+using System;
 using Microsoft.AspNetCore.Http;
 using NLog;
 using NzbDrone.Core.Authentication;
@@ -17,12 +18,14 @@ namespace Readarr.Http.Authentication
     {
         private static readonly Logger _authLogger = LogManager.GetLogger("Auth");
         private readonly IUserService _userService;
+        private readonly ILoginThrottle _loginThrottle;
 
         private static AuthenticationType AUTH_METHOD;
 
-        public AuthenticationService(IConfigFileProvider configFileProvider, IUserService userService)
+        public AuthenticationService(IConfigFileProvider configFileProvider, IUserService userService, ILoginThrottle loginThrottle)
         {
             _userService = userService;
+            _loginThrottle = loginThrottle;
             AUTH_METHOD = configFileProvider.AuthenticationMethod;
         }
 
@@ -33,15 +36,29 @@ namespace Readarr.Http.Authentication
                 return null;
             }
 
+            // Forms and Basic both come through here. The address is the one the forwarded headers
+            // middleware resolved from trusted proxies only.
+            var clientAddress = request.GetRemoteIP();
+            var retryDelay = _loginThrottle.GetRetryDelay(clientAddress, username);
+
+            if (retryDelay > TimeSpan.Zero)
+            {
+                LogThrottled(request, username, retryDelay);
+
+                return null;
+            }
+
             var user = _userService.FindUser(username, password);
 
             if (user != null)
             {
+                _loginThrottle.RecordSuccess(clientAddress, username);
                 LogSuccess(request, username);
 
                 return user;
             }
 
+            _loginThrottle.RecordFailure(clientAddress, username);
             LogFailure(request, username);
 
             return null;
@@ -73,6 +90,11 @@ namespace Readarr.Http.Authentication
         private void LogFailure(HttpRequest context, string username)
         {
             _authLogger.Warn("Auth-Failure ip {0} username '{1}'", context.GetRemoteIP(), username);
+        }
+
+        private void LogThrottled(HttpRequest context, string username, TimeSpan retryDelay)
+        {
+            _authLogger.Warn("Auth-Throttled ip {0} username '{1}' retry in {2:0}s", context.GetRemoteIP(), username, Math.Ceiling(retryDelay.TotalSeconds));
         }
 
         private void LogSuccess(HttpRequest context, string username)
