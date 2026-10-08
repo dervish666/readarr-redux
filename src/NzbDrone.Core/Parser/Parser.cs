@@ -17,9 +17,11 @@ namespace NzbDrone.Core.Parser
         // Series numbering right next to a matched title. A marked number ("Book 6", "#5", "Vol. 2", "Books 1-3")
         // counts wherever it sits. A bare number counts only as its own token followed by a separator or the end
         // ("Green Rider 1 - ...", "Green Rider.8.Falling"), so "64 Kbps" or "12 CDs" don't, and a bare range
-        // ("1-3") counts as it stands. Four-digit years never match.
-        private const string SeriesPosition = @"(?<position>\d{1,3}(?:\.\d+)?)(?:\s*-\s*(?<end>\d{1,3}(?:\.\d+)?))?(?!\d)";
-        private const string SeriesMarker = @"(?:\b(?:books?|bk|vol(?:ume)?|no)\.?|#)\s*";
+        // ("1-3") counts as it stands. "1 & 2" and "1 to 3" are ranges too, and "Books" with any number, an omnibus
+        // or a box set are several books. Four-digit years never match.
+        private const string SeriesRangeSeparator = @"\s*(?:-|&|\+|\band\b|\bto\b|\bthrough\b)\s*";
+        private const string SeriesPosition = @"(?<position>\d{1,3}(?:\.\d+)?)(?:" + SeriesRangeSeparator + @"(?<end>\d{1,3}(?:\.\d+)?))?(?!\d)";
+        private const string SeriesMarker = @"(?:\b(?:(?<books>books)|book|bk|vol(?:ume)?|no)\.?|#)\s*";
 
         private static readonly Logger Logger = NzbDroneLogger.GetLogger(typeof(Parser));
 
@@ -240,9 +242,11 @@ namespace NzbDrone.Core.Parser
         private static readonly Regex[] SeriesPositionAfterTitleRegex = new[]
         {
             new Regex(@"^[\s.,_:(\[-]*" + SeriesMarker + SeriesPosition, RegexOptions.IgnoreCase | RegexOptions.Compiled),
-            new Regex(@"^(?:\s*[-:,]\s*|\s+|[._])(?<position>\d{1,3})\s*-\s*(?<end>\d{1,3})(?!\d)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+            new Regex(@"^(?:\s*[-:,]\s*|\s+|[._])(?<position>\d{1,3})" + SeriesRangeSeparator + @"(?<end>\d{1,3})(?!\d)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
             new Regex(@"^(?:\s*[-:,]\s*|\s+|[._])(?<position>\d{1,3}(?:\.\d+)?)(?=\s*(?:[-:._(\[)\]]|$))", RegexOptions.IgnoreCase | RegexOptions.Compiled)
         };
+
+        private static readonly Regex OmnibusRegex = new Regex(@"\b(?:omnibus|box(?:ed)?[\s.]*set|boxset|complete[\s.]+series)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         private static readonly Regex[] SeriesPositionBeforeTitleRegex = new[]
         {
@@ -491,14 +495,6 @@ namespace NzbDrone.Core.Parser
         // the matched title isn't one of the book's own positions, the release is a different book in that series.
         private static bool IsOtherBookInSeries(string beforeTitle, string afterTitle, Book book)
         {
-            var match = SeriesPositionAfterTitleRegex.Select(x => x.Match(afterTitle)).FirstOrDefault(x => x.Success) ??
-                        SeriesPositionBeforeTitleRegex.Select(x => x.Match(beforeTitle)).FirstOrDefault(x => x.Success);
-
-            if (match == null)
-            {
-                return false;
-            }
-
             var positions = (book.SeriesLinks?.Value ?? new List<SeriesBookLink>())
                 .Select(x => ParseSeriesPosition(x.Position))
                 .Where(x => x != null)
@@ -507,6 +503,27 @@ namespace NzbDrone.Core.Parser
             if (!positions.Any())
             {
                 return false;
+            }
+
+            // An omnibus is several books, so it's never a single-position book. The matched title is excluded
+            // from both sides, so a book that is itself called an omnibus still matches.
+            if (OmnibusRegex.IsMatch(beforeTitle) || OmnibusRegex.IsMatch(afterTitle))
+            {
+                return positions.All(x => !x.Contains('-'));
+            }
+
+            var match = SeriesPositionAfterTitleRegex.Select(x => x.Match(afterTitle)).FirstOrDefault(x => x.Success) ??
+                        SeriesPositionBeforeTitleRegex.Select(x => x.Match(beforeTitle)).FirstOrDefault(x => x.Success);
+
+            if (match == null)
+            {
+                return false;
+            }
+
+            // "Books 1, 2 and 3" names several books even where only the first number is read
+            if (match.Groups["books"].Success && !match.Groups["end"].Success)
+            {
+                return positions.All(x => !x.Contains('-'));
             }
 
             var releasePosition = match.Groups["end"].Success

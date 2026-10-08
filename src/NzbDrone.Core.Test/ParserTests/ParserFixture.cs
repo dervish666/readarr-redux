@@ -265,6 +265,11 @@ namespace NzbDrone.Core.Test.ParserTests
         [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Book 6 - Green Rider - Firebrand")]
         [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Green Rider 1-3 MP3")]
         [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Green Rider, Books 1-3")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Green Rider Books 1-3")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Green Rider, Books 1 & 2 MP3")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Green Rider, Books 1 to 3")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Green Rider, Books 1, 2 and 3")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Green Rider Omnibus MP3")]
         public void should_not_parse_a_later_book_in_a_series_named_after_the_searched_book(string searchAuthor, string searchBook, string position, string report)
         {
             GivenSearchCriteriaInSeries(searchAuthor, searchBook, position);
@@ -284,6 +289,8 @@ namespace NzbDrone.Core.Test.ParserTests
         [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Book 1 - Green Rider")]
         [TestCase("Kristen Britain", "Firebrand", "6", "Kristen Britain - Book 6 - Green Rider - Firebrand")]
         [TestCase("Kristen Britain", "Green Rider", "1-3", "Kristen Britain - Green Rider 1-3 MP3")]
+        [TestCase("Kristen Britain", "Green Rider", "1-3", "Kristen Britain - Green Rider Omnibus MP3")]
+        [TestCase("Kristen Britain", "Firebrand", "6", "Kristen Britain - Firebrand, Book 6, 12 CDs")]
         public void should_parse_the_searched_book_when_the_series_position_agrees(string searchAuthor, string searchBook, string position, string report)
         {
             GivenSearchCriteriaInSeries(searchAuthor, searchBook, position);
