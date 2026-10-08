@@ -46,6 +46,9 @@ namespace NzbDrone.Common.Instrumentation
             new (@"getTorrents\(""(?<secret>[^""]+?)""", RegexOptions.Compiled | RegexOptions.IgnoreCase),
             new (@"(?<=\?|&)(authkey|torrent_pass)=(?<secret>[^&=]+?)(?=""|&|$)", RegexOptions.Compiled | RegexOptions.IgnoreCase),
 
+            // Plex
+            new (@"(?<=\?|&)(X-Plex-Client-Identifier|X-Plex-Token)=(?<secret>[^&=]+?)(?= |&|$)", RegexOptions.Compiled | RegexOptions.IgnoreCase),
+
             // Good Reads
             new (@"(?<=""(token|tokensecret)"":\s)""(?<secret>[^""]+?)""", RegexOptions.Compiled | RegexOptions.IgnoreCase),
 
@@ -60,7 +63,8 @@ namespace NzbDrone.Common.Instrumentation
             new (@"api.telegram.org/bot(?<id>[\d]+):(?<secret>[\w-]+)/", RegexOptions.Compiled | RegexOptions.IgnoreCase)
         };
 
-        private static readonly Regex CleanseRemoteIPRegex = new (@"(?:Auth-\w+(?<!Failure|Unauthorized) ip|from) (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})", RegexOptions.Compiled);
+        // Failed, refused and throttled logins keep the full address so tools like fail2ban can act on it
+        private static readonly Regex CleanseRemoteIPRegex = new (@"(?:Auth-\w+(?<!Failure|Unauthorized|Throttled) ip|from) (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})", RegexOptions.Compiled);
 
         public static string Cleanse(string message)
         {

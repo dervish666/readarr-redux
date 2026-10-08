@@ -82,6 +82,10 @@ namespace NzbDrone.Common.Test.InstrumentationTests
         [TestCase(@"tracker"":""https://xxx.yyy/announce.php?passkey=9pr04sg601233210IMAveQL2tyu8xyui""}")]
         [TestCase(@"tracker"":""http://xxx.yyy/announce.php?passkey=9pr04sg601233210IMAveQL2tyu8xyui"",""info"":""http://xxx.yyy/info?a=b""")]
 
+        // Plex
+        [TestCase(@"http://127.0.0.1:32400/library/sections?X-Plex-Client-Identifier=mySecret&X-Plex-Token=mySecret")]
+        [TestCase(@"https://plex.tv/api/v2/pins/12345?X-Plex-Client-Identifier=mySecret&X-Plex-Product=Readarr")]
+
         // Notifiarr
         [TestCase(@"https://xxx.yyy/api/v1/notification/readarr/9pr04sg6-0123-3210-imav-eql2tyu8xyui")]
 
@@ -141,6 +145,7 @@ namespace NzbDrone.Common.Test.InstrumentationTests
         [TestCase(@"Some message (from 10.2.3.2 user agent)")]
         [TestCase(@"Auth-Unauthorized ip 32.2.3.5")]
         [TestCase(@"Auth-Failure ip 32.2.3.5")]
+        [TestCase(@"Auth-Throttled ip 32.2.3.5 username 'sam' retry in 4s")]
         public void should_not_clean_ipaddress(string message)
         {
             var cleansedMessage = CleanseLogMessage.Cleanse(message);
