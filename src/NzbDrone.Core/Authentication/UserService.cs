@@ -1,9 +1,12 @@
 using System;
 using System.Security.Cryptography;
 using System.Text;
+using NLog;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Configuration.Events;
+using NzbDrone.Core.Messaging.Events;
 
 namespace NzbDrone.Core.Authentication
 {
@@ -17,7 +20,7 @@ namespace NzbDrone.Core.Authentication
         User FindUser(Guid identifier);
     }
 
-    public class UserService : IUserService
+    public class UserService : IUserService, IHandle<ApiKeyChangedEvent>
     {
         private const int ITERATIONS = 10000;
         private const int SALT_SIZE = 128 / 8;
@@ -26,12 +29,14 @@ namespace NzbDrone.Core.Authentication
         private readonly IUserRepository _repo;
         private readonly IAppFolderInfo _appFolderInfo;
         private readonly IDiskProvider _diskProvider;
+        private readonly Logger _logger;
 
-        public UserService(IUserRepository repo, IAppFolderInfo appFolderInfo, IDiskProvider diskProvider)
+        public UserService(IUserRepository repo, IAppFolderInfo appFolderInfo, IDiskProvider diskProvider, Logger logger)
         {
             _repo = repo;
             _appFolderInfo = appFolderInfo;
             _diskProvider = diskProvider;
+            _logger = logger;
         }
 
         public User Add(string username, string password)
@@ -62,12 +67,21 @@ namespace NzbDrone.Core.Authentication
                 return password == null ? null : Add(username, password);
             }
 
+            var newUsername = username.ToLowerInvariant();
+            var credentialsChanged = newUsername != user.Username;
+
             if (password != null && user.Password != password)
             {
                 SetUserHashedPassword(user, password);
+                credentialsChanged = true;
             }
 
-            user.Username = username.ToLowerInvariant();
+            user.Username = newUsername;
+
+            if (credentialsChanged)
+            {
+                RevokeSessions(user, "credentials changed");
+            }
 
             return Update(user);
         }
@@ -115,6 +129,26 @@ namespace NzbDrone.Core.Authentication
         public User FindUser(Guid identifier)
         {
             return _repo.FindUser(identifier);
+        }
+
+        public void Handle(ApiKeyChangedEvent message)
+        {
+            var user = FindUser();
+
+            if (user != null)
+            {
+                RevokeSessions(user, "API key reset");
+                Update(user);
+            }
+        }
+
+        // Login cookies carry the user's Identifier and are checked against it on each request,
+        // so a new Identifier signs out every existing session
+        private void RevokeSessions(User user, string reason)
+        {
+            user.Identifier = Guid.NewGuid();
+
+            _logger.Info("Signed out existing sessions, {0}", reason);
         }
 
         private static void SetUserHashedPassword(User user, string password)

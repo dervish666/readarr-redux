@@ -476,6 +476,8 @@ namespace NzbDrone.Core.Configuration
         public void Execute(ResetApiKeyCommand message)
         {
             SetValue("ApiKey", GenerateApiKey());
+
+            _eventAggregator.PublishEvent(new ApiKeyChangedEvent());
         }
 
         public bool TrustCgnatIpAddresses => _authOptions.TrustCgnatIpAddresses ?? GetValueBoolean("TrustCgnatIpAddresses", false, persist: false);

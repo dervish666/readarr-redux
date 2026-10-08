@@ -3,6 +3,8 @@ using System.Linq;
 using FluentAssertions;
 using NUnit.Framework;
 using NzbDrone.Core.Authentication;
+using NzbDrone.Core.Configuration.Events;
+using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Test.Framework;
 
 namespace NzbDrone.Core.Test.Authentication
@@ -123,6 +125,64 @@ namespace NzbDrone.Core.Test.Authentication
             after.Password.Should().Be(before.Password);
             after.Salt.Should().Be(before.Salt);
             Subject.FindUser("dervish", "hunter2").Should().NotBeNull();
+        }
+
+        [Test]
+        public void changing_password_should_sign_out_existing_sessions()
+        {
+            Subject.Add("sam", "hunter2");
+            var before = StoredUser().Identifier;
+
+            Subject.Upsert("sam", "hunter3");
+
+            StoredUser().Identifier.Should().NotBe(before);
+        }
+
+        [Test]
+        public void changing_username_should_sign_out_existing_sessions()
+        {
+            Subject.Add("sam", "hunter2");
+            var before = StoredUser().Identifier;
+
+            Subject.Upsert("dervish", null);
+
+            StoredUser().Identifier.Should().NotBe(before);
+        }
+
+        [Test]
+        public void saving_unchanged_credentials_should_keep_sessions()
+        {
+            Subject.Add("sam", "hunter2");
+            var before = StoredUser().Identifier;
+
+            Subject.Upsert("Sam", null);
+
+            StoredUser().Identifier.Should().Be(before);
+        }
+
+        [Test]
+        public void upgrading_legacy_hash_on_login_should_keep_sessions()
+        {
+            GivenLegacyUser("hunter2");
+            var before = StoredUser().Identifier;
+
+            Subject.FindUser("sam", "hunter2");
+
+            StoredUser().Identifier.Should().Be(before);
+        }
+
+        [Test]
+        public void api_key_reset_should_sign_out_existing_sessions()
+        {
+            Subject.Add("sam", "hunter2");
+            var before = StoredUser().Identifier;
+
+            var handler = Subject as IHandle<ApiKeyChangedEvent>;
+            handler.Should().NotBeNull();
+            handler.Handle(new ApiKeyChangedEvent());
+
+            StoredUser().Identifier.Should().NotBe(before);
+            Subject.FindUser("sam", "hunter2").Should().NotBeNull();
         }
 
         [Test]

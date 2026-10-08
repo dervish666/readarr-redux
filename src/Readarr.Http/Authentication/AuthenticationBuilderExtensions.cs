@@ -1,5 +1,6 @@
 using System;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Diacritical;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -49,6 +50,7 @@ namespace Readarr.Http.Authentication
                     options.ExpireTimeSpan = TimeSpan.FromDays(7);
                     options.SlidingExpiration = true;
                     options.ReturnUrlParameter = "returnUrl";
+                    options.Events.OnValidatePrincipal = ValidateSession;
                 });
 
             return services.AddAuthentication()
@@ -66,6 +68,23 @@ namespace Readarr.Http.Authentication
                     options.HeaderName = "X-Api-Key";
                     options.QueryName = "access_token";
                 });
+        }
+
+        // A login cookie only stays valid while its identifier matches the user's current one,
+        // which UserService replaces when the username or password changes or the API key is reset
+        private static async Task ValidateSession(CookieValidatePrincipalContext context)
+        {
+            var userService = context.HttpContext.RequestServices.GetRequiredService<IUserService>();
+            var identifier = context.Principal?.FindFirst("identifier")?.Value;
+
+            if (Guid.TryParse(identifier, out var id) && userService.FindUser(id) != null)
+            {
+                return;
+            }
+
+            context.RejectPrincipal();
+
+            await context.HttpContext.SignOutAsync(AuthenticationType.Forms.ToString());
         }
     }
 }
