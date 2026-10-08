@@ -164,8 +164,13 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
             var filesToAdd = new List<BookFile>(qualifiedImports.Count);
             var trackImportedEvents = new List<TrackImportedEvent>(qualifiedImports.Count);
-            var setAsideFiles = new Dictionary<int, List<SetAsideBookFile>>();
-            var failedBookIds = new HashSet<int>();
+            var setAsideFiles = new Dictionary<string, List<SetAsideBookFile>>();
+
+            // A book whose new files didn't all import is incomplete, and keeps the files they were replacing.
+            // Rejected parts never reach the loop below, so start from them.
+            var incompleteBooks = decisions.Where(d => !d.Approved && d.Item?.Book != null)
+                .Select(d => d.Item.Book.ForeignBookId)
+                .ToHashSet();
             var importedPaths = new HashSet<string>(PathEqualityComparer.Instance);
 
             foreach (var importDecision in qualifiedImports)
@@ -180,6 +185,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     if (importResults.Where(r => r.ImportDecision.Item.Book.Id == localTrack.Book.Id).Any(r => r.ImportDecision.Item.Part == localTrack.Part))
                     {
                         importResults.Add(new ImportResult(importDecision, "Book has already been imported"));
+                        incompleteBooks.Add(localTrack.Book.ForeignBookId);
                         continue;
                     }
 
@@ -241,13 +247,16 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                         oldFiles = moveResult.OldFiles;
                         importedPaths.Add(bookFile.Path);
 
-                        if (!setAsideFiles.TryGetValue(localTrack.Book.Id, out var bookSetAsideFiles))
+                        if (moveResult.SetAsideFiles.Any())
                         {
-                            bookSetAsideFiles = new List<SetAsideBookFile>();
-                            setAsideFiles[localTrack.Book.Id] = bookSetAsideFiles;
-                        }
+                            if (!setAsideFiles.TryGetValue(localTrack.Book.ForeignBookId, out var bookSetAsideFiles))
+                            {
+                                bookSetAsideFiles = new List<SetAsideBookFile>();
+                                setAsideFiles[localTrack.Book.ForeignBookId] = bookSetAsideFiles;
+                            }
 
-                        bookSetAsideFiles.AddRange(moveResult.SetAsideFiles);
+                            bookSetAsideFiles.AddRange(moveResult.SetAsideFiles);
+                        }
                     }
                     else
                     {
@@ -323,19 +332,24 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
                 if (!imported)
                 {
-                    failedBookIds.Add(localTrack.Book.Id);
+                    incompleteBooks.Add(localTrack.Book.ForeignBookId);
                 }
             }
 
             // Only drop the files an upgrade replaced once every part of the new release is in place
             foreach (var bookSetAsideFiles in setAsideFiles)
             {
-                if (failedBookIds.Contains(bookSetAsideFiles.Key))
+                if (incompleteBooks.Contains(bookSetAsideFiles.Key))
                 {
-                    _logger.Warn("Not every file for {0} imported, so the {1} files it was replacing were kept in {2}",
-                        qualifiedImports.First(x => x.Item.Book.Id == bookSetAsideFiles.Key).Item.Book,
+                    // Put back what fits; a new part sitting on an old path keeps that old file set aside
+                    var kept = _bookFileUpgrader.RestoreSetAsideFiles(bookSetAsideFiles.Value);
+
+                    _logger.Warn("Not every file for {0} imported, so the {1} files it was replacing were kept: {2} put back, {3} left in {4}",
+                        qualifiedImports.First(x => x.Item.Book.ForeignBookId == bookSetAsideFiles.Key).Item.Book,
                         bookSetAsideFiles.Value.Count,
-                        bookSetAsideFiles.Value.Select(x => Path.GetDirectoryName(x.Path)).Distinct().ConcatToString(", "));
+                        bookSetAsideFiles.Value.Count - kept.Count,
+                        kept.Count,
+                        kept.Select(x => Path.GetDirectoryName(x.Path)).Distinct().ConcatToString(", "));
                     continue;
                 }
 

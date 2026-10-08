@@ -365,6 +365,48 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void should_keep_the_old_files_when_a_part_of_a_multi_part_upgrade_was_rejected()
+        {
+            var disk = new Dictionary<string, string>();
+            var database = new List<BookFile>();
+            var decisions = GivenMultiPartUpgrade(disk, database);
+            var oldPart3 = database.Single(x => x.Part == 3).Path;
+
+            // The third part never reaches the import, e.g. FreeSpaceSpecification rejected it
+            decisions[2].Reject(new Rejection("Not enough free space"));
+
+            Subject.Import(decisions, true);
+
+            disk.Values.Where(x => x == "old").Should().HaveCount(3);
+            disk.Should().Contain(oldPart3, "old");
+
+            Mocker.GetMock<IRecycleBinProvider>()
+                .Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_keep_the_old_files_when_a_part_of_a_multi_part_upgrade_was_skipped()
+        {
+            var disk = new Dictionary<string, string>();
+            var database = new List<BookFile>();
+            var decisions = GivenMultiPartUpgrade(disk, database);
+
+            // Two files claim part 2, so the second is skipped as already imported and part 3 is missing
+            decisions[2].Item.Part = 2;
+
+            Subject.Import(decisions, true);
+
+            disk.Values.Where(x => x == "old").Should().HaveCount(3);
+
+            Mocker.GetMock<IRecycleBinProvider>()
+                .Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
         public void should_not_remove_a_file_another_book_just_imported_to_a_path_in_its_stale_rows()
         {
             var first = _approvedDecisions.First().Item;

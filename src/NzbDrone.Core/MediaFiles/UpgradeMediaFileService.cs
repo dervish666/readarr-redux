@@ -16,6 +16,7 @@ namespace NzbDrone.Core.MediaFiles
     {
         BookFileMoveResult UpgradeBookFile(BookFile bookFile, LocalBook localBook, bool copyOnly = false, ICollection<string> importedPaths = null);
         void RemoveSetAsideFiles(IEnumerable<SetAsideBookFile> files);
+        List<SetAsideBookFile> RestoreSetAsideFiles(IEnumerable<SetAsideBookFile> files);
     }
 
     public class UpgradeMediaFileService : IUpgradeMediaFiles
@@ -135,7 +136,7 @@ namespace NzbDrone.Core.MediaFiles
             }
             catch
             {
-                PutBack(setAside);
+                RestoreSetAsideFiles(setAside);
                 throw;
             }
 
@@ -194,12 +195,21 @@ namespace NzbDrone.Core.MediaFiles
             };
         }
 
-        private void PutBack(List<SetAsideBookFile> files)
+        public List<SetAsideBookFile> RestoreSetAsideFiles(IEnumerable<SetAsideBookFile> files)
         {
+            var kept = new List<SetAsideBookFile>();
             var folders = new HashSet<string>();
 
             foreach (var file in files)
             {
+                // A new file may already sit on the old path. Never move over it, keep the old one set aside instead.
+                if (_diskProvider.FileExists(file.OriginalPath))
+                {
+                    _logger.Debug("{0} now holds a new file, leaving the old one at {1}", file.OriginalPath, file.Path);
+                    kept.Add(file);
+                    continue;
+                }
+
                 try
                 {
                     _diskProvider.MoveFile(file.Path, file.OriginalPath);
@@ -208,10 +218,13 @@ namespace NzbDrone.Core.MediaFiles
                 catch (Exception e)
                 {
                     _logger.Error(e, "Unable to put existing book file back at {0}, it is still at {1}", file.OriginalPath, file.Path);
+                    kept.Add(file);
                 }
             }
 
             RemoveEmptySetAsideFolders(folders);
+
+            return kept;
         }
 
         private void RemoveEmptySetAsideFolders(IEnumerable<string> folders)
