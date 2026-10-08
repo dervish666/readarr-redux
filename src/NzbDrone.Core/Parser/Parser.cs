@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -13,6 +14,15 @@ namespace NzbDrone.Core.Parser
 {
     public static class Parser
     {
+        // Series numbering right next to a matched title. A marked number ("Book 6", "#5", "Vol. 2", "Books 1-3")
+        // counts wherever it sits. A bare number counts only as its own token followed by a separator or the end
+        // ("Green Rider 1 - ...", "Green Rider.8.Falling"), so "64 Kbps" or "12 CDs" don't, and a bare range
+        // ("1-3") counts as it stands. "1 & 2" and "1 to 3" are ranges too, and "Books" with any number, an omnibus
+        // or a box set are several books. Four-digit years never match.
+        private const string SeriesRangeSeparator = @"\s*(?:-|&|\+|\band\b|\bto\b|\bthrough\b)\s*";
+        private const string SeriesPosition = @"(?<position>\d{1,3}(?:\.\d+)?)(?:" + SeriesRangeSeparator + @"(?<end>\d{1,3}(?:\.\d+)?))?(?!\d)";
+        private const string SeriesMarker = @"(?:\b(?:(?<books>books)|book|bk|vol(?:ume)?|no)\.?|#)\s*";
+
         private static readonly Logger Logger = NzbDroneLogger.GetLogger(typeof(Parser));
 
         private static readonly Regex[] ReportMusicTitleRegex = new[]
@@ -229,6 +239,21 @@ namespace NzbDrone.Core.Parser
 
         private static readonly Regex AfterDashRegex = new Regex(@"[-:].*", RegexOptions.Compiled);
 
+        private static readonly Regex[] SeriesPositionAfterTitleRegex = new[]
+        {
+            new Regex(@"^[\s.,_:(\[-]*" + SeriesMarker + SeriesPosition, RegexOptions.IgnoreCase | RegexOptions.Compiled),
+            new Regex(@"^(?:\s*[-:,]\s*|\s+|[._])(?<position>\d{1,3})" + SeriesRangeSeparator + @"(?<end>\d{1,3})(?!\d)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+            new Regex(@"^(?:\s*[-:,]\s*|\s+|[._])(?<position>\d{1,3}(?:\.\d+)?)(?=\s*(?:[-:._(\[)\]]|$))", RegexOptions.IgnoreCase | RegexOptions.Compiled)
+        };
+
+        private static readonly Regex OmnibusRegex = new Regex(@"\b(?:omnibus|box(?:ed)?[\s.]*set|boxset|complete[\s.]+series)\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        private static readonly Regex[] SeriesPositionBeforeTitleRegex = new[]
+        {
+            new Regex(SeriesMarker + SeriesPosition + @"[\s.,_:)\]-]*$", RegexOptions.IgnoreCase | RegexOptions.Compiled),
+            new Regex(@"(?:^|[\s.,_:(\[-])" + SeriesPosition + @"(?:\s*[-:.]\s*|[._])$", RegexOptions.IgnoreCase | RegexOptions.Compiled)
+        };
+
         public static ParsedTrackInfo ParseMusicPath(string path)
         {
             var fileInfo = new FileInfo(path);
@@ -357,16 +382,18 @@ namespace NzbDrone.Core.Parser
 
                 // A book should have exactly one monitored edition, but don't let one that has none or several
                 // break parsing for every release in the search
-                var bestBook = books
-                    .Select(x => x.Editions.Value.FirstOrDefault(e => e.Monitored) ?? x.Editions.Value.FirstOrDefault())
-                    .Where(x => x != null)
-                    .OrderByDescending(x => simpleTitle.FuzzyMatch(x.Title, wordDelimiters: WordDelimiters))
+                var best = books
+                    .Select(x => (Book: x, Edition: x.Editions.Value.FirstOrDefault(e => e.Monitored) ?? x.Editions.Value.FirstOrDefault()))
+                    .Where(x => x.Edition != null)
+                    .OrderByDescending(x => simpleTitle.FuzzyMatch(x.Edition.Title, wordDelimiters: WordDelimiters))
                     .FirstOrDefault();
 
-                if (bestBook == null)
+                if (best.Edition == null)
                 {
                     return null;
                 }
+
+                var bestBook = best.Edition;
 
                 var foundAuthor = GetTitleFuzzy(simpleTitle, authorName, out var remainder);
 
@@ -375,17 +402,23 @@ namespace NzbDrone.Core.Parser
                     foundAuthor = GetTitleFuzzy(simpleTitle, authorName.ToLastFirst(), out remainder);
                 }
 
-                var foundBook = GetTitleFuzzy(remainder, bestBook.Title, out _);
+                var foundBook = GetTitleFuzzy(remainder, bestBook.Title, out _, out var beforeBook, out var afterBook);
 
                 if (foundBook == null)
                 {
-                    foundBook = GetTitleFuzzy(remainder, bestBook.Title.SplitBookTitle(authorName).Item1, out _);
+                    foundBook = GetTitleFuzzy(remainder, bestBook.Title.SplitBookTitle(authorName).Item1, out _, out beforeBook, out afterBook);
                 }
 
                 Logger.Trace($"Found {foundAuthor} - {foundBook} with fuzzy parser");
 
                 if (foundAuthor == null || foundBook == null)
                 {
+                    return null;
+                }
+
+                if (IsOtherBookInSeries(beforeBook, afterBook, best.Book))
+                {
+                    Logger.Debug("'{0}' names '{1}' as its series, not as its title", title, foundBook);
                     return null;
                 }
 
@@ -426,7 +459,14 @@ namespace NzbDrone.Core.Parser
 
         public static string GetTitleFuzzy(string report, string name, out string remainder)
         {
+            return GetTitleFuzzy(report, name, out remainder, out _, out _);
+        }
+
+        private static string GetTitleFuzzy(string report, string name, out string remainder, out string preceding, out string following)
+        {
             remainder = report;
+            preceding = string.Empty;
+            following = string.Empty;
 
             Logger.Trace($"Finding '{name}' in '{report}'");
 
@@ -442,10 +482,70 @@ namespace NzbDrone.Core.Parser
             if (score >= 0.8)
             {
                 remainder = report.Remove(locStart, matchLength);
+                preceding = report.Substring(0, locStart);
+                following = report.Substring(locStart + matchLength);
                 return found.Replace('.', ' ').Replace('_', ' ');
             }
 
             return null;
+        }
+
+        // A series that shares its name with its first book puts that name in every later book's release title,
+        // e.g. "Firebrand: Green Rider, Book 6" or "Book 6 - Green Rider - Firebrand". If series numbering next to
+        // the matched title isn't one of the book's own positions, the release is a different book in that series.
+        private static bool IsOtherBookInSeries(string beforeTitle, string afterTitle, Book book)
+        {
+            var positions = (book.SeriesLinks?.Value ?? new List<SeriesBookLink>())
+                .Select(x => ParseSeriesPosition(x.Position))
+                .Where(x => x != null)
+                .ToList();
+
+            if (!positions.Any())
+            {
+                return false;
+            }
+
+            // An omnibus is several books, so it's never a single-position book. The matched title is excluded
+            // from both sides, so a book that is itself called an omnibus still matches.
+            if (OmnibusRegex.IsMatch(beforeTitle) || OmnibusRegex.IsMatch(afterTitle))
+            {
+                return positions.All(x => !x.Contains('-'));
+            }
+
+            var match = SeriesPositionAfterTitleRegex.Select(x => x.Match(afterTitle)).FirstOrDefault(x => x.Success) ??
+                        SeriesPositionBeforeTitleRegex.Select(x => x.Match(beforeTitle)).FirstOrDefault(x => x.Success);
+
+            if (match == null)
+            {
+                return false;
+            }
+
+            // "Books 1, 2 and 3" names several books even where only the first number is read
+            if (match.Groups["books"].Success && !match.Groups["end"].Success)
+            {
+                return positions.All(x => !x.Contains('-'));
+            }
+
+            var releasePosition = match.Groups["end"].Success
+                ? $"{match.Groups["position"].Value}-{match.Groups["end"].Value}"
+                : match.Groups["position"].Value;
+
+            return !positions.Contains(ParseSeriesPosition(releasePosition));
+        }
+
+        // "6", "06" and "6.0" are one position, and "1-3" is a range that only matches the same range
+        private static string ParseSeriesPosition(string position)
+        {
+            var parts = (position ?? string.Empty).Split('-');
+
+            if (parts.Length > 2)
+            {
+                return null;
+            }
+
+            var numbers = parts.Select(x => decimal.TryParse(x.Trim(), NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var number) ? number : (decimal?)null).ToList();
+
+            return numbers.All(x => x.HasValue) ? numbers.Select(x => x.Value.ToString("0.###", CultureInfo.InvariantCulture)).ConcatToString("-") : null;
         }
 
         public static ParsedBookInfo ParseBookTitle(string title)

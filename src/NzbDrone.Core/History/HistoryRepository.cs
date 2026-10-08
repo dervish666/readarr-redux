@@ -13,6 +13,7 @@ namespace NzbDrone.Core.History
         EntityHistory MostRecentForBook(int bookId);
         EntityHistory MostRecentForDownloadId(string downloadId);
         List<EntityHistory> FindByDownloadId(string downloadId);
+        List<EntityHistory> FindGrabsByDownloadId(string downloadId);
         List<EntityHistory> GetByAuthor(int authorId, EntityHistoryEventType? eventType);
         List<EntityHistory> GetByBook(int bookId, EntityHistoryEventType? eventType);
         List<EntityHistory> FindDownloadHistory(int idAuthorId, QualityModel quality);
@@ -50,6 +51,12 @@ namespace NzbDrone.Core.History
                     history.Book = book;
                     return history;
                 }).ToList();
+        }
+
+        // Unlike FindByDownloadId, this doesn't join Author and Book, so grabs of books since deleted are kept
+        public List<EntityHistory> FindGrabsByDownloadId(string downloadId)
+        {
+            return Query(h => h.DownloadId == downloadId && h.EventType == EntityHistoryEventType.Grabbed);
         }
 
         public List<EntityHistory> GetByAuthor(int authorId, EntityHistoryEventType? eventType)

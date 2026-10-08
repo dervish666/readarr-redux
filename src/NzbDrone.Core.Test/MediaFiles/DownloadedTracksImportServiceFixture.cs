@@ -335,6 +335,40 @@ namespace NzbDrone.Core.Test.MediaFiles
             DiskProvider.FolderExists(_subFolders[0]).Should().BeTrue();
         }
 
+        [Test]
+        public void should_identify_a_download_folder_against_the_grabbed_book()
+        {
+            var folder = Path.Combine(_droneFactory, "Orson Scott Card - Ruins Pathfinder, Book 2 (Unabridged) MP3");
+            FileSystem.AddFile(Path.Combine(folder, "Ruins(Unabridged)Part1.mp3"), new MockFileData(string.Empty));
+
+            GivenSuccessfulImport();
+
+            var author = Builder<Author>.CreateNew().Build();
+            var ruins = new Book { Id = 57560, Title = "Ruins" };
+
+            Subject.ProcessPath(folder, ImportMode.Auto, author, _trackedDownload.DownloadItem, ruins);
+
+            Mocker.GetMock<IMakeImportDecision>()
+                  .Verify(v => v.GetImportDecisions(It.IsAny<List<IFileInfo>>(), It.Is<IdentificationOverrides>(o => o.Author == author && o.GrabbedBook == ruins), It.IsAny<ImportDecisionMakerInfo>(), It.IsAny<ImportDecisionMakerConfig>()), Times.Once());
+        }
+
+        [Test]
+        public void should_identify_a_download_file_against_the_grabbed_book()
+        {
+            var file = Path.Combine(_droneFactory, "Orson Scott Card - Ruins Pathfinder, Book 2 (Unabridged) MP3.m4b");
+            FileSystem.AddFile(file, new MockFileData(string.Empty));
+
+            GivenSuccessfulImport();
+
+            var author = Builder<Author>.CreateNew().Build();
+            var ruins = new Book { Id = 57560, Title = "Ruins" };
+
+            Subject.ProcessPath(file, ImportMode.Auto, author, _trackedDownload.DownloadItem, ruins);
+
+            Mocker.GetMock<IMakeImportDecision>()
+                  .Verify(v => v.GetImportDecisions(It.IsAny<List<IFileInfo>>(), It.Is<IdentificationOverrides>(o => o.Author == author && o.GrabbedBook == ruins), It.IsAny<ImportDecisionMakerInfo>(), It.IsAny<ImportDecisionMakerConfig>()), Times.Once());
+        }
+
         private void VerifyNoImport()
         {
             Mocker.GetMock<IImportApprovedBooks>().Verify(c => c.Import(It.IsAny<List<ImportDecision<LocalBook>>>(), true, null, ImportMode.Auto),

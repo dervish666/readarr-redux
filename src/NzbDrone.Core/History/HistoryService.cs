@@ -26,6 +26,7 @@ namespace NzbDrone.Core.History
         List<EntityHistory> GetByBook(int bookId, EntityHistoryEventType? eventType);
         List<EntityHistory> Find(string downloadId, EntityHistoryEventType eventType);
         List<EntityHistory> FindByDownloadId(string downloadId);
+        List<EntityHistory> FindGrabsByDownloadId(string downloadId);
         string FindDownloadId(TrackImportedEvent trackedDownload);
         List<EntityHistory> Since(DateTime date, EntityHistoryEventType? eventType);
         void UpdateMany(IList<EntityHistory> items);
@@ -89,6 +90,11 @@ namespace NzbDrone.Core.History
         public List<EntityHistory> FindByDownloadId(string downloadId)
         {
             return _historyRepository.FindByDownloadId(downloadId);
+        }
+
+        public List<EntityHistory> FindGrabsByDownloadId(string downloadId)
+        {
+            return _historyRepository.FindGrabsByDownloadId(downloadId);
         }
 
         public string FindDownloadId(TrackImportedEvent trackedDownload)

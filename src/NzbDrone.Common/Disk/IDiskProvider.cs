@@ -37,6 +37,7 @@ namespace NzbDrone.Common.Disk
         bool TryCreateHardLink(string source, string destination);
         bool TryCreateRefLink(string source, string destination);
         void DeleteFolder(string path, bool recursive);
+        void DeleteEmptyFolder(string path);
         string ReadAllText(string filePath);
         void WriteAllText(string filename, string contents);
         void FolderSetLastWriteTime(string path, DateTime dateTime);

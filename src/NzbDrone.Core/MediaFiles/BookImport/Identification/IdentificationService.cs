@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
+using System.Text.RegularExpressions;
 using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Instrumentation.Extensions;
 using NzbDrone.Core.MediaFiles.BookImport.Aggregation;
+using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
 
 namespace NzbDrone.Core.MediaFiles.BookImport.Identification
@@ -18,6 +20,11 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
 
     public class IdentificationService : IIdentificationService
     {
+        // Normalized, "The Book One" and "The Book Two" score 0.7, "Ruins Disc 1" and "Ruins Disc 2" 0.9
+        private const double SameBookTitleThreshold = 0.8;
+
+        private static readonly Regex DigitsRegex = new Regex(@"\d+", RegexOptions.Compiled);
+
         private readonly ITrackGroupingService _trackGroupingService;
         private readonly IMetadataTagService _metadataTagService;
         private readonly IAugmentingService _augmentingService;
@@ -77,6 +84,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
             _logger.Debug("Starting book identification");
 
             var releases = GetLocalBookReleases(localTracks, config.SingleRelease);
+            idOverrides = PinGrabbedBook(idOverrides, releases);
 
             var i = 0;
             foreach (var localRelease in releases)
@@ -100,6 +108,53 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
             _logger.Debug($"Track identification for {localTracks.Count} tracks took {watch.ElapsedMilliseconds}ms");
 
             return releases;
+        }
+
+        // A download grabbed for one book is identified against that book alone, but only while its files look like
+        // one book. A pack, or a release whose tags name other books, goes through normal matching instead, so the
+        // other books in it can't be imported as the grabbed one.
+        private IdentificationOverrides PinGrabbedBook(IdentificationOverrides idOverrides, List<LocalEdition> releases)
+        {
+            if (idOverrides?.GrabbedBook == null || idOverrides.Book != null || idOverrides.Edition != null)
+            {
+                return idOverrides;
+            }
+
+            var releaseTitles = releases
+                .Select(r => r.LocalBooks.Select(x => NormalizeBookTitle(x.FileTrackInfo?.BookTitle)).Where(x => x.IsNotNullOrWhiteSpace()).ToList())
+                .ToList();
+            var titles = releaseTitles.SelectMany(x => x).Distinct().ToList();
+
+            var differentTitles = titles.Any(a => titles.Any(b => a.LevenshteinCoefficient(b) < SameBookTitleThreshold));
+            var untitledRelease = releases.Count > 1 && releaseTitles.Any(x => !x.Any());
+
+            // Within one release a different number is a disc or part marker, but separate releases numbered
+            // differently ("The Book 1", "The Book 2") are separate books in a pack
+            var numbering = releaseTitles.Where(x => x.Any())
+                .Select(x => x.Select(t => DigitsRegex.Matches(t).Select(m => m.Value).ConcatToString(" ")).MostCommon(t => t))
+                .Distinct()
+                .ToList();
+            differentTitles |= numbering.Count > 1;
+
+            if (differentTitles || untitledRelease)
+            {
+                _logger.Info("Files look like more than one book ({0}), so they won't be pinned to {1}",
+                    titles.Any() ? titles.ConcatToString(", ") : $"{releases.Count} releases",
+                    idOverrides.GrabbedBook);
+
+                return idOverrides;
+            }
+
+            return new IdentificationOverrides
+            {
+                Author = idOverrides.Author,
+                Book = idOverrides.GrabbedBook
+            };
+        }
+
+        private static string NormalizeBookTitle(string title)
+        {
+            return title.IsNullOrWhiteSpace() ? string.Empty : title.RemoveBracketsAndContents().CleanAuthorName();
         }
 
         private List<LocalBook> ToLocalTrack(IEnumerable<BookFile> trackfiles, LocalEdition localRelease)

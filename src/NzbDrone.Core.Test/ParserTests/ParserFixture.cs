@@ -37,6 +37,18 @@ namespace NzbDrone.Core.Test.ParserTests
             _books.Add(a);
         }
 
+        private void GivenSearchCriteriaInSeries(string authorName, string bookTitle, string position)
+        {
+            _author.Name = authorName;
+            _books.Clear();
+            _books.Add(new Book
+            {
+                Title = bookTitle,
+                Editions = new List<Edition> { new Edition { Title = bookTitle, Monitored = true } },
+                SeriesLinks = new List<SeriesBookLink> { new SeriesBookLink { Position = position } }
+            });
+        }
+
         [TestCase("Bad Format", "badformat")]
         public void should_parse_author_name(string postTitle, string title)
         {
@@ -243,6 +255,49 @@ namespace NzbDrone.Core.Test.ParserTests
 
             parseResult.AuthorName.Should().Be(expectedAuthor);
             parseResult.BookTitle.Should().Be(expectedBook);
+        }
+
+        // Live cases: searches for Green Rider (Green Rider #1) grabbed the first three releases
+        [TestCase("Kristen Britain", "Green Rider", "1", "Firebrand: Green Rider, Book 6 - Kristen Britain [MP3] [64 Kbps]")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Mirror Sight (Green Rider, #5) - Kristen Britain [MP3]")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain.Green Rider.8.Falling in a Sea of Stars.m4b")]
+        [TestCase("Orson Scott Card", "Pathfinder", "1", "Orson Scott Card - Ruins Pathfinder, Book 2 (Unabridged) MP3")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Book 6 - Green Rider - Firebrand")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Green Rider 1-3 MP3")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Green Rider, Books 1-3")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Green Rider Books 1-3")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Green Rider, Books 1 & 2 MP3")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Green Rider, Books 1 to 3")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Green Rider, Books 1, 2 and 3")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Green Rider Omnibus MP3")]
+        public void should_not_parse_a_later_book_in_a_series_named_after_the_searched_book(string searchAuthor, string searchBook, string position, string report)
+        {
+            GivenSearchCriteriaInSeries(searchAuthor, searchBook, position);
+
+            var parseResult = Parser.Parser.ParseBookTitleWithSearchCriteria(report, _author, _books);
+
+            parseResult.Should().BeNull();
+        }
+
+        [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Green Rider 1 - Green Rider (2012) MP3")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Green Rider - Kristen Britain [MP3] [128 Kbps]")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Green Rider (Green Rider, #1) - Kristen Britain [MP3]")]
+        [TestCase("Orson Scott Card", "Ruins", "2", "Orson Scott Card - Ruins Pathfinder, Book 2 (Unabridged) MP3")]
+        [TestCase("Orson Scott Card", "Pathfinder", "1", "Orson Scott Card - Pathfinder (2010) MP3")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Green Rider - 64 Kbps MP3")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Green Rider 12 CDs MP3")]
+        [TestCase("Kristen Britain", "Green Rider", "1", "Kristen Britain - Book 1 - Green Rider")]
+        [TestCase("Kristen Britain", "Firebrand", "6", "Kristen Britain - Book 6 - Green Rider - Firebrand")]
+        [TestCase("Kristen Britain", "Green Rider", "1-3", "Kristen Britain - Green Rider 1-3 MP3")]
+        [TestCase("Kristen Britain", "Green Rider", "1-3", "Kristen Britain - Green Rider Omnibus MP3")]
+        [TestCase("Kristen Britain", "Firebrand", "6", "Kristen Britain - Firebrand, Book 6, 12 CDs")]
+        public void should_parse_the_searched_book_when_the_series_position_agrees(string searchAuthor, string searchBook, string position, string report)
+        {
+            GivenSearchCriteriaInSeries(searchAuthor, searchBook, position);
+
+            var parseResult = Parser.Parser.ParseBookTitleWithSearchCriteria(report, _author, _books);
+
+            parseResult.BookTitle.Should().Be(searchBook);
         }
 
         [Test]

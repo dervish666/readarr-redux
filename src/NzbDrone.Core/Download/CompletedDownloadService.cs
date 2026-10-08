@@ -6,6 +6,8 @@ using NLog;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Instrumentation.Extensions;
+using NzbDrone.Core.Books;
+using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.History;
 using NzbDrone.Core.MediaFiles;
@@ -20,12 +22,14 @@ namespace NzbDrone.Core.Download
         void Check(TrackedDownload trackedDownload);
         void Import(TrackedDownload trackedDownload);
         bool VerifyImport(TrackedDownload trackedDownload, List<ImportResult> importResults);
+        Book GetGrabbedBook(TrackedDownload trackedDownload);
     }
 
     public class CompletedDownloadService : ICompletedDownloadService
     {
         private readonly IEventAggregator _eventAggregator;
         private readonly IHistoryService _historyService;
+        private readonly IBookService _bookService;
         private readonly IProvideImportItemService _provideImportItemService;
         private readonly IDownloadedBooksImportService _downloadedTracksImportService;
         private readonly ITrackedDownloadAlreadyImported _trackedDownloadAlreadyImported;
@@ -33,6 +37,7 @@ namespace NzbDrone.Core.Download
 
         public CompletedDownloadService(IEventAggregator eventAggregator,
                                         IHistoryService historyService,
+                                        IBookService bookService,
                                         IProvideImportItemService provideImportItemService,
                                         IDownloadedBooksImportService downloadedTracksImportService,
                                         ITrackedDownloadAlreadyImported trackedDownloadAlreadyImported,
@@ -40,6 +45,7 @@ namespace NzbDrone.Core.Download
         {
             _eventAggregator = eventAggregator;
             _historyService = historyService;
+            _bookService = bookService;
             _provideImportItemService = provideImportItemService;
             _downloadedTracksImportService = downloadedTracksImportService;
             _trackedDownloadAlreadyImported = trackedDownloadAlreadyImported;
@@ -86,10 +92,23 @@ namespace NzbDrone.Core.Download
                 return;
             }
 
+            Book grabbedBook;
+
+            try
+            {
+                grabbedBook = GetGrabbedBook(trackedDownload);
+            }
+            catch (GrabbedBookNotFoundException e)
+            {
+                trackedDownload.State = TrackedDownloadState.ImportFailed;
+                trackedDownload.Warn(e.Message);
+                return;
+            }
+
             trackedDownload.State = TrackedDownloadState.Importing;
 
             var outputPath = trackedDownload.ImportItem.OutputPath.FullPath;
-            var importResults = _downloadedTracksImportService.ProcessPath(outputPath, ImportMode.Auto, trackedDownload.RemoteBook?.Author, trackedDownload.DownloadItem);
+            var importResults = _downloadedTracksImportService.ProcessPath(outputPath, ImportMode.Auto, trackedDownload.RemoteBook?.Author, trackedDownload.DownloadItem, grabbedBook);
 
             if (importResults.Empty())
             {
@@ -117,6 +136,61 @@ namespace NzbDrone.Core.Download
                 _eventAggregator.PublishEvent(new BookImportIncompleteEvent(trackedDownload));
                 return;
             }
+        }
+
+        // The book this download was grabbed for, taken from the grab history rather than a fresh parse of the
+        // download title, which can map to a different book. Null when there's no grab history or the latest grab
+        // was for several books. Throws when the grabbed book is gone or now belongs to another author, because
+        // matching the files freely could then land them on a neighbouring book.
+        public Book GetGrabbedBook(TrackedDownload trackedDownload)
+        {
+            var downloadId = trackedDownload.DownloadItem?.DownloadId;
+
+            if (downloadId.IsNullOrWhiteSpace())
+            {
+                return null;
+            }
+
+            // A reused torrent hash or a retried grab leaves several grabs, and the newest says what this download is.
+            // One grab of a release covering several books writes a row per book, moments apart.
+            var grabs = _historyService.FindGrabsByDownloadId(downloadId);
+            var latest = grabs.MaxBy(h => h.Date);
+
+            if (latest == null)
+            {
+                return null;
+            }
+
+            var bookIds = grabs.Where(h => h.SourceTitle == latest.SourceTitle && h.Date >= latest.Date.AddMinutes(-1))
+                .Select(h => h.BookId)
+                .Distinct()
+                .ToList();
+
+            if (bookIds.Count != 1)
+            {
+                _logger.Debug("Download {0} was grabbed for {1} books, not pinning its import to one", downloadId, bookIds.Count);
+                return null;
+            }
+
+            Book book;
+
+            try
+            {
+                book = _bookService.GetBook(bookIds[0]);
+            }
+            catch (ModelNotFoundException)
+            {
+                throw new GrabbedBookNotFoundException("The book this download was grabbed for (id {0}) no longer exists, manual import required", bookIds[0]);
+            }
+
+            var author = trackedDownload.RemoteBook?.Author;
+
+            if (author != null && book.AuthorMetadataId != author.AuthorMetadataId)
+            {
+                throw new GrabbedBookNotFoundException("The book this download was grabbed for ({0}) now belongs to another author, manual import required", book);
+            }
+
+            return book;
         }
 
         public bool VerifyImport(TrackedDownload trackedDownload, List<ImportResult> importResults)

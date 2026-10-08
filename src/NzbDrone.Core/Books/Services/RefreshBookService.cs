@@ -28,6 +28,8 @@ namespace NzbDrone.Core.Books
         IExecute<RefreshBookCommand>,
         IExecute<BulkRefreshBookCommand>
     {
+        private const int MaxFailedLookupsPerRefresh = 3;
+
         private readonly IBookService _bookService;
         private readonly IAuthorService _authorService;
         private readonly IRootFolderService _rootFolderService;
@@ -353,11 +355,25 @@ namespace NzbDrone.Core.Books
         public bool RefreshBookInfo(List<Book> books, List<Book> remoteBooks, Author remoteData, bool forceBookRefresh, bool forceUpdateFileTags, DateTime? lastUpdate)
         {
             var updated = false;
+            var remoteIds = remoteBooks.Select(x => x.ForeignBookId).ToHashSet();
+            var failedLookups = 0;
+            var skippedLookups = 0;
 
             foreach (var book in books)
             {
                 if (forceBookRefresh || _checkIfBookShouldBeRefreshed.ShouldRefresh(book))
                 {
+                    // A book missing from the author's works list costs a lookup of its own, each retrying through
+                    // rate limits. Once a few of those have failed the metadata source is struggling, so keep the
+                    // rest as they are rather than queue more lookups behind it.
+                    var needsLookup = !remoteIds.Contains(book.ForeignBookId);
+
+                    if (needsLookup && failedLookups >= MaxFailedLookupsPerRefresh)
+                    {
+                        skippedLookups++;
+                        continue;
+                    }
+
                     try
                     {
                         updated |= RefreshBookInfo(book, remoteBooks, remoteData, forceUpdateFileTags);
@@ -366,12 +382,25 @@ namespace NzbDrone.Core.Books
                     {
                         // Keep the book and carry on, so one failed lookup doesn't stop the whole author refreshing
                         _logger.Error(e, "Couldn't refresh info for book {0}", book);
+
+                        if (needsLookup)
+                        {
+                            failedLookups++;
+                        }
                     }
                 }
                 else
                 {
                     _logger.Debug("Skipping refresh of book: {0}", book.Title);
                 }
+            }
+
+            if (skippedLookups > 0)
+            {
+                _logger.Warn("Stopped looking up books missing from {0}'s works list after {1} failed lookups. Kept {2} more as they are until the next refresh.",
+                    remoteData,
+                    failedLookups,
+                    skippedLookups);
             }
 
             return updated;
@@ -386,6 +415,12 @@ namespace NzbDrone.Core.Books
         {
             var data = GetSkyhookData(book);
 
+            if (data == null)
+            {
+                _logger.Warn("Book {0} wasn't found in the metadata, keeping it as it is", book);
+                return false;
+            }
+
             return RefreshBookInfo(book, data.Books, data, false);
         }
 
@@ -395,7 +430,15 @@ namespace NzbDrone.Core.Books
 
             foreach (var book in books)
             {
-                RefreshBookInfo(book);
+                try
+                {
+                    RefreshBookInfo(book);
+                }
+                catch (Exception e)
+                {
+                    // Keep the book and carry on with the rest
+                    _logger.Error(e, "Couldn't refresh info for book {0}", book);
+                }
             }
         }
 

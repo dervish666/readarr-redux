@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using NLog;
+using NzbDrone.Common;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Instrumentation.Extensions;
@@ -163,11 +164,44 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
             var filesToAdd = new List<BookFile>(qualifiedImports.Count);
             var trackImportedEvents = new List<TrackImportedEvent>(qualifiedImports.Count);
+            var setAsideFiles = new Dictionary<string, List<SetAsideBookFile>>();
+
+            // A book whose new files didn't all import is incomplete, and keeps the files they were replacing.
+            // Rejected parts never reach the loop below, so start from them.
+            var incompleteBooks = decisions.Where(d => !d.Approved && d.Item?.Book != null)
+                .Select(d => d.Item.Book.ForeignBookId)
+                .ToHashSet();
+
+            // A file rejected before identification has no book, so it could be a part of any book in the batch by
+            // the same author (or any book at all, if it has no author either). Treat all of those as incomplete.
+            var unidentified = decisions.Where(d => !d.Approved && (d.Item?.Book == null || d.Item.Edition == null)).ToList();
+
+            foreach (var decision in decisions.Where(d => d.Approved && d.Item.Book != null))
+            {
+                if (unidentified.Any(d => d.Item?.Author == null || d.Item.Author.AuthorMetadataId == decision.Item.Book.AuthorMetadataId))
+                {
+                    incompleteBooks.Add(decision.Item.Book.ForeignBookId);
+                }
+            }
+
+            // A gap in a book's part numbers means a part never arrived
+            foreach (var book in decisions.Where(d => d.Item?.Book != null).GroupBy(d => d.Item.Book.ForeignBookId))
+            {
+                var parts = book.Select(d => d.Item.Part).Where(p => p > 0).Distinct().ToList();
+
+                if (parts.Any() && parts.Max() > parts.Count)
+                {
+                    incompleteBooks.Add(book.Key);
+                }
+            }
+
+            var importedPaths = new HashSet<string>(PathEqualityComparer.Instance);
 
             foreach (var importDecision in qualifiedImports)
             {
                 var localTrack = importDecision.Item;
                 var oldFiles = new List<BookFile>();
+                var imported = false;
 
                 try
                 {
@@ -175,6 +209,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     if (importResults.Where(r => r.ImportDecision.Item.Book.Id == localTrack.Book.Id).Any(r => r.ImportDecision.Item.Part == localTrack.Part))
                     {
                         importResults.Add(new ImportResult(importDecision, "Book has already been imported"));
+                        incompleteBooks.Add(localTrack.Book.ForeignBookId);
                         continue;
                     }
 
@@ -232,8 +267,19 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     {
                         bookFile.SceneName = GetSceneReleaseName(downloadClientItem);
 
-                        var moveResult = _bookFileUpgrader.UpgradeBookFile(bookFile, localTrack, copyOnly);
+                        var moveResult = _bookFileUpgrader.UpgradeBookFile(bookFile, localTrack, copyOnly, importedPaths);
                         oldFiles = moveResult.OldFiles;
+
+                        if (moveResult.SetAsideFiles.Any())
+                        {
+                            if (!setAsideFiles.TryGetValue(localTrack.Book.ForeignBookId, out var bookSetAsideFiles))
+                            {
+                                bookSetAsideFiles = new List<SetAsideBookFile>();
+                                setAsideFiles[localTrack.Book.ForeignBookId] = bookSetAsideFiles;
+                            }
+
+                            bookSetAsideFiles.AddRange(moveResult.SetAsideFiles);
+                        }
                     }
                     else
                     {
@@ -267,6 +313,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     // create all the import events here, but we can't publish until the trackfiles have been
                     // inserted and ids created
                     trackImportedEvents.Add(new TrackImportedEvent(localTrack, bookFile, oldFiles, !localTrack.ExistingFile, downloadClientItem));
+                    imported = true;
                 }
                 catch (RootFolderNotFoundException e)
                 {
@@ -305,12 +352,59 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     _logger.Warn(e, "Couldn't import book " + localTrack);
                     importResults.Add(new ImportResult(importDecision, "Failed to import book."));
                 }
+
+                if (!imported)
+                {
+                    incompleteBooks.Add(localTrack.Book.ForeignBookId);
+                }
             }
 
             var watch = new System.Diagnostics.Stopwatch();
             watch.Start();
-            _mediaFileService.AddMany(filesToAdd);
+
+            try
+            {
+                _mediaFileService.AddMany(filesToAdd);
+            }
+            catch
+            {
+                // Without the new rows the import didn't take, so nothing it replaced may be recycled
+                foreach (var bookSetAsideFiles in setAsideFiles.Values)
+                {
+                    var kept = _bookFileUpgrader.RestoreSetAsideFiles(bookSetAsideFiles);
+
+                    if (kept.Any())
+                    {
+                        _logger.Error("Couldn't save the imported book files, so the {0} files they replaced were kept in {1}",
+                            kept.Count,
+                            kept.Select(x => Path.GetDirectoryName(x.Path)).Distinct().ConcatToString(", "));
+                    }
+                }
+
+                throw;
+            }
+
             _logger.Debug("Inserted new trackfiles in {0}ms", watch.ElapsedMilliseconds);
+
+            // Only drop the files an upgrade replaced once every part of the new release is in place
+            foreach (var bookSetAsideFiles in setAsideFiles)
+            {
+                if (incompleteBooks.Contains(bookSetAsideFiles.Key))
+                {
+                    // Put back what fits; a new part sitting on an old path keeps that old file set aside
+                    var kept = _bookFileUpgrader.RestoreSetAsideFiles(bookSetAsideFiles.Value);
+
+                    _logger.Warn("Not every file for {0} imported, so the {1} files it was replacing were kept: {2} put back, {3} left in {4}",
+                        qualifiedImports.First(x => x.Item.Book.ForeignBookId == bookSetAsideFiles.Key).Item.Book,
+                        bookSetAsideFiles.Value.Count,
+                        bookSetAsideFiles.Value.Count - kept.Count,
+                        kept.Count,
+                        kept.Select(x => Path.GetDirectoryName(x.Path)).Distinct().ConcatToString(", "));
+                    continue;
+                }
+
+                _bookFileUpgrader.RemoveSetAsideFiles(bookSetAsideFiles.Value);
+            }
 
             // now that trackfiles have been inserted and ids generated, publish the import events
             foreach (var trackImportedEvent in trackImportedEvents)

@@ -33,7 +33,7 @@ namespace NzbDrone.Core.Test.MediaFiles
                 .Returns(new List<ImportResult>());
 
             Mocker.GetMock<IDownloadedBooksImportService>()
-                .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>()))
+                .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>(), It.IsAny<Book>()))
                 .Returns(new List<ImportResult>());
 
             var downloadItem = Builder<DownloadClientItem>.CreateNew()
@@ -85,7 +85,7 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             Subject.Execute(new DownloadedBooksScanCommand() { Path = _downloadFolder });
 
-            Mocker.GetMock<IDownloadedBooksImportService>().Verify(c => c.ProcessPath(It.IsAny<string>(), ImportMode.Auto, null, null), Times.Once());
+            Mocker.GetMock<IDownloadedBooksImportService>().Verify(c => c.ProcessPath(It.IsAny<string>(), ImportMode.Auto, null, null, null), Times.Once());
         }
 
         [Test]
@@ -95,7 +95,7 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             Subject.Execute(new DownloadedBooksScanCommand() { Path = _downloadFile });
 
-            Mocker.GetMock<IDownloadedBooksImportService>().Verify(c => c.ProcessPath(It.IsAny<string>(), ImportMode.Auto, null, null), Times.Once());
+            Mocker.GetMock<IDownloadedBooksImportService>().Verify(c => c.ProcessPath(It.IsAny<string>(), ImportMode.Auto, null, null, null), Times.Once());
         }
 
         [Test]
@@ -106,7 +106,42 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             Subject.Execute(new DownloadedBooksScanCommand() { Path = _downloadFolder, DownloadClientId = "sab1" });
 
-            Mocker.GetMock<IDownloadedBooksImportService>().Verify(c => c.ProcessPath(_downloadFolder, ImportMode.Auto, _trackedDownload.RemoteBook.Author, _trackedDownload.DownloadItem), Times.Once());
+            Mocker.GetMock<IDownloadedBooksImportService>().Verify(c => c.ProcessPath(_downloadFolder, ImportMode.Auto, _trackedDownload.RemoteBook.Author, _trackedDownload.DownloadItem, It.IsAny<Book>()), Times.Once());
+        }
+
+        [Test]
+        public void should_pin_the_book_from_grab_history_not_the_parsed_title()
+        {
+            GivenExistingFolder(_downloadFolder);
+            GivenValidQueueItem();
+
+            var ruins = new Book { Id = 57560, Title = "Ruins" };
+            _trackedDownload.RemoteBook.Books = new List<Book> { new Book { Id = 57546, Title = "Pathfinder" } };
+
+            Mocker.GetMock<ICompletedDownloadService>()
+                  .Setup(s => s.GetGrabbedBook(_trackedDownload))
+                  .Returns(ruins);
+
+            Subject.Execute(new DownloadedBooksScanCommand() { Path = _downloadFolder, DownloadClientId = "sab1" });
+
+            Mocker.GetMock<IDownloadedBooksImportService>().Verify(c => c.ProcessPath(_downloadFolder, ImportMode.Auto, _trackedDownload.RemoteBook.Author, _trackedDownload.DownloadItem, ruins), Times.Once());
+        }
+
+        [Test]
+        public void should_not_import_when_the_grabbed_book_is_gone()
+        {
+            GivenExistingFolder(_downloadFolder);
+            GivenValidQueueItem();
+
+            Mocker.GetMock<ICompletedDownloadService>()
+                  .Setup(s => s.GetGrabbedBook(_trackedDownload))
+                  .Throws(new GrabbedBookNotFoundException("The book this download was grabbed for (id 57560) no longer exists, manual import required"));
+
+            Subject.Execute(new DownloadedBooksScanCommand() { Path = _downloadFolder, DownloadClientId = "sab1" });
+
+            Mocker.GetMock<IDownloadedBooksImportService>().Verify(c => c.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>(), It.IsAny<Book>()), Times.Never());
+
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]
@@ -116,7 +151,7 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             Subject.Execute(new DownloadedBooksScanCommand() { Path = _downloadFolder, DownloadClientId = "sab1" });
 
-            Mocker.GetMock<IDownloadedBooksImportService>().Verify(c => c.ProcessPath(_downloadFolder, ImportMode.Auto, null, null), Times.Once());
+            Mocker.GetMock<IDownloadedBooksImportService>().Verify(c => c.ProcessPath(_downloadFolder, ImportMode.Auto, null, null, null), Times.Once());
 
             ExceptionVerification.ExpectedWarns(1);
         }
@@ -126,7 +161,7 @@ namespace NzbDrone.Core.Test.MediaFiles
         {
             Subject.Execute(new DownloadedBooksScanCommand() { Path = _downloadFolder });
 
-            Mocker.GetMock<IDownloadedBooksImportService>().Verify(c => c.ProcessPath(It.IsAny<string>(), ImportMode.Auto, null, null), Times.Never());
+            Mocker.GetMock<IDownloadedBooksImportService>().Verify(c => c.ProcessPath(It.IsAny<string>(), ImportMode.Auto, null, null, null), Times.Never());
 
             ExceptionVerification.ExpectedWarns(1);
         }
@@ -138,7 +173,7 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             Subject.Execute(new DownloadedBooksScanCommand() { Path = _downloadFile, ImportMode = ImportMode.Copy });
 
-            Mocker.GetMock<IDownloadedBooksImportService>().Verify(c => c.ProcessPath(It.IsAny<string>(), ImportMode.Copy, null, null), Times.Once());
+            Mocker.GetMock<IDownloadedBooksImportService>().Verify(c => c.ProcessPath(It.IsAny<string>(), ImportMode.Copy, null, null, null), Times.Once());
         }
     }
 }

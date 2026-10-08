@@ -28,6 +28,56 @@ namespace NzbDrone.Common.Test.DiskTests
         }
 
         [Test]
+        public void DeleteEmptyFolder_should_remove_an_empty_folder()
+        {
+            var folder = GetTempFilePath();
+            Directory.CreateDirectory(folder);
+
+            Subject.DeleteEmptyFolder(folder);
+
+            Directory.Exists(folder).Should().BeFalse();
+        }
+
+        [Test]
+        public void DeleteEmptyFolder_should_leave_a_folder_that_has_files_and_the_files_alone()
+        {
+            var folder = GetTempFilePath();
+            Directory.CreateDirectory(folder);
+            var file = Path.Combine(folder, "old part.mp3");
+            File.WriteAllText(file, "old");
+
+            Assert.Throws<IOException>(() => Subject.DeleteEmptyFolder(folder));
+
+            File.ReadAllText(file).Should().Be("old");
+        }
+
+        [Test]
+        public void TryCreateHardLink_should_not_replace_an_existing_file()
+        {
+            var source = GetTempFilePath();
+            var destination = GetTempFilePath();
+            File.WriteAllText(source, "old");
+            File.WriteAllText(destination, "new");
+
+            Subject.TryCreateHardLink(source, destination).Should().BeFalse();
+
+            File.ReadAllText(destination).Should().Be("new");
+        }
+
+        [Test]
+        public void CopyFile_without_overwrite_should_not_replace_an_existing_file()
+        {
+            var source = GetTempFilePath();
+            var destination = GetTempFilePath();
+            File.WriteAllText(source, "old");
+            File.WriteAllText(destination, "new");
+
+            Assert.Throws<IOException>(() => Subject.CopyFile(source, destination, false));
+
+            File.ReadAllText(destination).Should().Be("new");
+        }
+
+        [Test]
         public void directory_exist_should_be_able_to_find_existing_folder()
         {
             Subject.FolderExists(TempFolder).Should().BeTrue();

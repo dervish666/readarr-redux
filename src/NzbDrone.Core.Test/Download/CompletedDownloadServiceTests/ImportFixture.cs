@@ -1,10 +1,13 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using FizzWare.NBuilder;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.Disk;
 using NzbDrone.Core.Books;
+using NzbDrone.Core.Datastore;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.TrackedDownloads;
@@ -65,6 +68,10 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
                 .Setup(s => s.FindByDownloadId(It.IsAny<string>()))
                 .Returns(new List<EntityHistory>());
 
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindGrabsByDownloadId(It.IsAny<string>()))
+                .Returns(new List<EntityHistory>());
+
             Mocker.GetMock<IProvideImportItemService>()
                 .Setup(s => s.ProvideImportItem(It.IsAny<DownloadClientItem>(), It.IsAny<DownloadClientItem>()))
                 .Returns<DownloadClientItem, DownloadClientItem>((i, p) => i);
@@ -115,7 +122,7 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
         public void should_not_mark_as_imported_if_all_files_were_rejected()
         {
             Mocker.GetMock<IDownloadedBooksImportService>()
-                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>()))
+                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>(), It.IsAny<Book>()))
                   .Returns(new List<ImportResult>
                            {
                                new ImportResult(
@@ -139,7 +146,7 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
         public void should_not_mark_as_imported_if_no_tracks_were_parsed()
         {
             Mocker.GetMock<IDownloadedBooksImportService>()
-                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>()))
+                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>(), It.IsAny<Book>()))
                   .Returns(new List<ImportResult>
                            {
                                new ImportResult(
@@ -162,7 +169,7 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
         public void should_not_mark_as_failed_if_nothing_found_to_import()
         {
             Mocker.GetMock<IDownloadedBooksImportService>()
-                .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>()))
+                .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>(), It.IsAny<Book>()))
                 .Returns(new List<ImportResult>());
 
             Subject.Import(_trackedDownload);
@@ -174,7 +181,7 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
         public void should_not_mark_as_imported_if_all_files_were_skipped()
         {
             Mocker.GetMock<IDownloadedBooksImportService>()
-                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>()))
+                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>(), It.IsAny<Book>()))
                   .Returns(new List<ImportResult>
                            {
                                new ImportResult(new ImportDecision<LocalBook>(new LocalBook { Path = @"C:\TestPath\Droned.S01E01.mkv".AsOsAgnostic() }), "Test Failure"),
@@ -197,7 +204,7 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             };
 
             Mocker.GetMock<IDownloadedBooksImportService>()
-                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>()))
+                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>(), It.IsAny<Book>()))
                   .Returns(new List<ImportResult>
                            {
                                new ImportResult(new ImportDecision<LocalBook>(new LocalBook { Path = @"C:\TestPath\Droned.S01E01.mkv".AsOsAgnostic(), Author = _author })),
@@ -224,7 +231,7 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             };
 
             Mocker.GetMock<IDownloadedBooksImportService>()
-                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>()))
+                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>(), It.IsAny<Book>()))
                   .Returns(new List<ImportResult>
                            {
                                new ImportResult(new ImportDecision<LocalBook>(new LocalBook { Path = @"C:\TestPath\Droned.S01E01.mkv".AsOsAgnostic() })),
@@ -258,7 +265,7 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             _trackedDownload.RemoteBook.Books = books;
 
             Mocker.GetMock<IDownloadedBooksImportService>()
-                .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>()))
+                .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>(), It.IsAny<Book>()))
                 .Returns(new List<ImportResult>
                 {
                     new ImportResult(new ImportDecision<LocalBook>(new LocalBook { Path = @"C:\TestPath\Droned.S01E01.mkv" })),
@@ -291,7 +298,7 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             };
 
             Mocker.GetMock<IDownloadedBooksImportService>()
-                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>()))
+                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>(), It.IsAny<Book>()))
                   .Returns(new List<ImportResult>
                            {
                                new ImportResult(
@@ -316,7 +323,7 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             _trackedDownload.RemoteBook.Books = books;
 
             Mocker.GetMock<IDownloadedBooksImportService>()
-                .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>()))
+                .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>(), It.IsAny<Book>()))
                 .Returns(new List<ImportResult>
                 {
                     new ImportResult(
@@ -353,7 +360,7 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             GivenABadlyNamedDownload();
 
             Mocker.GetMock<IDownloadedBooksImportService>()
-                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>()))
+                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>(), It.IsAny<Book>()))
                   .Returns(new List<ImportResult>
                            {
                                new ImportResult(new ImportDecision<LocalBook>(new LocalBook { Path = @"C:\TestPath\Droned.S01E01.mkv".AsOsAgnostic(), Author = _author }))
@@ -362,6 +369,142 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             Subject.Import(_trackedDownload);
 
             AssertImported();
+        }
+
+        private Book GivenBookInLibrary(int id, string title)
+        {
+            var book = new Book { Id = id, Title = title, AuthorMetadataId = _trackedDownload.RemoteBook.Author.AuthorMetadataId };
+
+            Mocker.GetMock<IBookService>()
+                  .Setup(s => s.GetBook(id))
+                  .Returns(book);
+
+            return book;
+        }
+
+        private void GivenGrabs(params EntityHistory[] grabs)
+        {
+            Mocker.GetMock<IHistoryService>()
+                  .Setup(s => s.FindGrabsByDownloadId(_trackedDownload.DownloadItem.DownloadId))
+                  .Returns(grabs.ToList());
+        }
+
+        private EntityHistory Grab(int bookId, DateTime date, string sourceTitle = "Orson Scott Card - Ruins Pathfinder, Book 2 (Unabridged) MP3")
+        {
+            return new EntityHistory
+            {
+                EventType = EntityHistoryEventType.Grabbed,
+                DownloadId = _trackedDownload.DownloadItem.DownloadId,
+                BookId = bookId,
+                Date = date,
+                SourceTitle = sourceTitle
+            };
+        }
+
+        private Book ImportAndGetPinnedBook()
+        {
+            Book pinned = null;
+
+            Mocker.GetMock<IDownloadedBooksImportService>()
+                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>(), It.IsAny<Book>()))
+                  .Callback<string, ImportMode, Author, DownloadClientItem, Book>((path, mode, author, item, book) => pinned = book)
+                  .Returns(new List<ImportResult>());
+
+            Subject.Import(_trackedDownload);
+
+            return pinned;
+        }
+
+        [Test]
+        public void should_import_into_the_book_that_was_grabbed()
+        {
+            // Live case: this release was grabbed for Ruins, but its files were identified as Pathfinder
+            // (book 1 of the same series) and replaced Pathfinder's files. Re-parsing the title can map the
+            // tracked download to Pathfinder too, so only the grab history says what was grabbed.
+            _trackedDownload.DownloadItem.Title = "Orson Scott Card - Ruins Pathfinder, Book 2 (Unabridged) MP3";
+            var ruins = GivenBookInLibrary(57560, "Ruins");
+            var pathfinder = GivenBookInLibrary(57546, "Pathfinder");
+            _trackedDownload.RemoteBook.Books = new List<Book> { pathfinder };
+
+            GivenGrabs(Grab(ruins.Id, DateTime.UtcNow));
+
+            ImportAndGetPinnedBook().Should().Be(ruins);
+        }
+
+        [Test]
+        public void should_pin_the_book_from_the_latest_grab_of_a_reused_download()
+        {
+            // Live case: one torrent hash was grabbed for Firebrand, then Green Rider, then Firebrand again
+            var greenRider = GivenBookInLibrary(5320, "Green Rider");
+            var firebrand = GivenBookInLibrary(5322, "Firebrand");
+            _trackedDownload.RemoteBook.Books = new List<Book> { greenRider };
+
+            GivenGrabs(Grab(firebrand.Id, DateTime.UtcNow.AddDays(-700), "Kristen Britain - Firebrand (Unabridged)"),
+                       Grab(greenRider.Id, DateTime.UtcNow.AddDays(-4), "Firebrand: Green Rider, Book 6 - Kristen Britain [MP3] [64 Kbps]"),
+                       Grab(firebrand.Id, DateTime.UtcNow, "Firebrand: Green Rider, Book 6 - Kristen Britain [MP3] [64 Kbps]"));
+
+            ImportAndGetPinnedBook().Should().Be(firebrand);
+        }
+
+        [Test]
+        public void should_require_manual_import_when_the_grabbed_book_is_gone()
+        {
+            // Matching the files freely could put Ruins over Pathfinder again
+            var pathfinder = GivenBookInLibrary(57546, "Pathfinder");
+            _trackedDownload.RemoteBook.Books = new List<Book> { pathfinder };
+
+            Mocker.GetMock<IBookService>()
+                  .Setup(s => s.GetBook(57560))
+                  .Throws(new ModelNotFoundException(typeof(Book), 57560));
+
+            GivenGrabs(Grab(57560, DateTime.UtcNow));
+
+            Subject.Import(_trackedDownload);
+
+            Mocker.GetMock<IDownloadedBooksImportService>()
+                  .Verify(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>(), It.IsAny<Book>()), Times.Never());
+
+            _trackedDownload.State.Should().Be(TrackedDownloadState.ImportFailed);
+            _trackedDownload.StatusMessages.SelectMany(x => x.Messages).Should().Contain(x => x.Contains("manual import required"));
+        }
+
+        [Test]
+        public void should_require_manual_import_when_the_grabbed_book_moved_to_another_author()
+        {
+            var ruins = GivenBookInLibrary(57560, "Ruins");
+            ruins.AuthorMetadataId = 999;
+
+            GivenGrabs(Grab(ruins.Id, DateTime.UtcNow));
+
+            Subject.Import(_trackedDownload);
+
+            Mocker.GetMock<IDownloadedBooksImportService>()
+                  .Verify(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>(), It.IsAny<Book>()), Times.Never());
+
+            _trackedDownload.State.Should().Be(TrackedDownloadState.ImportFailed);
+        }
+
+        [Test]
+        public void should_not_pin_a_book_without_grab_history()
+        {
+            _trackedDownload.RemoteBook.Books = new List<Book> { GivenBookInLibrary(57546, "Pathfinder") };
+
+            GivenGrabs();
+
+            ImportAndGetPinnedBook().Should().BeNull();
+        }
+
+        [Test]
+        public void should_not_pin_a_book_when_the_download_was_grabbed_for_several()
+        {
+            var now = DateTime.UtcNow;
+            var one = GivenBookInLibrary(1, "One");
+            var two = GivenBookInLibrary(2, "Two");
+            _trackedDownload.RemoteBook.Books = new List<Book> { one };
+
+            GivenGrabs(Grab(one.Id, now), Grab(two.Id, now.AddMilliseconds(3)));
+
+            ImportAndGetPinnedBook().Should().BeNull();
         }
 
         private void AssertNotImported()
@@ -375,7 +518,7 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
         private void AssertImported()
         {
             Mocker.GetMock<IDownloadedBooksImportService>()
-                .Verify(v => v.ProcessPath(_trackedDownload.DownloadItem.OutputPath.FullPath, ImportMode.Auto, _trackedDownload.RemoteBook.Author, _trackedDownload.DownloadItem), Times.Once());
+                .Verify(v => v.ProcessPath(_trackedDownload.DownloadItem.OutputPath.FullPath, ImportMode.Auto, _trackedDownload.RemoteBook.Author, _trackedDownload.DownloadItem, It.IsAny<Book>()), Times.Once());
 
             Mocker.GetMock<IEventAggregator>()
                   .Verify(v => v.PublishEvent(It.IsAny<DownloadCompletedEvent>()), Times.Once());

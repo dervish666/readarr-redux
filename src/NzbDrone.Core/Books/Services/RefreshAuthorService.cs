@@ -196,16 +196,19 @@ namespace NzbDrone.Core.Books
                 }
             }
 
-            // move any books over to the new author and remove the local author
+            // move any books over to the new author
             var books = _bookService.GetBooksByAuthor(local.Id);
             books.ForEach(x => x.AuthorMetadataId = target.AuthorMetadataId);
             _bookService.UpdateMany(books);
-            _authorService.DeleteAuthor(local.Id, false);
 
-            // Update history entries to new id
+            // Update history entries to new id. This has to happen before the delete, because HistoryService
+            // handles AuthorDeletedEvent synchronously by deleting the old author's history.
             var items = _historyService.GetByAuthor(local.Id, null);
             items.ForEach(x => x.AuthorId = target.Id);
             _historyService.UpdateMany(items);
+
+            // remove the local author
+            _authorService.DeleteAuthor(local.Id, false);
 
             // We know we need to update tags as author id has changed
             return UpdateResult.UpdateTags;
