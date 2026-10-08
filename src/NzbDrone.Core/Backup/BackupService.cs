@@ -133,7 +133,15 @@ namespace NzbDrone.Core.Backup
                 var restoredFile = false;
                 var temporaryPath = Path.Combine(_appFolderInfo.TempFolder, "readarr_backup_restore");
 
-                _archiveService.Extract(backupFileName, temporaryPath);
+                // Start clean so leftovers from an earlier attempt can't be picked up below
+                if (_diskProvider.FolderExists(temporaryPath))
+                {
+                    _diskProvider.DeleteFolder(temporaryPath, true);
+                }
+
+                // Only the two root-level files a restore uses are written; the archive is rejected
+                // before anything is written if any entry points outside the restore folder
+                _archiveService.ExtractRootFiles(backupFileName, temporaryPath, new[] { "config.xml", "readarr.db" });
 
                 foreach (var file in _diskProvider.GetFiles(temporaryPath, false))
                 {
