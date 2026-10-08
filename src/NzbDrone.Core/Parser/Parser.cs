@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -229,6 +230,10 @@ namespace NzbDrone.Core.Parser
 
         private static readonly Regex AfterDashRegex = new Regex(@"[-:].*", RegexOptions.Compiled);
 
+        // A series number directly after a title: "Green Rider, Book 6", "Green Rider, #5)", "Green Rider.8.Falling"
+        private static readonly Regex SeriesPositionAfterTitleRegex = new Regex(@"^[\s.,_:(\[-]*(?:(?:book|bk|vol(?:ume)?|no)\.?\s*|#\s*)?(?<position>\d{1,3}(?:\.\d+)?)(?!\d)",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
         public static ParsedTrackInfo ParseMusicPath(string path)
         {
             var fileInfo = new FileInfo(path);
@@ -357,16 +362,18 @@ namespace NzbDrone.Core.Parser
 
                 // A book should have exactly one monitored edition, but don't let one that has none or several
                 // break parsing for every release in the search
-                var bestBook = books
-                    .Select(x => x.Editions.Value.FirstOrDefault(e => e.Monitored) ?? x.Editions.Value.FirstOrDefault())
-                    .Where(x => x != null)
-                    .OrderByDescending(x => simpleTitle.FuzzyMatch(x.Title, wordDelimiters: WordDelimiters))
+                var best = books
+                    .Select(x => (Book: x, Edition: x.Editions.Value.FirstOrDefault(e => e.Monitored) ?? x.Editions.Value.FirstOrDefault()))
+                    .Where(x => x.Edition != null)
+                    .OrderByDescending(x => simpleTitle.FuzzyMatch(x.Edition.Title, wordDelimiters: WordDelimiters))
                     .FirstOrDefault();
 
-                if (bestBook == null)
+                if (best.Edition == null)
                 {
                     return null;
                 }
+
+                var bestBook = best.Edition;
 
                 var foundAuthor = GetTitleFuzzy(simpleTitle, authorName, out var remainder);
 
@@ -375,17 +382,23 @@ namespace NzbDrone.Core.Parser
                     foundAuthor = GetTitleFuzzy(simpleTitle, authorName.ToLastFirst(), out remainder);
                 }
 
-                var foundBook = GetTitleFuzzy(remainder, bestBook.Title, out _);
+                var foundBook = GetTitleFuzzy(remainder, bestBook.Title, out _, out var afterBook);
 
                 if (foundBook == null)
                 {
-                    foundBook = GetTitleFuzzy(remainder, bestBook.Title.SplitBookTitle(authorName).Item1, out _);
+                    foundBook = GetTitleFuzzy(remainder, bestBook.Title.SplitBookTitle(authorName).Item1, out _, out afterBook);
                 }
 
                 Logger.Trace($"Found {foundAuthor} - {foundBook} with fuzzy parser");
 
                 if (foundAuthor == null || foundBook == null)
                 {
+                    return null;
+                }
+
+                if (IsOtherBookInSeries(afterBook, best.Book))
+                {
+                    Logger.Debug("'{0}' names '{1}' as its series, not as its title", title, foundBook);
                     return null;
                 }
 
@@ -426,7 +439,13 @@ namespace NzbDrone.Core.Parser
 
         public static string GetTitleFuzzy(string report, string name, out string remainder)
         {
+            return GetTitleFuzzy(report, name, out remainder, out _);
+        }
+
+        private static string GetTitleFuzzy(string report, string name, out string remainder, out string following)
+        {
             remainder = report;
+            following = string.Empty;
 
             Logger.Trace($"Finding '{name}' in '{report}'");
 
@@ -442,10 +461,38 @@ namespace NzbDrone.Core.Parser
             if (score >= 0.8)
             {
                 remainder = report.Remove(locStart, matchLength);
+                following = report.Substring(locStart + matchLength);
                 return found.Replace('.', ' ').Replace('_', ' ');
             }
 
             return null;
+        }
+
+        // A series that shares its name with its first book puts that name in every later book's release title,
+        // e.g. "Firebrand: Green Rider, Book 6". If the matched title runs straight into a series number that
+        // isn't one of the book's own positions, the release is a different book in that series.
+        private static bool IsOtherBookInSeries(string afterTitle, Book book)
+        {
+            var match = SeriesPositionAfterTitleRegex.Match(afterTitle);
+
+            if (!match.Success)
+            {
+                return false;
+            }
+
+            var positions = (book.SeriesLinks?.Value ?? new List<SeriesBookLink>())
+                .Select(x => decimal.TryParse(x.Position, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var position) ? position : (decimal?)null)
+                .Where(x => x.HasValue)
+                .ToList();
+
+            if (!positions.Any())
+            {
+                return false;
+            }
+
+            var releasePosition = decimal.Parse(match.Groups["position"].Value, CultureInfo.InvariantCulture);
+
+            return !positions.Contains(releasePosition);
         }
 
         public static ParsedBookInfo ParseBookTitle(string title)
