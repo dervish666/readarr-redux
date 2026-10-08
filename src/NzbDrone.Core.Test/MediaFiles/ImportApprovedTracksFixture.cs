@@ -77,7 +77,7 @@ namespace NzbDrone.Core.Test.MediaFiles
                                        }));
 
             Mocker.GetMock<IUpgradeMediaFiles>()
-                  .Setup(s => s.UpgradeBookFile(It.IsAny<BookFile>(), It.IsAny<LocalBook>(), It.IsAny<bool>()))
+                  .Setup(s => s.UpgradeBookFile(It.IsAny<BookFile>(), It.IsAny<LocalBook>(), It.IsAny<bool>(), It.IsAny<ICollection<string>>()))
                   .Returns(new BookFileMoveResult());
 
             _clientInfo = Builder<DownloadClientItemClientInfo>.CreateNew().Build();
@@ -141,7 +141,7 @@ namespace NzbDrone.Core.Test.MediaFiles
             Subject.Import(new List<ImportDecision<LocalBook>> { _approvedDecisions.First() }, true);
 
             Mocker.GetMock<IUpgradeMediaFiles>()
-                  .Verify(v => v.UpgradeBookFile(It.IsAny<BookFile>(), _approvedDecisions.First().Item, false),
+                  .Verify(v => v.UpgradeBookFile(It.IsAny<BookFile>(), _approvedDecisions.First().Item, false, It.IsAny<ICollection<string>>()),
                           Times.Once());
         }
 
@@ -162,7 +162,7 @@ namespace NzbDrone.Core.Test.MediaFiles
             Subject.Import(new List<ImportDecision<LocalBook>> { track }, false);
 
             Mocker.GetMock<IUpgradeMediaFiles>()
-                  .Verify(v => v.UpgradeBookFile(It.IsAny<BookFile>(), _approvedDecisions.First().Item, false),
+                  .Verify(v => v.UpgradeBookFile(It.IsAny<BookFile>(), _approvedDecisions.First().Item, false, It.IsAny<ICollection<string>>()),
                           Times.Never());
         }
 
@@ -235,7 +235,7 @@ namespace NzbDrone.Core.Test.MediaFiles
             Subject.Import(new List<ImportDecision<LocalBook>> { _approvedDecisions.First() }, true, new DownloadClientItem { Title = "Alien.Ant.Farm-Truant", CanMoveFiles = false, DownloadClientInfo = _clientInfo });
 
             Mocker.GetMock<IUpgradeMediaFiles>()
-                  .Verify(v => v.UpgradeBookFile(It.IsAny<BookFile>(), _approvedDecisions.First().Item, true), Times.Once());
+                  .Verify(v => v.UpgradeBookFile(It.IsAny<BookFile>(), _approvedDecisions.First().Item, true, It.IsAny<ICollection<string>>()), Times.Once());
         }
 
         [Test]
@@ -244,7 +244,7 @@ namespace NzbDrone.Core.Test.MediaFiles
             Subject.Import(new List<ImportDecision<LocalBook>> { _approvedDecisions.First() }, true, new DownloadClientItem { Title = "Alien.Ant.Farm-Truant", CanMoveFiles = false, DownloadClientInfo = _clientInfo }, ImportMode.Move);
 
             Mocker.GetMock<IUpgradeMediaFiles>()
-                  .Verify(v => v.UpgradeBookFile(It.IsAny<BookFile>(), _approvedDecisions.First().Item, false), Times.Once());
+                  .Verify(v => v.UpgradeBookFile(It.IsAny<BookFile>(), _approvedDecisions.First().Item, false, It.IsAny<ICollection<string>>()), Times.Once());
         }
 
         // Three old parts in the library and the database, three new parts in the download folder
@@ -362,6 +362,97 @@ namespace NzbDrone.Core.Test.MediaFiles
                 .Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
 
             ExceptionVerification.ExpectedWarns(2);
+        }
+
+        [Test]
+        public void should_not_remove_a_file_another_book_just_imported_to_a_path_in_its_stale_rows()
+        {
+            var first = _approvedDecisions.First().Item;
+            var author = first.Author;
+            var sharedPath = Path.Combine(author.Path, "Visitors", "Orson Scott Card - Visitors.m4b");
+
+            // Two books with the same title land on the same path. Book B still has a row for that path
+            // from a file that has since gone missing.
+            var bookA = Builder<Book>.CreateNew().With(b => b.Id = 65263).With(b => b.ForeignBookId = "A").With(b => b.Author = author).Build();
+            var bookB = Builder<Book>.CreateNew().With(b => b.Id = 97553).With(b => b.ForeignBookId = "B").With(b => b.Author = author).Build();
+            var editionA = Builder<Edition>.CreateNew().With(e => e.Id = 1).With(e => e.Book = bookA).With(e => e.Monitored = true).Build();
+            var editionB = Builder<Edition>.CreateNew().With(e => e.Id = 2).With(e => e.Book = bookB).With(e => e.Monitored = true).Build();
+            bookA.Editions = new List<Edition> { editionA };
+            bookB.Editions = new List<Edition> { editionB };
+
+            var staleRow = new BookFile { Id = 10, EditionId = editionB.Id, Path = sharedPath };
+            var database = new List<BookFile> { staleRow };
+            var disk = new Dictionary<string, string>();
+
+            var decisionA = new ImportDecision<LocalBook>(new LocalBook
+            {
+                Author = author,
+                Book = bookA,
+                Edition = editionA,
+                Part = 1,
+                Size = 200,
+                Path = Path.Combine(@"C:\Test\Downloads\A".AsOsAgnostic(), "a.m4b"),
+                Quality = new QualityModel(Quality.MP3),
+                FileTrackInfo = new ParsedTrackInfo()
+            });
+
+            var decisionB = new ImportDecision<LocalBook>(new LocalBook
+            {
+                Author = author,
+                Book = bookB,
+                Edition = editionB,
+                Part = 1,
+                Size = 100,
+                Path = Path.Combine(@"C:\Test\Downloads\B".AsOsAgnostic(), "b.m4b"),
+                Quality = new QualityModel(Quality.MP3),
+                FileTrackInfo = new ParsedTrackInfo()
+            });
+
+            var diskProvider = Mocker.GetMock<IDiskProvider>();
+            diskProvider.Setup(s => s.FolderExists(It.IsAny<string>())).Returns(true);
+            diskProvider.Setup(s => s.GetParentFolder(It.IsAny<string>())).Returns<string>(p => Path.GetDirectoryName(p));
+            diskProvider.Setup(s => s.FileExists(It.IsAny<string>())).Returns<string>(p => disk.ContainsKey(p));
+            diskProvider.Setup(s => s.MoveFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
+                .Callback<string, string, bool>((source, destination, overwrite) =>
+                {
+                    disk[destination] = disk[source];
+                    disk.Remove(source);
+                });
+
+            Mocker.GetMock<IRecycleBinProvider>()
+                .Setup(s => s.DeleteFile(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((path, subfolder) => disk.Remove(path));
+
+            // A is renamed onto the shared path, B onto its own
+            Mocker.GetMock<IMoveBookFiles>()
+                .Setup(s => s.MoveBookFile(It.IsAny<BookFile>(), It.IsAny<LocalBook>()))
+                .Returns((BookFile file, LocalBook localBook) =>
+                {
+                    file.Path = localBook.Book.ForeignBookId == "A" ? sharedPath : Path.Combine(author.Path, "Visitors (2)", "Orson Scott Card - Visitors.m4b");
+                    disk[file.Path] = localBook.Book.ForeignBookId;
+                    return file;
+                });
+
+            Mocker.GetMock<IEditionService>()
+                .Setup(s => s.SetMonitored(It.IsAny<Edition>()))
+                .Returns<Edition>(e => new List<Edition> { e });
+
+            var mediaFileService = Mocker.GetMock<IMediaFileService>();
+            mediaFileService.Setup(s => s.GetFilesByBook(It.IsAny<int>()))
+                .Returns<int>(id => database.Where(f => f.EditionId == (id == bookA.Id ? editionA.Id : editionB.Id)).ToList());
+            mediaFileService.Setup(s => s.Delete(It.IsAny<BookFile>(), It.IsAny<DeleteMediaFileReason>()))
+                .Callback<BookFile, DeleteMediaFileReason>((file, reason) => database.RemoveAll(x => x.Id == file.Id));
+
+            Mocker.SetConstant<IUpgradeMediaFiles>(Mocker.Resolve<UpgradeMediaFileService>());
+
+            Subject.Import(new List<ImportDecision<LocalBook>> { decisionA, decisionB }, true);
+
+            disk.Should().Contain(sharedPath, "A");
+
+            // The stale row still goes, so A's new row can take the path
+            database.Should().NotContain(staleRow);
+
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]

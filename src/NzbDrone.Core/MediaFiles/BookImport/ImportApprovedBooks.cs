@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using NLog;
+using NzbDrone.Common;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Instrumentation.Extensions;
@@ -165,6 +166,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             var trackImportedEvents = new List<TrackImportedEvent>(qualifiedImports.Count);
             var setAsideFiles = new Dictionary<int, List<SetAsideBookFile>>();
             var failedBookIds = new HashSet<int>();
+            var importedPaths = new HashSet<string>(PathEqualityComparer.Instance);
 
             foreach (var importDecision in qualifiedImports)
             {
@@ -235,8 +237,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     {
                         bookFile.SceneName = GetSceneReleaseName(downloadClientItem);
 
-                        var moveResult = _bookFileUpgrader.UpgradeBookFile(bookFile, localTrack, copyOnly);
+                        var moveResult = _bookFileUpgrader.UpgradeBookFile(bookFile, localTrack, copyOnly, importedPaths);
                         oldFiles = moveResult.OldFiles;
+                        importedPaths.Add(bookFile.Path);
 
                         if (!setAsideFiles.TryGetValue(localTrack.Book.Id, out var bookSetAsideFiles))
                         {

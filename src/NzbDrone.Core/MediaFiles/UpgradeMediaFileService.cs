@@ -14,7 +14,7 @@ namespace NzbDrone.Core.MediaFiles
 {
     public interface IUpgradeMediaFiles
     {
-        BookFileMoveResult UpgradeBookFile(BookFile bookFile, LocalBook localBook, bool copyOnly = false);
+        BookFileMoveResult UpgradeBookFile(BookFile bookFile, LocalBook localBook, bool copyOnly = false, ICollection<string> importedPaths = null);
         void RemoveSetAsideFiles(IEnumerable<SetAsideBookFile> files);
     }
 
@@ -52,7 +52,7 @@ namespace NzbDrone.Core.MediaFiles
             _logger = logger;
         }
 
-        public BookFileMoveResult UpgradeBookFile(BookFile bookFile, LocalBook localBook, bool copyOnly = false)
+        public BookFileMoveResult UpgradeBookFile(BookFile bookFile, LocalBook localBook, bool copyOnly = false, ICollection<string> importedPaths = null)
         {
             var moveFileResult = new BookFileMoveResult();
 
@@ -87,7 +87,12 @@ namespace NzbDrone.Core.MediaFiles
 
                     bookFile.CalibreId = file.CalibreId;
 
-                    if (_diskProvider.FileExists(bookFilePath))
+                    // A stale row can point at a path another book's new file has just been moved to
+                    if (importedPaths != null && importedPaths.Contains(bookFilePath))
+                    {
+                        _logger.Warn("{0} was just imported for another book, so it won't be removed as an old file of {1}", bookFilePath, localBook.Book);
+                    }
+                    else if (_diskProvider.FileExists(bookFilePath))
                     {
                         _logger.Debug("Removing existing book file: {0} CalibreId: {1}", file, file.CalibreId);
 
