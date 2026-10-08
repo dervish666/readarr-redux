@@ -349,7 +349,7 @@ namespace NzbDrone.Core.Test.MediaFiles
             Subject.ProcessPath(folder, ImportMode.Auto, author, _trackedDownload.DownloadItem, ruins);
 
             Mocker.GetMock<IMakeImportDecision>()
-                  .Verify(v => v.GetImportDecisions(It.IsAny<List<IFileInfo>>(), It.Is<IdentificationOverrides>(o => o.Author == author && o.Book == ruins), It.IsAny<ImportDecisionMakerInfo>(), It.IsAny<ImportDecisionMakerConfig>()), Times.Once());
+                  .Verify(v => v.GetImportDecisions(It.IsAny<List<IFileInfo>>(), It.Is<IdentificationOverrides>(o => o.Author == author && o.GrabbedBook == ruins), It.IsAny<ImportDecisionMakerInfo>(), It.IsAny<ImportDecisionMakerConfig>()), Times.Once());
         }
 
         [Test]
@@ -366,7 +366,7 @@ namespace NzbDrone.Core.Test.MediaFiles
             Subject.ProcessPath(file, ImportMode.Auto, author, _trackedDownload.DownloadItem, ruins);
 
             Mocker.GetMock<IMakeImportDecision>()
-                  .Verify(v => v.GetImportDecisions(It.IsAny<List<IFileInfo>>(), It.Is<IdentificationOverrides>(o => o.Author == author && o.Book == ruins), It.IsAny<ImportDecisionMakerInfo>(), It.IsAny<ImportDecisionMakerConfig>()), Times.Once());
+                  .Verify(v => v.GetImportDecisions(It.IsAny<List<IFileInfo>>(), It.Is<IdentificationOverrides>(o => o.Author == author && o.GrabbedBook == ruins), It.IsAny<ImportDecisionMakerInfo>(), It.IsAny<ImportDecisionMakerConfig>()), Times.Once());
         }
 
         private void VerifyNoImport()

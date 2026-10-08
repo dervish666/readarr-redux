@@ -211,7 +211,7 @@ namespace NzbDrone.Core.MediaFiles
             var idOverrides = new IdentificationOverrides
             {
                 Author = author,
-                Book = book
+                GrabbedBook = book
             };
             var idInfo = new ImportDecisionMakerInfo
             {
@@ -298,7 +298,7 @@ namespace NzbDrone.Core.MediaFiles
             var idOverrides = new IdentificationOverrides
             {
                 Author = author,
-                Book = book
+                GrabbedBook = book
             };
             var idInfo = new ImportDecisionMakerInfo
             {

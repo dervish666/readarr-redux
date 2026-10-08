@@ -26,6 +26,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport
         public Author Author { get; set; }
         public Book Book { get; set; }
         public Edition Edition { get; set; }
+
+        // The book a download was grabbed for. Identification pins to it only when the files look like that one book.
+        public Book GrabbedBook { get; set; }
     }
 
     public class ImportDecisionMakerInfo
