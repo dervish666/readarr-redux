@@ -280,8 +280,8 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
             catch (Exception e)
             {
-                _logger.Warn(e, "Error searching for {0}", query);
-                return new List<Book>();
+                // A failed search is not an empty one. Callers have to tell "metadata source down" from "no match".
+                throw new BookInfoException("Search for '{0}' failed: {1}", e, query, e.Message);
             }
 
             var books = new List<Book>();
@@ -337,8 +337,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 catch (Exception e)
                 {
                     _logger.Warn(e, "Error mapping search results");
-
-                    return new List<Book>();
+                    throw new BookInfoException("Search for '{0}' failed. Invalid response received from the metadata source.", e, query);
                 }
             }
         }
@@ -539,10 +538,18 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
             foreach (var work in resource.Works)
             {
-                var book = MapBook(work);
-                var authorId = work.Books.OrderByDescending(b => b.AverageRating * b.RatingCount).First().Contributors.First().ForeignId.ToString();
+                var authorId = GetAuthorId(work);
 
-                AddDbIds(authorId, book, authors);
+                // One work with no editions or contributors used to empty the whole result
+                if (authorId == 0)
+                {
+                    _logger.Warn("Skipping work {0} in search results, it has no editions or contributors", work.ForeignId);
+                    continue;
+                }
+
+                var book = MapBook(work);
+
+                AddDbIds(authorId.ToString(), book, authors);
 
                 books.Add(book);
             }
@@ -1057,7 +1064,12 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         private static int GetAuthorId(WorkResource b)
         {
-            return b.Books.OrderByDescending(x => x.RatingCount * x.AverageRating).FirstOrDefault(x => x.Contributors.Any())?.Contributors.First().ForeignId ?? 0;
+            if (b.Books == null)
+            {
+                return 0;
+            }
+
+            return b.Books.OrderByDescending(x => x.RatingCount * x.AverageRating).FirstOrDefault(x => x.Contributors?.Any() == true)?.Contributors.First().ForeignId ?? 0;
         }
     }
 }
