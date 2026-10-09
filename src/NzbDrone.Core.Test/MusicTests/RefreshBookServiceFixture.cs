@@ -161,6 +161,111 @@ namespace NzbDrone.Core.Test.MusicTests
                 .Verify(v => v.DeleteMany(It.Is<List<Edition>>(l => l.Count == 1 && l.Contains(withoutFiles))), Times.Once());
         }
 
+        // An author the metadata credits on the book, with metadata id 2 so a move off _book's id 1 shows up
+        private AuthorMetadata GivenCreditedAuthor(string foreignAuthorId, string name, bool inLibrary)
+        {
+            var metadata = Builder<AuthorMetadata>.CreateNew()
+                .With(m => m.Id = 2)
+                .With(m => m.ForeignAuthorId = foreignAuthorId)
+                .With(m => m.Name = name)
+                .Build();
+
+            var credited = Builder<Author>.CreateNew()
+                .With(a => a.Id = 2)
+                .With(a => a.Metadata = metadata)
+                .With(a => a.AuthorMetadataId = 2)
+                .Build();
+
+            Mocker.GetMock<IAuthorService>()
+                .Setup(s => s.FindById(foreignAuthorId))
+                .Returns(inLibrary ? credited : null);
+
+            Mocker.GetMock<IProvideAuthorInfo>()
+                .Setup(s => s.GetAuthorInfo(foreignAuthorId, It.IsAny<bool>()))
+                .Returns(credited);
+
+            return metadata;
+        }
+
+        private void RefreshWithRemoteBookCreditedTo(AuthorMetadata credited)
+        {
+            var remoteBook = Builder<Book>.CreateNew()
+                .With(b => b.Id = 0)
+                .With(b => b.ForeignBookId = _book.ForeignBookId)
+                .With(b => b.AuthorMetadata = credited)
+                .With(b => b.Editions = new List<Edition>())
+                .Build();
+
+            Subject.RefreshBookInfo(_book, new List<Book> { remoteBook }, _author, false);
+        }
+
+        private void VerifyNoAuthorAdded()
+        {
+            Mocker.GetMock<IAddAuthorService>()
+                .Verify(v => v.AddAuthor(It.IsAny<Author>(), It.IsAny<bool>()), Times.Never());
+
+            Mocker.GetMock<IAddAuthorService>()
+                .Verify(v => v.AddAuthors(It.IsAny<List<Author>>(), It.IsAny<bool>()), Times.Never());
+        }
+
+        [Test]
+        public void should_move_book_to_credited_author_already_in_the_library()
+        {
+            _book.AuthorMetadataId = 1;
+            var credited = GivenCreditedAuthor("123", "Other Author", true);
+
+            RefreshWithRemoteBookCreditedTo(credited);
+
+            _book.AuthorMetadataId.Should().Be(2);
+            VerifyNoAuthorAdded();
+        }
+
+        [Test]
+        public void should_keep_book_under_its_author_when_credited_author_is_not_in_the_library()
+        {
+            _book.AuthorMetadataId = 1;
+            var credited = GivenCreditedAuthor("123", "Other Author", false);
+
+            RefreshWithRemoteBookCreditedTo(credited);
+
+            _book.AuthorMetadataId.Should().Be(1);
+            VerifyNoAuthorAdded();
+
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.UpdateMany(It.Is<List<Book>>(l => l.Single() == _book && l.Single().AuthorMetadataId == 1)), Times.AtLeastOnce());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        // Famous Five 9-10 by Enid Blyton: the work credits its narrator first, so it is missing from Blyton's works
+        // list and the book lookup names Jan Francis as its author. Refresh created Jan Francis as a monitored author.
+        [Test]
+        public void should_not_add_a_narrator_credited_on_a_book_as_an_author()
+        {
+            _book.AuthorMetadataId = 1;
+            var narrator = GivenCreditedAuthor("159221", "Jan Francis", false);
+
+            var remoteBook = Builder<Book>.CreateNew()
+                .With(b => b.Id = 0)
+                .With(b => b.ForeignBookId = _book.ForeignBookId)
+                .With(b => b.Editions = new List<Edition>())
+                .Build();
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Setup(s => s.GetBookInfo(_book.ForeignBookId))
+                .Returns(Tuple.Create("159221", remoteBook, new List<AuthorMetadata> { narrator }));
+
+            Subject.RefreshBookInfo(new List<Book> { _book }, new List<Book>(), _author, true, false, null);
+
+            VerifyNoAuthorAdded();
+            _book.AuthorMetadataId.Should().Be(1);
+
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.DeleteBook(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
         private void RefreshWithBookMissingFromAuthorList()
         {
             Subject.RefreshBookInfo(new List<Book> { _book }, new List<Book>(), _author, true, false, null);
