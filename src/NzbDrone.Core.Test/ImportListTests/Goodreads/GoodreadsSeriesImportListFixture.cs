@@ -51,6 +51,22 @@ namespace NzbDrone.Core.Test.ImportListTests.Goodreads
         }
 
         [Test]
+        public void should_take_series_ids_too_big_for_an_int()
+        {
+            Subject.Definition.Settings = new GoodreadsSeriesImportListSettings { SeriesId = 3000000000 };
+
+            Mocker.GetMock<IProvideSeriesInfo>()
+                .Setup(v => v.GetSeriesInfo(3000000000, true))
+                .Returns(new SeriesResource
+                {
+                    ForeignId = 3000000000,
+                    LinkItems = new List<SeriesWorkLinkResource> { new SeriesWorkLinkResource { ForeignWorkId = 3000000001 } }
+                });
+
+            Subject.Fetch().Single().BookGoodreadsId.Should().Be("3000000001");
+        }
+
+        [Test]
         public void should_log_and_record_failure_when_series_fetch_fails()
         {
             Mocker.GetMock<IProvideSeriesInfo>()

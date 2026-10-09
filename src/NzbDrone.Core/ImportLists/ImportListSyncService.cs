@@ -235,6 +235,7 @@ namespace NzbDrone.Core.ImportLists
                 report.Book = mappedBook.Item2.Title;
                 report.Author ??= mappedAuthor.Name;
                 report.AuthorGoodreadsId = mappedAuthor.ForeignAuthorId;
+                report.EditionGoodreadsId ??= mappedBook.Item2.Editions?.Value?.FirstOrDefault(e => e.Monitored)?.ForeignEditionId;
             }
             else
             {
@@ -326,6 +327,13 @@ namespace NzbDrone.Core.ImportLists
             // Append Book if not already in DB or already on add list
             if (booksToAdd.All(s => s.ForeignBookId != report.BookGoodreadsId))
             {
+                // AddBookService adds a book through the edition it monitors
+                if (report.EditionGoodreadsId.IsNullOrWhiteSpace())
+                {
+                    _logger.Info("Skipping list item {0} - {1}, no edition was found to add it with", report.Author, report.Book ?? report.BookGoodreadsId);
+                    return;
+                }
+
                 var monitored = importList.ShouldMonitor != ImportListMonitorType.None;
 
                 var toAddAuthor = new Author
@@ -364,14 +372,11 @@ namespace NzbDrone.Core.ImportLists
                     }
                 };
 
-                if (report.EditionGoodreadsId.IsNotNullOrWhiteSpace() && int.TryParse(report.EditionGoodreadsId, out var goodreadsId))
+                toAdd.Editions.Value.Add(new Edition
                 {
-                    toAdd.Editions.Value.Add(new Edition
-                    {
-                        ForeignEditionId = report.EditionGoodreadsId,
-                        Monitored = true
-                    });
-                }
+                    ForeignEditionId = report.EditionGoodreadsId,
+                    Monitored = true
+                });
 
                 if (importList.ShouldMonitor == ImportListMonitorType.SpecificBook && toAddAuthor.AddOptions != null)
                 {

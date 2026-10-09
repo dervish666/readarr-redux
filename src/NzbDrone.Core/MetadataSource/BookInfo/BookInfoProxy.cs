@@ -135,7 +135,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
         }
 
-        public SeriesResource GetSeriesInfo(int foreignSeriesId, bool useCache = true)
+        public SeriesResource GetSeriesInfo(long foreignSeriesId, bool useCache = true)
         {
             _logger.Debug("Getting series {0}", foreignSeriesId);
 
