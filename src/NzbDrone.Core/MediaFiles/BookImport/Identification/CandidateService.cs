@@ -252,7 +252,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
             if (goodreads.Count == 1 &&
                 goodreads[0].IsNotNullOrWhiteSpace())
             {
-                if (int.TryParse(goodreads[0], out var id))
+                if (long.TryParse(goodreads[0], out var id))
                 {
                     _logger.Trace($"Searching by goodreads id {id}");
 

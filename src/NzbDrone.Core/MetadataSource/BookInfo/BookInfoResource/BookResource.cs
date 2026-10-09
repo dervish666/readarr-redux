@@ -5,7 +5,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 {
     public class BookResource
     {
-        public int ForeignId { get; set; }
+        public long ForeignId { get; set; }
         public string Asin { get; set; }
         public string Description { get; set; }
         public string Isbn13 { get; set; }

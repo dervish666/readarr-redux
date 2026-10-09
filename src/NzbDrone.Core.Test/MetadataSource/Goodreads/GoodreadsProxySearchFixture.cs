@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using FluentAssertions;
 using Moq;
@@ -59,6 +60,20 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
             result[0].WorkId.Should().Be(4110990);
             result[0].Author.Id.Should().Be(1221698);
             result[1].Author.Id.Should().Be(1654);
+        }
+
+        [Test]
+        public void should_parse_ids_too_big_for_an_int()
+        {
+            Mocker.GetMock<ICachedHttpResponseService>()
+                .Setup(x => x.Get<List<SearchJsonResource>>(It.IsAny<HttpRequest>(), It.IsAny<bool>(), It.IsAny<TimeSpan>()))
+                .Returns((HttpRequest request, bool useCache, TimeSpan ttl) =>
+                    new HttpResponse<List<SearchJsonResource>>(new HttpResponse(request, new HttpHeader(), "[{\"bookId\":3000000002,\"workId\":3000000001,\"author\":{\"id\":3000000000}}]")));
+
+            var result = Subject.Search("big");
+
+            result.Single().BookId.ToString().Should().Be("3000000002");
+            result.Single().Author.Id.ToString().Should().Be("3000000000");
         }
 
         [Test]

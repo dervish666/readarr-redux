@@ -41,8 +41,8 @@ namespace NzbDrone.Core.Test.ImportListTests
                 .Returns(new List<SearchJsonResource>());
 
             Mocker.GetMock<ISearchForNewBook>()
-                .Setup(v => v.SearchByGoodreadsBookId(It.IsAny<int>(), false))
-                .Returns<int, bool>((id, getAllEditions) => new List<Book>
+                .Setup(v => v.SearchByGoodreadsBookId(It.IsAny<long>(), false))
+                .Returns<long, bool>((id, getAllEditions) => new List<Book>
                 {
                     Builder<Book>
                         .CreateNew()

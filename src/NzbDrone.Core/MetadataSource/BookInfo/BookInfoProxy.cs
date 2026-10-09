@@ -222,7 +222,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
                     if (prefix == "author" || prefix == "work" || prefix == "edition")
                     {
-                        var isValid = int.TryParse(slug, out var searchId);
+                        var isValid = long.TryParse(slug, out var searchId);
                         if (!isValid)
                         {
                             return new List<Book>();
@@ -343,7 +343,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
         }
 
-        private List<Book> SearchByGoodreadsAuthorId(int id)
+        private List<Book> SearchByGoodreadsAuthorId(long id)
         {
             try
             {
@@ -370,7 +370,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
         }
 
-        public List<Book> SearchByGoodreadsWorkId(int id)
+        public List<Book> SearchByGoodreadsWorkId(long id)
         {
             try
             {
@@ -389,7 +389,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
         }
 
-        public List<Book> SearchByGoodreadsBookId(int id, bool getAllEditions)
+        public List<Book> SearchByGoodreadsBookId(long id, bool getAllEditions)
         {
             try
             {
@@ -416,7 +416,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
         }
 
-        private Book GetEditionInfo(int id, bool getAllEditions)
+        private Book GetEditionInfo(long id, bool getAllEditions)
         {
             var httpResponse = ExecuteWithRetry(() =>
             {
@@ -492,7 +492,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             return book;
         }
 
-        private List<Book> MapSearchResult(List<int> ids)
+        private List<Book> MapSearchResult(List<long> ids)
         {
             var httpResponse = ExecuteWithRetry(() =>
             {
@@ -972,7 +972,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 CleanTitle = Parser.Parser.CleanAuthorName(resource.Title),
                 ReleaseDate = resource.ReleaseDate,
                 Genres = resource.Genres,
-                RelatedBooks = resource.RelatedWorks
+                RelatedBooks = resource.RelatedWorks?.Where(x => x <= int.MaxValue).Select(x => (int)x).ToList()
             };
 
             book.Links.Add(new Links { Url = resource.Url, Name = $"{LinkSite(resource.Url)} Editions" });
@@ -1082,7 +1082,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             return MetadataProvider.NameFromUrl(url) ?? "Goodreads";
         }
 
-        private static int GetAuthorId(WorkResource b)
+        private static long GetAuthorId(WorkResource b)
         {
             if (b.Books == null)
             {

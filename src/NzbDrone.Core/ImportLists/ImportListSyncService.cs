@@ -184,7 +184,7 @@ namespace NzbDrone.Core.ImportLists
                 return;
             }
 
-            if (report.EditionGoodreadsId.IsNotNullOrWhiteSpace() && int.TryParse(report.EditionGoodreadsId, out var goodreadsId))
+            if (report.EditionGoodreadsId.IsNotNullOrWhiteSpace() && long.TryParse(report.EditionGoodreadsId, out var goodreadsId))
             {
                 // check the local DB
                 var edition = _editionService.GetEditionByForeignEditionId(report.EditionGoodreadsId);
@@ -425,7 +425,7 @@ namespace NzbDrone.Core.ImportLists
                          work.Item3.First();
 
             result.BookTitleBare ??= work.Item2.Title;
-            result.Author = new AuthorJsonResource { Id = int.Parse(author.ForeignAuthorId), Name = author.Name };
+            result.Author = new AuthorJsonResource { Id = long.Parse(author.ForeignAuthorId), Name = author.Name };
 
             return true;
         }

@@ -59,6 +59,25 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
             book.Editions.Value.Single().Links.Single().Name.Should().Be(expected + " Book");
         }
 
+        [Test]
+        public void should_read_ids_too_big_for_an_int()
+        {
+            // rreading-glasses serves IDs as int64
+            const string author = "{\"ForeignId\":3000000000,\"Name\":\"Big Author\",\"Series\":[],\"Works\":[{\"ForeignId\":3000000001,\"Title\":\"Big\"," +
+                                  "\"RelatedWorks\":[3000000005],\"Books\":[{\"ForeignId\":3000000002,\"Title\":\"Big\",\"Contributors\":[{\"ForeignId\":3000000000}]}]}]}";
+
+            Mocker.GetMock<ICachedHttpResponseService>()
+                .Setup(s => s.Get(It.IsAny<HttpRequest>(), It.IsAny<bool>(), It.IsAny<TimeSpan>()))
+                .Returns((HttpRequest request, bool useCache, TimeSpan ttl) => new HttpResponse(request, new HttpHeader(), author));
+
+            var result = Subject.GetAuthorInfo("3000000000", false);
+            var book = result.Books.Value.Single();
+
+            result.ForeignAuthorId.Should().Be("3000000000");
+            book.ForeignBookId.Should().Be("3000000001");
+            book.Editions.Value.Single().ForeignEditionId.Should().Be("3000000002");
+        }
+
         // rreading-glasses answers /book/{id} with 303 to /author/{author}?edition={id}, an author holding just that edition
         [TestCase("/author/1654?edition=13153953")]
         [TestCase("/author/1654/?edition=13153953")]
