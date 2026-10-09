@@ -886,7 +886,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
             if (resource.Url.IsNotNullOrWhiteSpace())
             {
-                metadata.Links.Add(new Links { Url = resource.Url, Name = "Goodreads" });
+                metadata.Links.Add(new Links { Url = resource.Url, Name = LinkSite(resource.Url) });
             }
 
             return metadata;
@@ -975,7 +975,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 RelatedBooks = resource.RelatedWorks
             };
 
-            book.Links.Add(new Links { Url = resource.Url, Name = "Goodreads Editions" });
+            book.Links.Add(new Links { Url = resource.Url, Name = $"{LinkSite(resource.Url)} Editions" });
 
             if (resource.Books != null)
             {
@@ -1071,9 +1071,15 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 });
             }
 
-            edition.Links.Add(new Links { Url = resource.Url, Name = "Goodreads Book" });
+            edition.Links.Add(new Links { Url = resource.Url, Name = $"{LinkSite(resource.Url)} Book" });
 
             return edition;
+        }
+
+        // A link without a usable URL keeps the old label
+        private static string LinkSite(string url)
+        {
+            return MetadataProvider.NameFromUrl(url) ?? "Goodreads";
         }
 
         private static int GetAuthorId(WorkResource b)

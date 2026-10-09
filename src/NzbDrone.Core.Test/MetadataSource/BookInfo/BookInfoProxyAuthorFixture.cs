@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Net;
 using FluentAssertions;
 using Moq;
@@ -36,6 +37,26 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
 
             Mocker.GetMock<ICachedHttpResponseService>()
                 .Verify(s => s.Get(It.Is<HttpRequest>(r => r.Url.FullUri == "http://metadata.test/author/5"), useCache, It.IsAny<TimeSpan>()), Times.Once());
+        }
+
+        [TestCase("https://www.goodreads.com", "Goodreads")]
+        [TestCase("https://hardcover.app", "Hardcover")]
+        public void should_label_links_with_the_site_they_point_to(string site, string expected)
+        {
+            var author = "{\"ForeignId\":5,\"Name\":\"Author Five\",\"Url\":\"" + site + "/authors/5\",\"Series\":[],\"Works\":[{\"ForeignId\":1,\"Title\":\"One\"," +
+                         "\"Url\":\"" + site + "/books/one\",\"Books\":[{\"ForeignId\":11,\"Title\":\"One\",\"Url\":\"" + site + "/books/one/11\"," +
+                         "\"Contributors\":[{\"ForeignId\":5}]}]}]}";
+
+            Mocker.GetMock<ICachedHttpResponseService>()
+                .Setup(s => s.Get(It.IsAny<HttpRequest>(), It.IsAny<bool>(), It.IsAny<TimeSpan>()))
+                .Returns((HttpRequest request, bool useCache, TimeSpan ttl) => new HttpResponse(request, new HttpHeader(), author));
+
+            var result = Subject.GetAuthorInfo("5", false);
+            var book = result.Books.Value.Single();
+
+            result.Metadata.Value.Links.Single().Name.Should().Be(expected);
+            book.Links.Single().Name.Should().Be(expected + " Editions");
+            book.Editions.Value.Single().Links.Single().Name.Should().Be(expected + " Book");
         }
 
         // rreading-glasses answers /book/{id} with 303 to /author/{author}?edition={id}, an author holding just that edition
