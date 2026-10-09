@@ -21,6 +21,7 @@ namespace NzbDrone.Core.MetadataSource
         ServerError,
         RateLimited,
         Redirect,
+        ResponseTooLarge,
         NotFound,
         UnexpectedResponse
     }
@@ -44,6 +45,7 @@ namespace NzbDrone.Core.MetadataSource
             MetadataSourceProbeStatus.ServerError => "MetadataSourceStatusServerError",
             MetadataSourceProbeStatus.RateLimited => "MetadataSourceStatusRateLimited",
             MetadataSourceProbeStatus.Redirect => "MetadataSourceStatusRedirect",
+            MetadataSourceProbeStatus.ResponseTooLarge => "MetadataSourceStatusResponseTooLarge",
             MetadataSourceProbeStatus.NotFound => "MetadataSourceStatusNotFound",
             _ => "MetadataSourceStatusUnexpectedResponse"
         };
@@ -74,6 +76,9 @@ namespace NzbDrone.Core.MetadataSource
         // an author such as Terry Pratchett runs to several MB.
         public const string ProbeWorkId = "1540236";
 
+        private const long MaxResponseLength = 2 * 1024 * 1024;
+
+        // One hop, since redirects aren't followed, so this is the whole probe's time limit
         private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(10);
         private static readonly TimeSpan CacheLifetime = TimeSpan.FromMinutes(5);
 
@@ -152,11 +157,21 @@ namespace NzbDrone.Core.MetadataSource
             request.AllowAutoRedirect = false;
             request.RequestTimeout = RequestTimeout;
 
+            // The probe work is about 20 KB, so anything near this is not a work, and an endless or gzip-bomb body
+            // from a hostile address must not be able to fill memory
+            request.MaxResponseLength = MaxResponseLength;
+
             HttpResponse response;
 
             try
             {
                 response = _httpClient.Execute(request);
+            }
+            catch (HttpResponseTooLargeException ex)
+            {
+                _logger.Warn(ex, "Metadata source {0} sent a response over {1} bytes", baseUrl, MaxResponseLength);
+
+                return Result(baseUrl, MetadataSourceProbeStatus.ResponseTooLarge, error: ex.Message);
             }
             catch (Exception ex)
             {

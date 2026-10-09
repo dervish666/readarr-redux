@@ -207,6 +207,28 @@ namespace NzbDrone.Core.Test.MetadataSource
         }
 
         [Test]
+        public void should_cap_the_response_size()
+        {
+            GivenResponse(HttpStatusCode.OK, WorkJson);
+
+            Subject.Probe(SourceUrl);
+
+            Mocker.GetMock<IHttpClient>()
+                  .Verify(s => s.Execute(It.Is<HttpRequest>(r => r.MaxResponseLength == 2 * 1024 * 1024)), Times.Once());
+        }
+
+        [Test]
+        public void should_report_a_response_that_is_too_large()
+        {
+            GivenException(new HttpResponseTooLargeException(new HttpRequest(SourceUrl + "/work/1540236"), 2 * 1024 * 1024));
+
+            var result = Subject.Probe(SourceUrl);
+
+            result.Status.Should().Be(MetadataSourceProbeStatus.ResponseTooLarge);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
         public void should_not_follow_redirects()
         {
             GivenResponse(HttpStatusCode.OK, WorkJson);
@@ -324,6 +346,7 @@ namespace NzbDrone.Core.Test.MetadataSource
         [TestCase(MetadataSourceProbeStatus.ServerError, "MetadataSourceStatusServerError")]
         [TestCase(MetadataSourceProbeStatus.RateLimited, "MetadataSourceStatusRateLimited")]
         [TestCase(MetadataSourceProbeStatus.Redirect, "MetadataSourceStatusRedirect")]
+        [TestCase(MetadataSourceProbeStatus.ResponseTooLarge, "MetadataSourceStatusResponseTooLarge")]
         [TestCase(MetadataSourceProbeStatus.NotFound, "MetadataSourceStatusNotFound")]
         [TestCase(MetadataSourceProbeStatus.UnexpectedResponse, "MetadataSourceStatusUnexpectedResponse")]
         public void every_status_should_have_a_message_key(MetadataSourceProbeStatus status, string key)

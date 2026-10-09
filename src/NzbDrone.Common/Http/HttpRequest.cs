@@ -54,6 +54,9 @@ namespace NzbDrone.Common.Http
         public string RateLimitKey { get; set; }
         public Stream ResponseStream { get; set; }
 
+        // Bytes of body, after decompression, to read before giving up with HttpResponseTooLargeException. Null reads it all.
+        public long? MaxResponseLength { get; set; }
+
         public override string ToString()
         {
             return ToString();

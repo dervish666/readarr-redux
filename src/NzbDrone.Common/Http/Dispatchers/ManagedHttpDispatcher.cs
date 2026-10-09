@@ -123,12 +123,16 @@ namespace NzbDrone.Common.Http.Dispatchers
                         {
                             await responseMessage.Content.CopyToAsync(request.ResponseStream, null, cts.Token);
                         }
+                        else if (request.MaxResponseLength.HasValue)
+                        {
+                            data = await ReadLimitedAsync(request, responseMessage.Content, request.MaxResponseLength.Value, cts.Token);
+                        }
                         else
                         {
                             data = await responseMessage.Content.ReadAsByteArrayAsync(cts.Token);
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception ex) when (ex is not HttpResponseTooLargeException)
                     {
                         throw new WebException("Failed to read complete http response", ex, WebExceptionStatus.ReceiveFailure, null);
                     }
@@ -144,6 +148,32 @@ namespace NzbDrone.Common.Http.Dispatchers
             {
                 throw new WebException("Http request timed out", ex.InnerException, WebExceptionStatus.Timeout, null);
             }
+        }
+
+        // Counts the bytes as they arrive, after decompression, because Content-Length is the compressed size or absent
+        private static async Task<byte[]> ReadLimitedAsync(HttpRequest request, HttpContent content, long maxLength, CancellationToken cancellationToken)
+        {
+            if (content.Headers.ContentLength > maxLength)
+            {
+                throw new HttpResponseTooLargeException(request, maxLength);
+            }
+
+            await using var stream = await content.ReadAsStreamAsync(cancellationToken);
+            using var buffer = new MemoryStream();
+            var chunk = new byte[81920];
+            int read;
+
+            while ((read = await stream.ReadAsync(chunk, cancellationToken)) > 0)
+            {
+                if (buffer.Length + read > maxLength)
+                {
+                    throw new HttpResponseTooLargeException(request, maxLength);
+                }
+
+                buffer.Write(chunk, 0, read);
+            }
+
+            return buffer.ToArray();
         }
 
         protected virtual System.Net.Http.HttpClient GetClient(HttpUri uri)
