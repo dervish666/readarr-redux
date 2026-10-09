@@ -13,6 +13,7 @@ using NzbDrone.Core.Books.Calibre;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.MediaFiles.Azw;
 using NzbDrone.Core.MediaFiles.Commands;
+using NzbDrone.Core.MetadataSource;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
 using NzbDrone.Core.RootFolders;
@@ -235,7 +236,7 @@ namespace NzbDrone.Core.MediaFiles
                     {
                         { "isbn", edition.Isbn13 },
                         { "asin", edition.Asin },
-                        { "goodreads", edition.ForeignEditionId }
+                        { MetadataProvider.IdentifierKey(edition), edition.ForeignEditionId }
                     },
                     Series = series?.Title,
                     Position = seriesIndex

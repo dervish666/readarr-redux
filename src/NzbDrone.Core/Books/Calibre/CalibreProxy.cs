@@ -18,6 +18,7 @@ using NzbDrone.Common.Serializer;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.MediaCover;
 using NzbDrone.Core.MediaFiles;
+using NzbDrone.Core.MetadataSource;
 using NzbDrone.Core.RemotePathMappings;
 using NzbDrone.Core.Validation;
 
@@ -262,7 +263,7 @@ namespace NzbDrone.Core.Books.Calibre
                     {
                         { "isbn", edition.Isbn13 },
                         { "asin", edition.Asin },
-                        { "goodreads", edition.ForeignEditionId }
+                        { MetadataProvider.IdentifierKey(edition), edition.ForeignEditionId }
                     },
                     Series = series?.Title,
                     SeriesIndex = seriesIndex
