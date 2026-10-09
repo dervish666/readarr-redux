@@ -51,7 +51,7 @@ namespace NzbDrone.Core.MetadataSource.Goodreads
                 _logger.Warn(ex);
                 throw new GoodreadsException("Search for '{0}' failed. Unable to communicate with the metadata source.", ex, query, ex.Message);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is not MetadataSourceNotConfiguredException)
             {
                 _logger.Warn(ex);
                 throw new GoodreadsException("Search for '{0}' failed. Invalid response received from the metadata source.", ex, query);

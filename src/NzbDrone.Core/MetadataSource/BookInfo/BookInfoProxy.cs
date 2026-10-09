@@ -255,7 +255,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 _logger.Warn(ex, ex.Message);
                 throw new GoodreadsException("Search for '{0}' failed. Unable to communicate with Goodreads.", ex, title);
             }
-            catch (Exception ex) when (ex is not BookInfoException)
+            catch (Exception ex) when (ex is not BookInfoException and not MetadataSourceNotConfiguredException)
             {
                 _logger.Warn(ex, ex.Message);
                 throw new GoodreadsException("Search for '{0}' failed. Invalid response received from Goodreads.", ex, title);
@@ -279,10 +279,10 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             {
                 result = _goodreadsSearchProxy.Search(query);
             }
-            catch (Exception e)
+            catch (Exception e) when (e is not MetadataSourceNotConfiguredException)
             {
                 // A failed search is not an empty one. Callers have to tell "metadata source down" from "no match".
-                throw new BookInfoException("Search for '{0}' failed: {1}", e, query, e.Message);
+                throw new BookInfoException("{0}", e, e.Message);
             }
 
             var books = new List<Book>();
@@ -335,7 +335,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                     _logger.Warn(ex);
                     throw new BookInfoException("Search for '{0}' failed. Unable to communicate with ReadarrAPI, returning status code: {1}.", ex, query, ex.Response.StatusCode);
                 }
-                catch (Exception e)
+                catch (Exception e) when (e is not MetadataSourceNotConfiguredException)
                 {
                     _logger.Warn(e, "Error mapping search results");
                     throw new BookInfoException("Search for '{0}' failed. Invalid response received from the metadata source.", e, query);
