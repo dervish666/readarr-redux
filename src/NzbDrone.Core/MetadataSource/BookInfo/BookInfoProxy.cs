@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Text.Json;
 using System.Threading;
+using System.Web;
 using LazyCache;
 using LazyCache.Providers;
 using Microsoft.Extensions.Caching.Memory;
@@ -439,17 +440,14 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 throw new BookInfoException($"Unexpected response from {httpResponse.Request.Url}");
             }
 
-            var location = httpResponse.Headers.GetSingleValue("Location");
-            var split = location.Split('/').Reverse().ToList();
-            var newId = split[0];
-            var type = split[1];
+            var (type, newId, redirectEdition) = ParseRedirect(httpResponse);
 
             Book book;
             List<AuthorMetadata> authors;
 
             if (type == "author")
             {
-                var author = PollAuthor(newId);
+                var author = PollAuthor(newId, redirectEdition);
 
                 book = author.Books.Value.FirstOrDefault(b => b.Editions.Value.Any(e => e.ForeignEditionId == id.ToString()));
                 authors = new List<AuthorMetadata> { author.Metadata.Value };
@@ -609,10 +607,13 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             book.AuthorMetadataId = author.AuthorMetadataId;
         }
 
-        private Author PollAuthor(string foreignAuthorId)
+        // An edition redirect asks for the author holding just that edition, so it is cached apart from the full author
+        private Author PollAuthor(string foreignAuthorId, string edition = null)
         {
-            return _authorCache.GetOrAdd(foreignAuthorId,
-                () => PollAuthorUncached(foreignAuthorId),
+            var key = edition == null ? foreignAuthorId : $"{foreignAuthorId}?edition={edition}";
+
+            return _authorCache.GetOrAdd(key,
+                () => PollAuthorUncached(foreignAuthorId, true, edition),
                 new LazyCacheEntryOptions
                 {
                     AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10),
@@ -623,7 +624,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 }.RegisterPostEvictionCallback((key, value, reason, state) => _logger.Debug($"Clearing cache for {key} due to {reason}")));
         }
 
-        private Author PollAuthorUncached(string foreignAuthorId, bool useCache = true)
+        private Author PollAuthorUncached(string foreignAuthorId, bool useCache = true, string edition = null)
         {
             AuthorResource resource = null;
 
@@ -631,9 +632,15 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             {
                 var httpResponse = ExecuteWithRetry(() =>
                 {
-                    var httpRequest = _requestBuilder.GetRequestBuilder().Create()
-                        .SetSegment("route", $"author/{foreignAuthorId}")
-                        .Build();
+                    var builder = _requestBuilder.GetRequestBuilder().Create()
+                        .SetSegment("route", $"author/{foreignAuthorId}");
+
+                    if (edition != null)
+                    {
+                        builder.AddQueryParam("edition", edition);
+                    }
+
+                    var httpRequest = builder.Build();
 
                     httpRequest.AllowAutoRedirect = true;
                     httpRequest.SuppressHttpError = true;
@@ -703,10 +710,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
                 if (httpResponse.HasHttpRedirect)
                 {
-                    var location = httpResponse.Headers.GetSingleValue("Location");
-                    var split = location.Split('/').Reverse().ToList();
-                    var newId = split[0];
-                    var type = split[1];
+                    var (type, newId, _) = ParseRedirect(httpResponse);
 
                     if (type == "author")
                     {
@@ -765,6 +769,18 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             MapSeriesLinks(series, new List<Book> { book }, resource.Series);
 
             return Tuple.Create(authorId, book, metadata);
+        }
+
+        // rreading-glasses redirects /book/{id} to /author/{author}?edition={id} and /work/{id} to /author/{author}.
+        // Splitting the Location on '/' passed "{author}?edition={id}" on as the author ID, which only worked because
+        // SetSegment pastes it in unescaped, and a trailing slash broke it.
+        private static (string Type, string Id, string Edition) ParseRedirect(HttpResponse response)
+        {
+            var location = new Uri(new Uri(response.Request.Url.FullUri), response.Headers.GetSingleValue("Location"));
+            var segments = location.AbsolutePath.Trim('/').Split('/');
+            var edition = HttpUtility.ParseQueryString(location.Query)["edition"];
+
+            return (segments.Length > 1 ? segments[^2] : null, segments[^1], edition);
         }
 
         // rreading-glasses answers 429 with a Retry-After of about 30s when its author queue is full, and a proxy in
