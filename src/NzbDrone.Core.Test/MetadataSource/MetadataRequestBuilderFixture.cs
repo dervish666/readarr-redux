@@ -41,6 +41,16 @@ namespace NzbDrone.Core.Test.MetadataSource
         }
 
         [TestCase]
+        public void should_rate_limit_requests_to_user_defined_source()
+        {
+            WithCustomProvider();
+
+            var request = Subject.GetRequestBuilder().Create().SetSegment("route", "author/1").Build();
+
+            request.RateLimit.Should().BeGreaterThan(System.TimeSpan.Zero);
+        }
+
+        [TestCase]
         public void should_use_default_if_config_blank()
         {
             var details = Subject.GetRequestBuilder().Create();

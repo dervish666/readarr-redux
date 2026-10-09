@@ -26,7 +26,8 @@ namespace NzbDrone.Core.MetadataSource
         {
             if (_configService.MetadataSource.IsNotNullOrWhiteSpace())
             {
-                return new HttpRequestBuilder(_configService.MetadataSource.TrimEnd("/") + "/{route}").KeepAlive().CreateFactory();
+                // Spaces out bursts such as a full refresh, which otherwise reach rreading-glasses as fast as it answers
+                return new HttpRequestBuilder(_configService.MetadataSource.TrimEnd("/") + "/{route}").KeepAlive().WithRateLimit(0.25).CreateFactory();
             }
             else
             {

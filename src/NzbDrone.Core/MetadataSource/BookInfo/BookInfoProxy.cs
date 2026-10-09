@@ -25,11 +25,16 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 {
     public class BookInfoProxy : IProvideAuthorInfo, IProvideBookInfo, IProvideSeriesInfo, ISearchForNewBook, ISearchForNewAuthor, ISearchForNewEntity
     {
+        private const int MaxRateLimitedTries = 5;
+        private const int MaxGatewayRetries = 2;
+
         private static readonly JsonSerializerOptions SerializerSettings = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = false,
             Converters = { new STJUtcConverter() }
         };
+
+        private static readonly TimeSpan MaxRetryAfter = TimeSpan.FromSeconds(60);
 
         private readonly IHttpClient _httpClient;
         private readonly ICachedHttpResponseService _cachedHttpClient;
@@ -68,6 +73,9 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 DefaultCacheDurationSeconds = 60
             };
         }
+
+        // Tests swap this out so backoff doesn't really wait
+        internal Action<TimeSpan> Sleep { get; set; } = Thread.Sleep;
 
         public HashSet<string> GetChangedAuthors(DateTime startTime)
         {
@@ -178,7 +186,8 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         public List<Author> SearchForNewAuthor(string title)
         {
-            var books = SearchForNewBook(title, null);
+            // All editions would fetch every author in the results in full, making rreading-glasses crawl each one
+            var books = SearchForNewBook(title, null, false);
 
             return books
                 .Select(x => x.Author.Value)
@@ -409,29 +418,17 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         private Book GetEditionInfo(int id, bool getAllEditions)
         {
-            HttpRequest httpRequest;
-            HttpResponse httpResponse;
-
-            while (true)
+            var httpResponse = ExecuteWithRetry(() =>
             {
-                httpRequest = _requestBuilder.GetRequestBuilder().Create()
+                var httpRequest = _requestBuilder.GetRequestBuilder().Create()
                     .SetSegment("route", $"book/{id}")
                     .Build();
 
                 httpRequest.SuppressHttpError = true;
 
                 // we expect a redirect
-                httpResponse = _httpClient.Get(httpRequest);
-
-                if (httpResponse.StatusCode == HttpStatusCode.TooManyRequests)
-                {
-                    WaitUntilRetry(httpResponse);
-                }
-                else
-                {
-                    break;
-                }
-            }
+                return _httpClient.Get(httpRequest);
+            });
 
             if (httpResponse.StatusCode == HttpStatusCode.NotFound)
             {
@@ -440,7 +437,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
             if (!httpResponse.HasHttpRedirect)
             {
-                throw new BookInfoException($"Unexpected response from {httpRequest.Url}");
+                throw new BookInfoException($"Unexpected response from {httpResponse.Request.Url}");
             }
 
             var location = httpResponse.Headers.GetSingleValue("Location");
@@ -500,9 +497,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         private List<Book> MapSearchResult(List<int> ids)
         {
-            HttpResponse<BulkBookResource> httpResponse;
-
-            while (true)
+            var httpResponse = ExecuteWithRetry(() =>
             {
                 var httpRequest = _requestBuilder.GetRequestBuilder().Create()
                     .SetSegment("route", "book/bulk")
@@ -513,21 +508,17 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 httpRequest.ContentSummary = ids.ToJson(Formatting.None);
 
                 httpRequest.AllowAutoRedirect = true;
-                httpRequest.SuppressHttpErrorStatusCodes = new[] { HttpStatusCode.TooManyRequests };
+                httpRequest.SuppressHttpError = true;
 
-                httpResponse = _httpClient.Post<BulkBookResource>(httpRequest);
+                return _httpClient.Post(httpRequest);
+            });
 
-                if (httpResponse.StatusCode == HttpStatusCode.TooManyRequests)
-                {
-                    WaitUntilRetry(httpResponse);
-                }
-                else
-                {
-                    break;
-                }
+            if (httpResponse.HasHttpError)
+            {
+                throw new HttpException(httpResponse.Request, httpResponse);
             }
 
-            var mapped = MapBulkBook(httpResponse.Resource);
+            var mapped = MapBulkBook(new HttpResponse<BulkBookResource>(httpResponse).Resource);
 
             var idStr = ids.Select(x => x.ToString()).ToList();
 
@@ -633,23 +624,21 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
             for (var i = 0; i < 60; i++)
             {
-                var httpRequest = _requestBuilder.GetRequestBuilder().Create()
-                    .SetSegment("route", $"author/{foreignAuthorId}")
-                    .Build();
+                var httpResponse = ExecuteWithRetry(() =>
+                {
+                    var httpRequest = _requestBuilder.GetRequestBuilder().Create()
+                        .SetSegment("route", $"author/{foreignAuthorId}")
+                        .Build();
 
-                httpRequest.AllowAutoRedirect = true;
-                httpRequest.SuppressHttpError = true;
+                    httpRequest.AllowAutoRedirect = true;
+                    httpRequest.SuppressHttpError = true;
 
-                var httpResponse = _cachedHttpClient.Get(httpRequest, useCache, TimeSpan.FromMinutes(30));
+                    return _cachedHttpClient.Get(httpRequest, useCache, TimeSpan.FromMinutes(30));
+                });
 
                 if (httpResponse.HasHttpError)
                 {
-                    if (httpResponse.StatusCode == HttpStatusCode.TooManyRequests)
-                    {
-                        WaitUntilRetry(httpResponse);
-                        continue;
-                    }
-                    else if (httpResponse.StatusCode == HttpStatusCode.NotFound)
+                    if (httpResponse.StatusCode == HttpStatusCode.NotFound)
                     {
                         throw new AuthorNotFoundException(foreignAuthorId);
                     }
@@ -673,7 +662,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 }
 
                 useCache = false;
-                Thread.Sleep(2000);
+                Sleep(TimeSpan.FromSeconds(2));
             }
 
             if (resource?.Works == null)
@@ -690,20 +679,17 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
             for (var i = 0; i < 60; i++)
             {
-                var httpRequest = _requestBuilder.GetRequestBuilder().Create()
-                    .SetSegment("route", $"work/{foreignBookId}")
-                    .Build();
-
-                httpRequest.SuppressHttpError = true;
-
-                // this may redirect to an author
-                var httpResponse = _httpClient.Get(httpRequest);
-
-                if (httpResponse.StatusCode == HttpStatusCode.TooManyRequests)
+                var httpResponse = ExecuteWithRetry(() =>
                 {
-                    WaitUntilRetry(httpResponse);
-                    continue;
-                }
+                    var httpRequest = _requestBuilder.GetRequestBuilder().Create()
+                        .SetSegment("route", $"work/{foreignBookId}")
+                        .Build();
+
+                    httpRequest.SuppressHttpError = true;
+
+                    // this may redirect to an author
+                    return _httpClient.Get(httpRequest);
+                });
 
                 if (httpResponse.StatusCode == HttpStatusCode.NotFound)
                 {
@@ -758,7 +744,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                     break;
                 }
 
-                Thread.Sleep(2000);
+                Sleep(TimeSpan.FromSeconds(2));
             }
 
             if (resource?.Books == null || resource?.Authors == null || (!resource?.Authors?.Any() ?? false))
@@ -776,6 +762,61 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             return Tuple.Create(authorId, book, metadata);
         }
 
+        // rreading-glasses answers 429 with a Retry-After of about 30s when its author queue is full, and a proxy in
+        // front of it answers 502 to 504 while it restarts. Both are worth waiting out, but only for so long: an
+        // uncapped loop could hold a command thread for half an hour, or forever.
+        private HttpResponse ExecuteWithRetry(Func<HttpResponse> send)
+        {
+            var rateLimited = 0;
+            var gatewayRetries = 0;
+
+            while (true)
+            {
+                HttpResponse response;
+
+                try
+                {
+                    response = send();
+                }
+                catch (WebException ex) when (ex.Status == WebExceptionStatus.Timeout && gatewayRetries < MaxGatewayRetries)
+                {
+                    BackOff(++gatewayRetries, "timed out");
+                    continue;
+                }
+
+                if (response.StatusCode == HttpStatusCode.TooManyRequests && ++rateLimited < MaxRateLimitedTries)
+                {
+                    WaitUntilRetry(response);
+                    continue;
+                }
+
+                if (IsGatewayError(response.StatusCode) && gatewayRetries < MaxGatewayRetries)
+                {
+                    BackOff(++gatewayRetries, $"returned {(int)response.StatusCode}");
+                    continue;
+                }
+
+                return response;
+            }
+        }
+
+        private static bool IsGatewayError(HttpStatusCode statusCode)
+        {
+            return statusCode == HttpStatusCode.BadGateway ||
+                   statusCode == HttpStatusCode.ServiceUnavailable ||
+                   statusCode == HttpStatusCode.GatewayTimeout;
+        }
+
+        // 1-2s, then 2-4s, jittered so concurrent commands don't retry in step
+        private void BackOff(int retry, string reason)
+        {
+            var delay = TimeSpan.FromSeconds(Math.Pow(2, retry - 1) * (1 + Random.Shared.NextDouble()));
+
+            _logger.Info("Metadata source {0}, retrying in {1:0.0}s", reason, delay.TotalSeconds);
+
+            Sleep(delay);
+        }
+
         private void WaitUntilRetry(HttpResponse response)
         {
             var seconds = 5;
@@ -784,15 +825,17 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             {
                 var retryAfter = response.Headers["Retry-After"];
 
-                if (!int.TryParse(retryAfter, out seconds))
+                if (!int.TryParse(retryAfter, out seconds) || seconds < 0)
                 {
                     seconds = 5;
                 }
             }
 
-            _logger.Info("BookInfo returned 429, backing off for {0}s", seconds);
+            var delay = TimeSpan.FromSeconds(Math.Min(seconds, MaxRetryAfter.TotalSeconds));
 
-            Thread.Sleep(TimeSpan.FromSeconds(seconds));
+            _logger.Info("BookInfo returned 429, backing off for {0}s", delay.TotalSeconds);
+
+            Sleep(delay);
         }
 
         private static AuthorMetadata MapAuthorMetadata(AuthorResource resource)
