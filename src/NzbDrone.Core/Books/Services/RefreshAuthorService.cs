@@ -387,7 +387,17 @@ namespace NzbDrone.Core.Books
 
                 if (message.LastExecutionTime.HasValue && message.LastExecutionTime.Value.AddDays(14) > DateTime.UtcNow)
                 {
-                    updatedGoodreadsAuthors = _authorInfo.GetChangedAuthors(message.LastStartTime.Value);
+                    try
+                    {
+                        updatedGoodreadsAuthors = _authorInfo.GetChangedAuthors(message.LastStartTime.Value);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Without the list every author refreshes on its own schedule, which is what rreading-glasses
+                        // asks for anyway: its /author/changed always answers Limited.
+                        _logger.Warn(ex, "Unable to fetch changed authors from the metadata source, refreshing authors on their usual schedule");
+                        updatedGoodreadsAuthors = null;
+                    }
                 }
 
                 foreach (var author in authors)

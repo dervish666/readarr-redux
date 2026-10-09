@@ -1,8 +1,10 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using FizzWare.NBuilder;
 using FluentAssertions;
 using Moq;
+using Newtonsoft.Json;
 using NUnit.Framework;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Books;
@@ -117,6 +119,31 @@ namespace NzbDrone.Core.Test.MusicTests
             Mocker.GetMock<IAuthorService>(MockBehavior.Strict)
                 .Setup(x => x.UpdateAuthor(It.IsAny<Author>()))
                 .Returns((Author a) => a);
+        }
+
+        [Test]
+        public void should_refresh_on_schedule_when_changed_authors_cannot_be_fetched()
+        {
+            Mocker.GetMock<IAuthorService>(MockBehavior.Strict)
+                .Setup(s => s.GetAllAuthors())
+                .Returns(new List<Author> { _author });
+
+            // A 502 page or plain-text error where JSON was expected
+            Mocker.GetMock<IProvideAuthorInfo>()
+                .Setup(s => s.GetChangedAuthors(It.IsAny<DateTime>()))
+                .Throws(new JsonException("Unexpected character encountered while parsing value: <"));
+
+            var command = new RefreshAuthorCommand
+            {
+                LastExecutionTime = DateTime.UtcNow.AddHours(-12),
+                LastStartTime = DateTime.UtcNow.AddHours(-12)
+            };
+
+            Subject.Execute(command);
+
+            Mocker.GetMock<ICheckIfAuthorShouldBeRefreshed>()
+                .Verify(v => v.ShouldRefresh(_author), Times.Once());
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]

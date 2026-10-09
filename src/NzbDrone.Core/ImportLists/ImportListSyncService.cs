@@ -108,6 +108,7 @@ namespace NzbDrone.Core.ImportLists
             _logger.ProgressInfo("Processing {0} list items", items.Count);
 
             var reportNumber = 1;
+            var failed = 0;
 
             var listExclusions = _importListExclusionService.All();
 
@@ -117,32 +118,22 @@ namespace NzbDrone.Core.ImportLists
 
                 reportNumber++;
 
-                var importList = _importListFactory.Get(report.ImportListId);
-
-                if (report.Book.IsNotNullOrWhiteSpace() || report.EditionGoodreadsId.IsNotNullOrWhiteSpace() || report.BookGoodreadsId.IsNotNullOrWhiteSpace())
+                // One item the metadata source can't map must not cost the rest of the list
+                try
                 {
-                    if (report.EditionGoodreadsId.IsNullOrWhiteSpace() || report.AuthorGoodreadsId.IsNullOrWhiteSpace() || report.BookGoodreadsId.IsNullOrWhiteSpace())
-                    {
-                        MapBookReport(report);
-                    }
-
-                    ProcessBookReport(importList, report, listExclusions, booksToAdd, authorsToAdd);
+                    ProcessListItem(report, listExclusions, booksToAdd, authorsToAdd);
                 }
-                else if (report.Author.IsNotNullOrWhiteSpace() || report.AuthorGoodreadsId.IsNotNullOrWhiteSpace())
+                catch (Exception ex)
                 {
-                    if (report.AuthorGoodreadsId.IsNullOrWhiteSpace())
-                    {
-                        MapAuthorReport(report);
-                    }
-
-                    ProcessAuthorReport(importList, report, listExclusions, authorsToAdd);
+                    failed++;
+                    _logger.Warn(ex, "Failed to process list item {0} - {1}", report.Author, report.Book ?? report.BookGoodreadsId);
                 }
             }
 
             var addedAuthors = _addAuthorService.AddAuthors(authorsToAdd, false);
             var addedBooks = _addBookService.AddBooks(booksToAdd, false);
 
-            var message = string.Format($"Import List Sync Completed. Items found: {items.Count}, Authors added: {authorsToAdd.Count}, Books added: {booksToAdd.Count}");
+            var message = string.Format($"Import List Sync Completed. Items found: {items.Count}, Authors added: {authorsToAdd.Count}, Books added: {booksToAdd.Count}, Failed: {failed}");
 
             _logger.ProgressInfo(message);
 
@@ -153,6 +144,37 @@ namespace NzbDrone.Core.ImportLists
             }
 
             return processed;
+        }
+
+        private void ProcessListItem(ImportListItemInfo report, List<ImportListExclusion> listExclusions, List<Book> booksToAdd, List<Author> authorsToAdd)
+        {
+            var importList = _importListFactory.Get(report.ImportListId);
+
+            if (report.Book.IsNotNullOrWhiteSpace() || report.EditionGoodreadsId.IsNotNullOrWhiteSpace() || report.BookGoodreadsId.IsNotNullOrWhiteSpace())
+            {
+                if (report.EditionGoodreadsId.IsNullOrWhiteSpace() || report.AuthorGoodreadsId.IsNullOrWhiteSpace() || report.BookGoodreadsId.IsNullOrWhiteSpace())
+                {
+                    MapBookReport(report);
+                }
+
+                // Nothing matched, and a book with no ID can only fail when it's added
+                if (report.BookGoodreadsId.IsNullOrWhiteSpace())
+                {
+                    _logger.Debug("No book found for list item {0} - {1}", report.Author, report.Book);
+                    return;
+                }
+
+                ProcessBookReport(importList, report, listExclusions, booksToAdd, authorsToAdd);
+            }
+            else if (report.Author.IsNotNullOrWhiteSpace() || report.AuthorGoodreadsId.IsNotNullOrWhiteSpace())
+            {
+                if (report.AuthorGoodreadsId.IsNullOrWhiteSpace())
+                {
+                    MapAuthorReport(report);
+                }
+
+                ProcessAuthorReport(importList, report, listExclusions, authorsToAdd);
+            }
         }
 
         private void MapBookReport(ImportListItemInfo report)

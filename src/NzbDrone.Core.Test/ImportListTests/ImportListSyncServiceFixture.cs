@@ -8,9 +8,11 @@ using NzbDrone.Core.Books;
 using NzbDrone.Core.ImportLists;
 using NzbDrone.Core.ImportLists.Exclusions;
 using NzbDrone.Core.MetadataSource;
+using NzbDrone.Core.MetadataSource.BookInfo;
 using NzbDrone.Core.MetadataSource.Goodreads;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Test.Framework;
+using NzbDrone.Test.Common;
 
 namespace NzbDrone.Core.Test.ImportListTests
 {
@@ -440,6 +442,34 @@ namespace NzbDrone.Core.Test.ImportListTests
                 .Verify(v => v.GetBookInfo(It.IsAny<string>()), Times.Never());
             Mocker.GetMock<IBookService>()
                 .Verify(v => v.SetBookMonitored(7, true), Times.Once());
+        }
+
+        [Test]
+        public void should_keep_syncing_when_one_item_fails()
+        {
+            _importListReports.First().BookGoodreadsId = "1";
+            WithSecondBook();
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Setup(v => v.GetBookInfo("1"))
+                .Throws(new BookInfoException("Unexpected response fetching book data"));
+
+            Subject.Execute(new ImportListSyncCommand());
+
+            Mocker.GetMock<IAddBookService>()
+                .Verify(v => v.AddBooks(It.Is<List<Book>>(t => t.Count == 1 && t.First().ForeignBookId == "8765"), false));
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_not_add_book_that_mapped_to_nothing()
+        {
+            WithBook();
+
+            Subject.Execute(new ImportListSyncCommand());
+
+            Mocker.GetMock<IAddBookService>()
+                .Verify(v => v.AddBooks(It.Is<List<Book>>(t => t.Count == 0), false));
         }
 
         [Test]
