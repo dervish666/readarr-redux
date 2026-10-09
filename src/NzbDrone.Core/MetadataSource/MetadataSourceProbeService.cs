@@ -123,6 +123,40 @@ namespace NzbDrone.Core.MetadataSource
             return CheckUrl(url, baseUrl) ?? _cache.Get(baseUrl, () => ProbeSource(baseUrl), CacheLifetime);
         }
 
+        // An address BookInfoProxy can build requests on: plain http or https, with no credentials, query or fragment,
+        // and nothing HttpRequestBuilder rejects (it throws on userinfo and non-ASCII hosts, which used to surface as a 500)
+        public static bool IsUsableUrl(string url)
+        {
+            var baseUrl = Normalize(url);
+
+            if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri) ||
+                (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) ||
+                uri.UserInfo.IsNotNullOrWhiteSpace() ||
+                uri.Query.IsNotNullOrWhiteSpace() ||
+                uri.Fragment.IsNotNullOrWhiteSpace())
+            {
+                return false;
+            }
+
+            try
+            {
+                BuildRequest(baseUrl);
+                return true;
+            }
+            catch (Exception ex) when (ex is ArgumentException or FormatException)
+            {
+                return false;
+            }
+        }
+
+        private static HttpRequest BuildRequest(string baseUrl)
+        {
+            return new HttpRequestBuilder(baseUrl + "/{route}")
+                .SetSegment("route", "work/" + ProbeWorkId)
+                .Accept(HttpAccept.Json)
+                .Build();
+        }
+
         private static string Normalize(string url)
         {
             return url.IsNullOrWhiteSpace() ? string.Empty : url.Trim().TrimEnd('/');
@@ -135,8 +169,7 @@ namespace NzbDrone.Core.MetadataSource
                 return Result(baseUrl, MetadataSourceProbeStatus.NotConfigured);
             }
 
-            if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri) ||
-                (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+            if (!IsUsableUrl(baseUrl))
             {
                 return Result(url.Trim(), MetadataSourceProbeStatus.InvalidUrl);
             }
@@ -146,10 +179,7 @@ namespace NzbDrone.Core.MetadataSource
 
         private MetadataSourceProbeResult ProbeSource(string baseUrl)
         {
-            var request = new HttpRequestBuilder(baseUrl + "/{route}")
-                .SetSegment("route", "work/" + ProbeWorkId)
-                .Accept(HttpAccept.Json)
-                .Build();
+            var request = BuildRequest(baseUrl);
 
             // No redirects. BookInfoProxy reads a redirect on a work as "this work moved to an author" and never follows
             // it, and following one would let a source point the probe at any host on the user's network.

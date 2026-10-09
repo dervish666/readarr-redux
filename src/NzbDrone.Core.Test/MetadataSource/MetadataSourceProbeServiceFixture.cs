@@ -80,9 +80,16 @@ namespace NzbDrone.Core.Test.MetadataSource
         [TestCase("metadata.local:8790")]
         [TestCase("not a url")]
         [TestCase("ftp://metadata.local/")]
+        [TestCase("http://user:secret@metadata.local:8790")]
+        [TestCase("http://user@metadata.local:8790")]
+        [TestCase("http://metadata.local:8790/?source=1")]
+        [TestCase("http://metadata.local:8790/#top")]
+        [TestCase("http://bücher.example:8790")]
         public void should_report_invalid_url_without_calling_out(string url)
         {
             Subject.Probe(url).Status.Should().Be(MetadataSourceProbeStatus.InvalidUrl);
+            Subject.GetCachedProbe(url).Status.Should().Be(MetadataSourceProbeStatus.InvalidUrl);
+            MetadataSourceProbeService.IsUsableUrl(url).Should().BeFalse();
 
             VerifyNoRequest();
         }

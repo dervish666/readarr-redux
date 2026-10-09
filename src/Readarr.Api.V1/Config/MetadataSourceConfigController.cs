@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.AspNetCore.Mvc;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Localization;
 using NzbDrone.Core.MetadataSource;
-using NzbDrone.Core.Validation;
 using NzbDrone.Http.REST.Attributes;
 using Readarr.Http;
 
@@ -24,8 +24,6 @@ namespace Readarr.Api.V1.Config
         {
             _probeService = probeService;
             _localizationService = localizationService;
-
-            SharedValidator.RuleFor(c => c.MetadataSource).IsValidUrl().When(c => !c.MetadataSource.IsNullOrWhiteSpace());
         }
 
         protected override MetadataSourceConfigResource ToResource(IConfigService model)
@@ -33,12 +31,19 @@ namespace Readarr.Api.V1.Config
             return MetadataSourceConfigResourceMapper.ToResource(model);
         }
 
-        // Only a malformed URL blocks the save. A source that fails the probe still saves, so an offline or
-        // not-yet-running source can be set up, and the probe comes back in the response as a warning.
+        // Only an address the metadata client can't use blocks the save. A source that fails the probe still saves, so
+        // an offline or not-yet-running source can be set up, and the probe comes back in the response as a warning.
         [RestPutById]
         public override ActionResult<MetadataSourceConfigResource> SaveConfig(MetadataSourceConfigResource resource)
         {
             var source = resource.MetadataSource?.Trim() ?? string.Empty;
+
+            if (source.IsNotNullOrWhiteSpace() && !MetadataSourceProbeService.IsUsableUrl(source))
+            {
+                var message = _localizationService.GetLocalizedString("MetadataSourceStatusInvalidUrl", new Dictionary<string, object> { { "url", source } });
+
+                throw new ValidationException(new[] { new ValidationFailure(nameof(MetadataSourceConfigResource.MetadataSource), message, source) });
+            }
 
             // Probe before saving. The save fires ConfigSavedEvent, and MetadataSourceCheck then reuses this cached
             // result instead of calling the source a second time.
