@@ -33,6 +33,7 @@ namespace NzbDrone.Core.Download
         private readonly IProvideImportItemService _provideImportItemService;
         private readonly IDownloadedBooksImportService _downloadedTracksImportService;
         private readonly ITrackedDownloadAlreadyImported _trackedDownloadAlreadyImported;
+        private readonly IPartsLeftBehindService _partsLeftBehindService;
         private readonly Logger _logger;
 
         public CompletedDownloadService(IEventAggregator eventAggregator,
@@ -41,6 +42,7 @@ namespace NzbDrone.Core.Download
                                         IProvideImportItemService provideImportItemService,
                                         IDownloadedBooksImportService downloadedTracksImportService,
                                         ITrackedDownloadAlreadyImported trackedDownloadAlreadyImported,
+                                        IPartsLeftBehindService partsLeftBehindService,
                                         Logger logger)
         {
             _eventAggregator = eventAggregator;
@@ -49,6 +51,7 @@ namespace NzbDrone.Core.Download
             _provideImportItemService = provideImportItemService;
             _downloadedTracksImportService = downloadedTracksImportService;
             _trackedDownloadAlreadyImported = trackedDownloadAlreadyImported;
+            _partsLeftBehindService = partsLeftBehindService;
             _logger = logger;
         }
 
@@ -195,6 +198,20 @@ namespace NzbDrone.Core.Download
 
         public bool VerifyImport(TrackedDownload trackedDownload, List<ImportResult> importResults)
         {
+            // A part of an audiobook that didn't import is still in the download folder, and calling the download
+            // imported lets the client's remove-completed delete it. Checked before history, which only knows that
+            // some file of the book imported.
+            var leftBehind = _partsLeftBehindService.PartsLeftBehind(importResults);
+
+            if (leftBehind.Any())
+            {
+                _logger.Warn("Not all parts imported for {0}, keeping the download until they are: {1}",
+                    trackedDownload.DownloadItem.Title,
+                    leftBehind.Select(Path.GetFileName).ConcatToString(", "));
+
+                return false;
+            }
+
             var allItemsImported = importResults.Where(c => c.Result == ImportResultType.Imported)
                                                    .Select(c => c.ImportDecision.Item.Book)
                                                    .Count() >= Math.Max(1, trackedDownload.RemoteBook?.Books.Count ?? 1);

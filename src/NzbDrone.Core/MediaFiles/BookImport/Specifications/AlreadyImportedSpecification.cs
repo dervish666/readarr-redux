@@ -10,6 +10,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Specifications
 {
     public class AlreadyImportedSpecification : IImportDecisionEngineSpecification<LocalEdition>
     {
+        public const string AlreadyImportedReason = "Book already imported at";
+
         private readonly IHistoryService _historyService;
         private readonly Logger _logger;
 
@@ -57,7 +59,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Specifications
             if (lastImported.DownloadId == downloadClientItem.DownloadId)
             {
                 _logger.Debug("Book previously imported at {0}", lastImported.Date);
-                return Decision.Reject("Book already imported at {0}", lastImported.Date);
+                return Decision.Reject(AlreadyImportedReason + " {0}", lastImported.Date);
             }
 
             return Decision.Accept();
