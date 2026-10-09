@@ -21,6 +21,7 @@ import ImportListSettingsConnector from 'Settings/ImportLists/ImportListSettings
 import IndexerSettingsConnector from 'Settings/Indexers/IndexerSettingsConnector';
 import MediaManagementConnector from 'Settings/MediaManagement/MediaManagementConnector';
 import MetadataSettings from 'Settings/Metadata/MetadataSettings';
+import MetadataSourceSettingsConnector from 'Settings/MetadataSource/MetadataSourceSettingsConnector';
 import NotificationSettings from 'Settings/Notifications/NotificationSettings';
 import Profiles from 'Settings/Profiles/Profiles';
 import QualityConnector from 'Settings/Quality/QualityConnector';
@@ -204,6 +205,11 @@ function AppRoutes(props) {
       <Route
         path="/settings/metadata"
         component={MetadataSettings}
+      />
+
+      <Route
+        path="/settings/metadatasource"
+        component={MetadataSourceSettingsConnector}
       />
 
       <Route
