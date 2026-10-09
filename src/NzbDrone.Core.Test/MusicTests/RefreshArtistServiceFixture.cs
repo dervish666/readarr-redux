@@ -178,6 +178,36 @@ namespace NzbDrone.Core.Test.MusicTests
         }
 
         [Test]
+        public void should_leave_remaining_authors_alone_once_the_retry_budget_is_spent()
+        {
+            var authors = Builder<Author>.CreateListOfSize(3)
+                .All()
+                .With(a => a.Metadata = Builder<AuthorMetadata>.CreateNew().Build())
+                .Build()
+                .ToList();
+
+            Mocker.GetMock<IAuthorService>(MockBehavior.Strict)
+                .Setup(s => s.GetAuthors(It.IsAny<List<int>>()))
+                .Returns(authors);
+
+            // The first author's lookup waits out the whole budget and still fails
+            Mocker.GetMock<IProvideAuthorInfo>()
+                .Setup(s => s.GetAuthorInfo(It.IsAny<string>(), true))
+                .Callback(() => MetadataRetryBudget.TrySpend(TimeSpan.FromHours(1)))
+                .Throws(new BookInfoException("BookInfo returned 429"));
+
+            Subject.Execute(new BulkRefreshAuthorCommand(authors.Select(a => a.Id).ToList()));
+
+            Mocker.GetMock<IProvideAuthorInfo>()
+                .Verify(v => v.GetAuthorInfo(It.IsAny<string>(), true), Times.Once());
+            Mocker.GetMock<IAuthorService>()
+                .Verify(v => v.DeleteAuthor(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never());
+
+            ExceptionVerification.ExpectedErrors(1);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
         public void should_refresh_on_schedule_when_changed_authors_cannot_be_fetched()
         {
             Mocker.GetMock<IAuthorService>(MockBehavior.Strict)

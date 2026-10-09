@@ -679,6 +679,12 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 }
 
                 useCache = false;
+
+                if (!MetadataRetryBudget.TrySpend(TimeSpan.FromSeconds(2)))
+                {
+                    break;
+                }
+
                 Sleep(TimeSpan.FromSeconds(2));
             }
 
@@ -753,7 +759,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
                 resource = JsonSerializer.Deserialize<WorkResource>(httpResponse.Content, SerializerSettings);
 
-                if (resource.Books != null)
+                if (resource.Books != null || !MetadataRetryBudget.TrySpend(TimeSpan.FromSeconds(2)))
                 {
                     break;
                 }

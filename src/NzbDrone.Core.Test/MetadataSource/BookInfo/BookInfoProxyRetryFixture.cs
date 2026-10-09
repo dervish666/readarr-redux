@@ -76,13 +76,34 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
         }
 
         [Test]
-        public void should_cap_retry_after_at_sixty_seconds()
+        public void should_give_up_when_retry_after_is_over_sixty_seconds()
         {
             GivenResponses(r => Respond(r, HttpStatusCode.TooManyRequests, "600"), r => Respond(r, HttpStatusCode.OK));
 
-            Subject.GetBookInfo("1").Item2.ForeignBookId.Should().Be("1");
+            Assert.Throws<BookInfoException>(() => Subject.GetBookInfo("1"));
 
-            _sleeps.Should().Equal(TimeSpan.FromSeconds(60));
+            _sleeps.Should().BeEmpty();
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_stop_retrying_once_the_command_budget_is_spent()
+        {
+            Mocker.GetMock<IHttpClient>()
+                .Setup(s => s.Get(It.IsAny<HttpRequest>()))
+                .Returns<HttpRequest>(r => Respond(r, HttpStatusCode.TooManyRequests, "30"));
+
+            using (MetadataRetryBudget.Start(TimeSpan.FromSeconds(70)))
+            {
+                Assert.Throws<BookInfoException>(() => Subject.GetBookInfo("1"));
+
+                MetadataRetryBudget.Exhausted.Should().BeTrue();
+            }
+
+            MetadataRetryBudget.Exhausted.Should().BeFalse();
+            _sleeps.Should().Equal(TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+            Mocker.GetMock<IHttpClient>().Verify(s => s.Get(It.IsAny<HttpRequest>()), Times.Exactly(3));
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]

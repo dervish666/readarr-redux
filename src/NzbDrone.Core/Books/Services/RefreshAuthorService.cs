@@ -30,6 +30,10 @@ namespace NzbDrone.Core.Books
         IExecute<RefreshAuthorCommand>,
         IExecute<BulkRefreshAuthorCommand>
     {
+        // A rate-limited or failing source must not hold a refresh for hours. Past this much waiting in total, the
+        // authors still to go are left as they are until the next run.
+        private static readonly TimeSpan RetryBudget = TimeSpan.FromMinutes(10);
+
         private readonly IProvideAuthorInfo _authorInfo;
         private readonly IAuthorService _authorService;
         private readonly IBookService _bookService;
@@ -342,24 +346,43 @@ namespace NzbDrone.Core.Books
             }
         }
 
+        private void WarnIfBudgetSpent(int skipped)
+        {
+            if (skipped > 0)
+            {
+                _logger.Warn("Spent {0} minutes waiting on the metadata source, {1} authors were not refreshed and are left as they are", RetryBudget.TotalMinutes, skipped);
+            }
+        }
+
         private void RefreshSelectedAuthors(List<int> authorIds, bool isNew, CommandTrigger trigger)
         {
             var updated = false;
+            var skipped = 0;
             var authors = _authorService.GetAuthors(authorIds);
 
-            foreach (var author in authors)
+            using (MetadataRetryBudget.Start(RetryBudget))
             {
-                try
+                foreach (var author in authors)
                 {
-                    var data = GetSkyhookData(author.ForeignAuthorId);
-                    updated |= RefreshEntityInfo(author, null, data, true, false, null);
-                }
-                catch (Exception e)
-                {
-                    _logger.Error(e, "Couldn't refresh info for {0}", author);
+                    if (MetadataRetryBudget.Exhausted)
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    try
+                    {
+                        var data = GetSkyhookData(author.ForeignAuthorId);
+                        updated |= RefreshEntityInfo(author, null, data, true, false, null);
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.Error(e, "Couldn't refresh info for {0}", author);
+                    }
                 }
             }
 
+            WarnIfBudgetSpent(skipped);
             Rescan(authorIds, isNew, trigger, updated);
         }
 
@@ -400,31 +423,43 @@ namespace NzbDrone.Core.Books
                     }
                 }
 
-                foreach (var author in authors)
-                {
-                    var manualTrigger = message.Trigger == CommandTrigger.Manual;
+                var skipped = 0;
 
-                    if ((updatedGoodreadsAuthors == null && _checkIfAuthorShouldBeRefreshed.ShouldRefresh(author)) ||
-                        (updatedGoodreadsAuthors != null && updatedGoodreadsAuthors.Contains(author.ForeignAuthorId)) ||
-                        manualTrigger)
+                using (MetadataRetryBudget.Start(RetryBudget))
+                {
+                    foreach (var author in authors)
                     {
-                        try
+                        var manualTrigger = message.Trigger == CommandTrigger.Manual;
+
+                        if ((updatedGoodreadsAuthors == null && _checkIfAuthorShouldBeRefreshed.ShouldRefresh(author)) ||
+                            (updatedGoodreadsAuthors != null && updatedGoodreadsAuthors.Contains(author.ForeignAuthorId)) ||
+                            manualTrigger)
                         {
-                            LogProgress(author);
-                            var data = GetSkyhookData(author.ForeignAuthorId);
-                            updated |= RefreshEntityInfo(author, null, data, manualTrigger, false, message.LastStartTime);
+                            if (MetadataRetryBudget.Exhausted)
+                            {
+                                skipped++;
+                                continue;
+                            }
+
+                            try
+                            {
+                                LogProgress(author);
+                                var data = GetSkyhookData(author.ForeignAuthorId);
+                                updated |= RefreshEntityInfo(author, null, data, manualTrigger, false, message.LastStartTime);
+                            }
+                            catch (Exception e)
+                            {
+                                _logger.Error(e, "Couldn't refresh info for {0}", author);
+                            }
                         }
-                        catch (Exception e)
+                        else
                         {
-                            _logger.Error(e, "Couldn't refresh info for {0}", author);
+                            _logger.Info("Skipping refresh of author: {0}", author.Name);
                         }
-                    }
-                    else
-                    {
-                        _logger.Info("Skipping refresh of author: {0}", author.Name);
                     }
                 }
 
+                WarnIfBudgetSpent(skipped);
                 Rescan(authorIds, isNew, trigger, updated);
             }
         }

@@ -29,20 +29,39 @@ namespace NzbDrone.Core.MetadataSource
                 }
                 catch (WebException ex) when (IsTimeout(ex) && gatewayRetries < MaxGatewayRetries)
                 {
-                    Wait(BackOff(++gatewayRetries), "timed out", sleep, logger);
+                    if (!Wait(BackOff(++gatewayRetries), "timed out", sleep, logger))
+                    {
+                        throw;
+                    }
+
                     continue;
                 }
 
                 if (response.StatusCode == HttpStatusCode.TooManyRequests && ++rateLimited < MaxRateLimitedTries)
                 {
-                    Wait(RetryAfter(response), "returned 429", sleep, logger);
-                    continue;
+                    var retryAfter = RetryAfter(response);
+
+                    // A source asking for more than a minute is not coming back soon enough to hold a command for
+                    if (retryAfter > MaxRetryAfter)
+                    {
+                        logger.Debug("Metadata source asked to wait {0}s, not retrying", retryAfter.TotalSeconds);
+                        return response;
+                    }
+
+                    if (Wait(retryAfter, "returned 429", sleep, logger))
+                    {
+                        continue;
+                    }
+
+                    return response;
                 }
 
                 if (IsGatewayError(response.StatusCode) && gatewayRetries < MaxGatewayRetries)
                 {
-                    Wait(BackOff(++gatewayRetries), $"returned {(int)response.StatusCode}", sleep, logger);
-                    continue;
+                    if (Wait(BackOff(++gatewayRetries), $"returned {(int)response.StatusCode}", sleep, logger))
+                    {
+                        continue;
+                    }
                 }
 
                 return response;
@@ -79,14 +98,21 @@ namespace NzbDrone.Core.MetadataSource
                 seconds = 5;
             }
 
-            return TimeSpan.FromSeconds(Math.Min(seconds, MaxRetryAfter.TotalSeconds));
+            return TimeSpan.FromSeconds(seconds);
         }
 
-        private static void Wait(TimeSpan delay, string reason, Action<TimeSpan> sleep, Logger logger)
+        private static bool Wait(TimeSpan delay, string reason, Action<TimeSpan> sleep, Logger logger)
         {
+            if (!MetadataRetryBudget.TrySpend(delay))
+            {
+                logger.Debug("Metadata source {0}, not retrying: this command's retry budget is spent", reason);
+                return false;
+            }
+
             logger.Info("Metadata source {0}, retrying in {1:0.0}s", reason, delay.TotalSeconds);
 
             sleep(delay);
+            return true;
         }
     }
 }
