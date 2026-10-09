@@ -625,6 +625,8 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             results.Should().ContainSingle(r => r.Result == ImportResultType.Imported);
             decisions.Select(d => d.Item.Part).Should().Equal(1, 1);
+
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         // Audio files of the fixture's book under one download folder, as "Folder/Name.mp3" with their tagged part
@@ -651,29 +653,32 @@ namespace NzbDrone.Core.Test.MediaFiles
             })).ToList();
         }
 
-        private void AssertRejectedAsConflicting(List<ImportResult> results, int count)
+        // Without a provable numbering the tagged parts stand: the first file for each part imports and every
+        // other file claiming it is skipped, with a warning rather than silently
+        private void AssertNotRenumbered(List<ImportDecision<LocalBook>> decisions, List<ImportResult> results, int[] tagged, int skipped)
         {
-            results.Where(r => r.Result == ImportResultType.Rejected).Should().HaveCount(count)
-                .And.OnlyContain(r => r.Errors.Contains(ImportApprovedBooks.ConflictingPartsReason));
+            decisions.Select(d => d.Item.Part).Should().Equal(tagged);
+            results.Should().NotContain(r => r.Result == ImportResultType.Rejected);
+            results.Where(r => r.Result == ImportResultType.Skipped).Should().HaveCount(skipped)
+                .And.OnlyContain(r => r.Errors.Contains("Book has already been imported"));
+
+            ExceptionVerification.ExpectedWarns(skipped);
         }
 
         [Test]
-        public void should_reject_clashing_parts_when_the_filenames_skip_a_number()
+        public void should_not_renumber_clashing_parts_when_the_filenames_skip_a_number()
         {
             var saved = new List<BookFile>();
             var decisions = GivenAudioParts(saved, ("Book - Part 1.mp3", 1), ("Book - Part 2.mp3", 1), ("Book - Part 4.mp3", 4));
 
             var results = Subject.Import(decisions, false);
 
-            decisions.Select(d => d.Item.Part).Should().Equal(1, 1, 4);
-            AssertRejectedAsConflicting(results, 2);
-            saved.Select(f => f.Part).Should().Equal(4);
-
-            ExceptionVerification.ExpectedWarns(1);
+            AssertNotRenumbered(decisions, results, new[] { 1, 1, 4 }, 1);
+            saved.Select(f => f.Part).Should().BeEquivalentTo(new[] { 1, 4 });
         }
 
         [Test]
-        public void should_reject_clashing_parts_when_a_tag_claims_a_part_beyond_the_file_count()
+        public void should_not_renumber_clashing_parts_when_a_tag_claims_a_part_beyond_the_file_count()
         {
             // The names run 1 to 3 but a tag says part 4, so a part is missing and numbering by name would hide it
             var saved = new List<BookFile>();
@@ -681,10 +686,7 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             var results = Subject.Import(decisions, false);
 
-            decisions.Select(d => d.Item.Part).Should().Equal(1, 1, 4);
-            AssertRejectedAsConflicting(results, 2);
-
-            ExceptionVerification.ExpectedWarns(1);
+            AssertNotRenumbered(decisions, results, new[] { 1, 1, 4 }, 1);
         }
 
         [Test]
@@ -700,17 +702,18 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             var results = Subject.Import(decisions, true);
 
-            AssertRejectedAsConflicting(results, 2);
+            decisions.Select(d => d.Item.Part).Should().Equal(1, 1, 3);
+            results.Should().ContainSingle(r => r.Result == ImportResultType.Skipped);
             disk.Values.Where(x => x == "old").Should().HaveCount(3);
 
             Mocker.GetMock<IRecycleBinProvider>()
                 .Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
 
-            ExceptionVerification.ExpectedWarns(3);
+            ExceptionVerification.ExpectedWarns(4);
         }
 
         [Test]
-        public void should_reject_clashing_parts_of_two_editions_rather_than_number_them_together()
+        public void should_not_number_two_editions_together()
         {
             var saved = new List<BookFile>();
             var decisions = GivenAudioParts(saved,
@@ -731,11 +734,7 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             var results = Subject.Import(decisions, false);
 
-            decisions.Select(d => d.Item.Part).Should().Equal(1, 2, 3, 1, 2, 3);
-            AssertRejectedAsConflicting(results, 6);
-            saved.Should().BeEmpty();
-
-            ExceptionVerification.ExpectedWarns(1);
+            AssertNotRenumbered(decisions, results, new[] { 1, 2, 3, 1, 2, 3 }, 3);
         }
 
         [Test]
@@ -750,10 +749,7 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             var results = Subject.Import(decisions, false);
 
-            decisions.Select(d => d.Item.Part).Should().Equal(1, 2, 1, 2);
-            AssertRejectedAsConflicting(results, 4);
-
-            ExceptionVerification.ExpectedWarns(1);
+            AssertNotRenumbered(decisions, results, new[] { 1, 2, 1, 2 }, 2);
         }
 
         [Test]
@@ -768,10 +764,30 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             var results = Subject.Import(decisions, false);
 
-            decisions.Select(d => d.Item.Part).Should().Equal(1, 2, 1, 2);
-            AssertRejectedAsConflicting(results, 4);
+            AssertNotRenumbered(decisions, results, new[] { 1, 2, 1, 2 }, 2);
+        }
 
-            ExceptionVerification.ExpectedWarns(1);
+        [Test]
+        public void should_not_renumber_when_two_numbers_in_the_names_give_different_orders()
+        {
+            var saved = new List<BookFile>();
+            var decisions = GivenAudioParts(saved, ("01 Chapter 03.mp3", 1), ("02 Chapter 02.mp3", 1), ("03 Chapter 01.mp3", 3));
+
+            var results = Subject.Import(decisions, false);
+
+            AssertNotRenumbered(decisions, results, new[] { 1, 1, 3 }, 1);
+        }
+
+        [Test]
+        public void should_renumber_when_two_numbers_in_the_names_give_the_same_order()
+        {
+            var saved = new List<BookFile>();
+            var decisions = GivenAudioParts(saved, ("Book 01 (01 of 03).mp3", 1), ("Book 02 (02 of 03).mp3", 1), ("Book 03 (03 of 03).mp3", 3));
+
+            var results = Subject.Import(decisions, false);
+
+            decisions.Select(d => d.Item.Part).Should().Equal(1, 2, 3);
+            results.Should().OnlyContain(r => r.Result == ImportResultType.Imported);
         }
 
         [Test]
