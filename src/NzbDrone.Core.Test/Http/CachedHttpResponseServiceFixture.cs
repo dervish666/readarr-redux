@@ -1,5 +1,6 @@
 using System;
 using System.Net;
+using System.Net.Http;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
@@ -102,6 +103,22 @@ namespace NzbDrone.Core.Test.Http
                 .Throws(new WebException("Http request timed out", WebExceptionStatus.Timeout));
 
             var response = Subject.Get(SuppressedRequest(), false, TimeSpan.FromHours(1));
+
+            response.Content.Should().Be("{\"id\":\"stale\"}");
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_return_expired_entry_when_metadata_source_is_unreachable()
+        {
+            GivenExpiredCacheEntry();
+
+            // What the dispatcher throws for a refused connection, an unknown host or no route to it
+            Mocker.GetMock<IHttpClient>()
+                .Setup(s => s.Get(It.IsAny<HttpRequest>()))
+                .Throws(new HttpRequestException("No route to host (192.168.0.190:8790)"));
+
+            var response = Subject.Get(SuppressedRequest(), true, TimeSpan.FromHours(1));
 
             response.Content.Should().Be("{\"id\":\"stale\"}");
             ExceptionVerification.ExpectedWarns(1);

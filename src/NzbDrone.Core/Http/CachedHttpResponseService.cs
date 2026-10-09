@@ -51,6 +51,11 @@ namespace NzbDrone.Core.Http
             {
                 return Stale(request, cached, ex.Status.ToString());
             }
+            catch (System.Net.Http.HttpRequestException ex) when (cached != null)
+            {
+                // A refused connection, unknown host or no route surfaces from the dispatcher as this, not WebException
+                return Stale(request, cached, ex.Message);
+            }
 
             if (result.HasHttpError && cached != null && IsOutage(result.StatusCode))
             {
