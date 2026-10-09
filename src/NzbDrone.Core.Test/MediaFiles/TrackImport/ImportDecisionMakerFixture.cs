@@ -419,9 +419,10 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport
         }
 
         // The Hero of Ages on Tower: deleted from the UI while a rescan was reading the folder, then inserted as an
-        // unmapped file with no quality, which failed the whole RescanFolders task
+        // unmapped file with no quality, which failed the whole RescanFolders task. It must still come back as a
+        // rejection, so an upgrade missing that part keeps its old files.
         [Test]
-        public void should_skip_a_file_removed_before_it_could_be_read()
+        public void should_reject_a_file_removed_before_it_could_be_read_with_a_quality()
         {
             Mocker.GetMock<IAugmentingService>()
                   .Setup(c => c.Augment(It.IsAny<LocalBook>(), It.IsAny<bool>()))
@@ -429,7 +430,12 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport
 
             GivenAudioFiles(new[] { @"C:\Test\Unsorted\The Hero of Ages.m4b".AsOsAgnostic() });
 
-            Subject.GetImportDecisions(_fileInfos, _idOverrides, null, _idConfig).Should().BeEmpty();
+            var decision = Subject.GetImportDecisions(_fileInfos, _idOverrides, null, _idConfig).Single();
+
+            decision.Approved.Should().BeFalse();
+            decision.Rejections.Single().Reason.Should().Be("File disappeared during import");
+            decision.Item.Quality.Quality.Should().Be(Quality.M4B);
+            decision.Item.Book.Should().BeNull();
 
             ExceptionVerification.ExpectedWarns(1);
         }

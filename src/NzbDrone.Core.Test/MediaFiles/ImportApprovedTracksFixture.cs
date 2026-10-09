@@ -443,6 +443,55 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void should_keep_the_old_files_when_a_part_of_a_multi_part_upgrade_vanished_before_it_was_read()
+        {
+            var disk = new Dictionary<string, string>();
+            var database = new List<BookFile>();
+            var decisions = GivenMultiPartUpgrade(disk, database);
+
+            // Part 3 is deleted between the folder listing and reading it. Take its decision from the real
+            // ImportDecisionMaker, so a change there that drops or reshapes it shows up here.
+            var file = new Mock<System.IO.Abstractions.IFileInfo>();
+            file.SetupGet(f => f.FullName).Returns(decisions[2].Item.Path);
+            file.SetupGet(f => f.Extension).Returns(".mp3");
+
+            var mediaFiles = new Mock<IMediaFileService>();
+            mediaFiles.Setup(s => s.FilterUnchangedFiles(It.IsAny<List<System.IO.Abstractions.IFileInfo>>(), It.IsAny<FilterFilesType>()))
+                .Returns((List<System.IO.Abstractions.IFileInfo> files, FilterFilesType filter) => files);
+
+            var tags = new Mock<IMetadataTagService>();
+            tags.Setup(s => s.ReadTags(It.IsAny<System.IO.Abstractions.IFileInfo>())).Returns(new ParsedTrackInfo());
+
+            var augmenting = new Mock<NzbDrone.Core.MediaFiles.BookImport.Aggregation.IAugmentingService>();
+            augmenting.Setup(s => s.Augment(It.IsAny<LocalBook>(), It.IsAny<bool>()))
+                .Throws(new FileNotFoundException("File doesn't exist: " + decisions[2].Item.Path));
+
+            var decisionMaker = new ImportDecisionMaker(new List<IImportDecisionEngineSpecification<LocalBook>>(),
+                                                        new List<IImportDecisionEngineSpecification<LocalEdition>>(),
+                                                        mediaFiles.Object,
+                                                        tags.Object,
+                                                        augmenting.Object,
+                                                        new Mock<NzbDrone.Core.MediaFiles.BookImport.Identification.IIdentificationService>().Object,
+                                                        new Mock<IRootFolderService>().Object,
+                                                        new Mock<IQualityProfileService>().Object,
+                                                        TestLogger);
+
+            var vanished = decisionMaker.GetLocalTracks(new List<System.IO.Abstractions.IFileInfo> { file.Object }, null, null, FilterFilesType.None).Item2;
+
+            decisions.RemoveAt(2);
+            decisions.AddRange(vanished);
+
+            Subject.Import(decisions, true);
+
+            disk.Values.Where(x => x == "old").Should().HaveCount(3);
+
+            Mocker.GetMock<IRecycleBinProvider>()
+                .Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+
+            ExceptionVerification.ExpectedWarns(4);
+        }
+
+        [Test]
         public void should_keep_the_old_files_when_a_part_is_missing_from_the_download()
         {
             var disk = new Dictionary<string, string>();

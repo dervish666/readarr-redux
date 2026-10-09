@@ -133,9 +133,13 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 }
                 catch (FileNotFoundException)
                 {
-                    // Deleted or moved since the folder was listed. A decision for it would have a rescan record a
-                    // file that isn't there.
-                    _logger.Warn("Skipping {0}, it was removed before it could be read", localTrack.Path);
+                    // Deleted or moved since the folder was listed. Keep a rejection rather than drop the file: a
+                    // download whose last part vanished must still look incomplete, or an upgrade imports the other
+                    // parts and recycles the old complete book.
+                    _logger.Warn("{0} disappeared before it could be read", localTrack.Path);
+
+                    SetFallbackQuality(localTrack);
+                    decisions.Add(new ImportDecision<LocalBook>(localTrack, new Rejection("File disappeared during import")));
                 }
                 catch (AugmentingFailedException)
                 {
