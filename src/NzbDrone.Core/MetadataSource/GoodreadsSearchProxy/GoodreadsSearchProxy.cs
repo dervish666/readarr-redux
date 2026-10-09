@@ -15,28 +15,25 @@ namespace NzbDrone.Core.MetadataSource.Goodreads
     public class GoodreadsSearchProxy : IGoodreadsSearchProxy
     {
         private readonly ICachedHttpResponseService _cachedHttpClient;
+        private readonly IMetadataRequestBuilder _requestBuilder;
         private readonly Logger _logger;
-        private readonly IHttpRequestBuilderFactory _searchBuilder;
 
         public GoodreadsSearchProxy(ICachedHttpResponseService cachedHttpClient,
+            IMetadataRequestBuilder requestBuilder,
             Logger logger)
         {
             _cachedHttpClient = cachedHttpClient;
+            _requestBuilder = requestBuilder;
             _logger = logger;
-
-            _searchBuilder = new HttpRequestBuilder("https://www.goodreads.com/book/auto_complete")
-                .AddQueryParam("format", "json")
-                .SetHeader("User-Agent",
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36")
-                .KeepAlive()
-                .CreateFactory();
         }
 
         public List<SearchJsonResource> Search(string query)
         {
             try
             {
-                var httpRequest = _searchBuilder.Create()
+                // The metadata source answers ISBN and ASIN queries here too, falling back to a title search
+                var httpRequest = _requestBuilder.GetRequestBuilder().Create()
+                    .SetSegment("route", "search")
                     .AddQueryParam("q", query)
                     .Build();
 
@@ -47,17 +44,17 @@ namespace NzbDrone.Core.MetadataSource.Goodreads
             catch (HttpException ex)
             {
                 _logger.Warn(ex);
-                throw new GoodreadsException("Search for '{0}' failed. Unable to communicate with Goodreads.", ex, query);
+                throw new GoodreadsException("Search for '{0}' failed. Unable to communicate with the metadata source.", ex, query);
             }
             catch (WebException ex)
             {
                 _logger.Warn(ex);
-                throw new GoodreadsException("Search for '{0}' failed. Unable to communicate with Goodreads.", ex, query, ex.Message);
+                throw new GoodreadsException("Search for '{0}' failed. Unable to communicate with the metadata source.", ex, query, ex.Message);
             }
             catch (Exception ex)
             {
                 _logger.Warn(ex);
-                throw new GoodreadsException("Search for '{0}' failed. Invalid response received from Goodreads.", ex, query);
+                throw new GoodreadsException("Search for '{0}' failed. Invalid response received from the metadata source.", ex, query);
             }
         }
     }

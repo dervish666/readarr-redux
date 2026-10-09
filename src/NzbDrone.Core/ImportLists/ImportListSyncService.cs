@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -13,6 +14,7 @@ using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.MetadataSource;
 using NzbDrone.Core.MetadataSource.Goodreads;
+using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
 
 namespace NzbDrone.Core.ImportLists
@@ -22,7 +24,7 @@ namespace NzbDrone.Core.ImportLists
         private readonly IImportListFactory _importListFactory;
         private readonly IImportListExclusionService _importListExclusionService;
         private readonly IFetchAndParseImportList _listFetcherAndParser;
-        private readonly IGoodreadsProxy _goodreadsProxy;
+        private readonly ISearchForNewBook _bookSearch;
         private readonly IGoodreadsSearchProxy _goodreadsSearchProxy;
         private readonly IProvideBookInfo _bookInfoProxy;
         private readonly IAuthorService _authorService;
@@ -37,7 +39,7 @@ namespace NzbDrone.Core.ImportLists
         public ImportListSyncService(IImportListFactory importListFactory,
                                      IImportListExclusionService importListExclusionService,
                                      IFetchAndParseImportList listFetcherAndParser,
-                                     IGoodreadsProxy goodreadsProxy,
+                                     ISearchForNewBook bookSearch,
                                      IGoodreadsSearchProxy goodreadsSearchProxy,
                                      IProvideBookInfo bookInfoProxy,
                                      IAuthorService authorService,
@@ -52,7 +54,7 @@ namespace NzbDrone.Core.ImportLists
             _importListFactory = importListFactory;
             _importListExclusionService = importListExclusionService;
             _listFetcherAndParser = listFetcherAndParser;
-            _goodreadsProxy = goodreadsProxy;
+            _bookSearch = bookSearch;
             _goodreadsSearchProxy = goodreadsSearchProxy;
             _bookInfoProxy = bookInfoProxy;
             _authorService = authorService;
@@ -175,22 +177,21 @@ namespace NzbDrone.Core.ImportLists
                     return;
                 }
 
-                try
-                {
-                    var remoteBook = _goodreadsProxy.GetBookInfo(report.EditionGoodreadsId);
+                var remoteBook = _bookSearch.SearchByGoodreadsBookId(goodreadsId, false).FirstOrDefault();
 
-                    _logger.Trace($"Mapped {report.EditionGoodreadsId} to [{remoteBook.ForeignBookId}] {remoteBook.Title}");
-
-                    report.BookGoodreadsId = remoteBook.ForeignBookId;
-                    report.Book = remoteBook.Title;
-                    report.Author ??= remoteBook.AuthorMetadata.Value.Name;
-                    report.AuthorGoodreadsId ??= remoteBook.AuthorMetadata.Value.ForeignAuthorId;
-                }
-                catch (BookNotFoundException)
+                if (remoteBook == null)
                 {
                     _logger.Debug($"Nothing found for edition [{report.EditionGoodreadsId}]");
                     report.EditionGoodreadsId = null;
+                    return;
                 }
+
+                _logger.Trace($"Mapped {report.EditionGoodreadsId} to [{remoteBook.ForeignBookId}] {remoteBook.Title}");
+
+                report.BookGoodreadsId = remoteBook.ForeignBookId;
+                report.Book = remoteBook.Title;
+                report.Author ??= remoteBook.AuthorMetadata.Value.Name;
+                report.AuthorGoodreadsId ??= remoteBook.AuthorMetadata.Value.ForeignAuthorId;
             }
             else if (report.BookGoodreadsId.IsNotNullOrWhiteSpace())
             {
@@ -204,7 +205,7 @@ namespace NzbDrone.Core.ImportLists
             {
                 var mappedBook = _goodreadsSearchProxy.Search($"{report.Book} {report.Author}").FirstOrDefault();
 
-                if (mappedBook == null)
+                if (mappedBook == null || !AddNamesFromWork(mappedBook, report.Author))
                 {
                     _logger.Trace($"Nothing found for {report.Author} - {report.Book}");
                     return;
@@ -351,7 +352,7 @@ namespace NzbDrone.Core.ImportLists
         {
             var mappedBook = _goodreadsSearchProxy.Search(report.Author).FirstOrDefault();
 
-            if (mappedBook == null)
+            if (mappedBook == null || !AddNamesFromWork(mappedBook, report.Author))
             {
                 _logger.Trace($"Nothing found for {report.Author}");
                 return;
@@ -361,6 +362,37 @@ namespace NzbDrone.Core.ImportLists
 
             report.Author = mappedBook.Author.Name;
             report.AuthorGoodreadsId = mappedBook.Author.Id.ToString();
+        }
+
+        // Search results from the metadata source carry IDs only, so the title and author name come from the work.
+        // A work can have several authors; prefer the one the list named.
+        private bool AddNamesFromWork(SearchJsonResource result, string authorName)
+        {
+            if (result.BookTitleBare.IsNotNullOrWhiteSpace() && result.Author?.Name.IsNotNullOrWhiteSpace() == true)
+            {
+                return true;
+            }
+
+            Tuple<string, Book, List<AuthorMetadata>> work;
+
+            try
+            {
+                work = _bookInfoProxy.GetBookInfo(result.WorkId.ToString());
+            }
+            catch (BookNotFoundException)
+            {
+                return false;
+            }
+
+            var cleanName = authorName.CleanAuthorName();
+            var author = work.Item3.FirstOrDefault(a => cleanName.IsNotNullOrWhiteSpace() && a.Name.CleanAuthorName() == cleanName) ??
+                         work.Item3.FirstOrDefault(a => a.ForeignAuthorId == result.Author?.Id.ToString()) ??
+                         work.Item3.First();
+
+            result.BookTitleBare ??= work.Item2.Title;
+            result.Author = new AuthorJsonResource { Id = int.Parse(author.ForeignAuthorId), Name = author.Name };
+
+            return true;
         }
 
         private Author ProcessAuthorReport(ImportListDefinition importList, ImportListItemInfo report, List<ImportListExclusion> listExclusions, List<Author> authorsToAdd)

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using FizzWare.NBuilder;
@@ -37,19 +38,22 @@ namespace NzbDrone.Core.Test.ImportListTests
                 .Setup(v => v.Search(It.IsAny<string>()))
                 .Returns(new List<SearchJsonResource>());
 
-            Mocker.GetMock<IGoodreadsProxy>()
-                .Setup(v => v.GetBookInfo(It.IsAny<string>(), true))
-                .Returns<string, bool>((id, useCache) => Builder<Book>
-                .CreateNew()
-                .With(b => b.AuthorMetadata = Builder<AuthorMetadata>.CreateNew().Build())
-                .With(b => b.ForeignBookId = "4321")
-                .With(b => b.Editions = Builder<Edition>
-                    .CreateListOfSize(1)
-                    .TheFirst(1)
-                    .With(e => e.ForeignEditionId = id.ToString())
-                    .With(e => e.Monitored = true)
-                    .BuildList())
-                .Build());
+            Mocker.GetMock<ISearchForNewBook>()
+                .Setup(v => v.SearchByGoodreadsBookId(It.IsAny<int>(), false))
+                .Returns<int, bool>((id, getAllEditions) => new List<Book>
+                {
+                    Builder<Book>
+                        .CreateNew()
+                        .With(b => b.AuthorMetadata = Builder<AuthorMetadata>.CreateNew().Build())
+                        .With(b => b.ForeignBookId = "4321")
+                        .With(b => b.Editions = Builder<Edition>
+                            .CreateListOfSize(1)
+                            .TheFirst(1)
+                            .With(e => e.ForeignEditionId = id.ToString())
+                            .With(e => e.Monitored = true)
+                            .BuildList())
+                        .Build()
+                });
 
             Mocker.GetMock<IImportListFactory>()
                 .Setup(v => v.Get(It.IsAny<int>()))
@@ -327,6 +331,69 @@ namespace NzbDrone.Core.Test.ImportListTests
                 .Verify(v => v.AddAuthors(It.Is<List<Author>>(t => t.Count == 1 &&
                                                                    t.First().AddOptions.BooksToMonitor.Count == expectedBooksMonitored &&
                                                                    t.First().Monitored == expectedAuthorMonitored), false));
+        }
+
+        private void WithIdOnlySearchResult()
+        {
+            // rreading-glasses search results carry IDs only, no titles or author names
+            Mocker.GetMock<IGoodreadsSearchProxy>()
+                .Setup(v => v.Search(It.IsAny<string>()))
+                .Returns(new List<SearchJsonResource>
+                {
+                    new SearchJsonResource { BookId = 12070, WorkId = 4110990, Author = new AuthorJsonResource { Id = 1221698 } }
+                });
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Setup(v => v.GetBookInfo("4110990"))
+                .Returns(Tuple.Create("1221698",
+                    new Book { ForeignBookId = "4110990", Title = "Good Omens" },
+                    new List<AuthorMetadata>
+                    {
+                        new AuthorMetadata { ForeignAuthorId = "1221698", Name = "Neil Gaiman" },
+                        new AuthorMetadata { ForeignAuthorId = "1654", Name = "Terry Pratchett" }
+                    }));
+        }
+
+        [Test]
+        public void should_name_author_from_work_lookup_when_search_returns_only_ids()
+        {
+            _importListReports.First().Author = "Terry Pratchett";
+            WithIdOnlySearchResult();
+
+            Subject.Execute(new ImportListSyncCommand());
+
+            Mocker.GetMock<IAddAuthorService>()
+                .Verify(v => v.AddAuthors(It.Is<List<Author>>(t => t.Count == 1 &&
+                                                                   t.First().ForeignAuthorId == "1654" &&
+                                                                   t.First().Metadata.Value.Name == "Terry Pratchett"), false));
+        }
+
+        [Test]
+        public void should_map_book_from_work_lookup_when_search_returns_only_ids()
+        {
+            _importListReports.First().Author = "Terry Pratchett";
+            _importListReports.First().Book = "Good Omens";
+            WithIdOnlySearchResult();
+
+            Subject.Execute(new ImportListSyncCommand());
+
+            Mocker.GetMock<IAddBookService>()
+                .Verify(v => v.AddBooks(It.Is<List<Book>>(t => t.Count == 1 && t.First().ForeignBookId == "4110990"), false));
+            Mocker.GetMock<IAddAuthorService>()
+                .Verify(v => v.AddAuthors(It.Is<List<Author>>(t => t.Count == 1 && t.First().ForeignAuthorId == "1654"), false));
+        }
+
+        [Test]
+        public void should_map_edition_through_the_metadata_source()
+        {
+            WithBookId();
+
+            Subject.Execute(new ImportListSyncCommand());
+
+            Mocker.GetMock<ISearchForNewBook>()
+                .Verify(v => v.SearchByGoodreadsBookId(1234, false), Times.Once());
+            Mocker.GetMock<IAddBookService>()
+                .Verify(v => v.AddBooks(It.Is<List<Book>>(t => t.Count == 1 && t.First().ForeignBookId == "4321"), false));
         }
 
         [Test]
