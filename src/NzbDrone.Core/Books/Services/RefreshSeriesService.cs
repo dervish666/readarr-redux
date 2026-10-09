@@ -137,23 +137,37 @@ namespace NzbDrone.Core.Books
 
             var books = _bookService.GetBooksByAuthorMetadataId(authorMetadataId);
             var bookDict = books.ToDictionary(x => x.ForeignBookId);
-            var links = new List<SeriesBookLink>();
+
+            // The author payload is cached and the next refresh reads the same objects, so work on copies of its
+            // series and links. Saving the payload's own links wrote their new ids into the cache, and the next
+            // refresh then failed to insert them again.
+            // Each link points at the library's book. A book the metadata profile keeps out of the author refresh
+            // never gets its id copied onto the payload's book, so linking to that copy saved BookId 0.
+            remoteSeries = new List<Series>();
 
             foreach (var s in remoteData.Series.Value)
             {
-                s.LinkItems.Value.ForEach(x => x.Series = s);
-                links.AddRange(s.LinkItems.Value.Where(x => bookDict.ContainsKey(x.Book.Value.ForeignBookId)));
+                var series = new Series();
+                series.UseMetadataFrom(s);
+
+                // Put in the links that go with the books we actually have
+                var links = (s.LinkItems?.Value ?? new List<SeriesBookLink>())
+                    .Where(x => bookDict.ContainsKey(x.Book.Value.ForeignBookId))
+                    .DistinctBy(x => x.Book.Value.ForeignBookId)
+                    .Select(x =>
+                    {
+                        var link = new SeriesBookLink { Series = series, Book = bookDict[x.Book.Value.ForeignBookId] };
+                        link.UseMetadataFrom(x);
+                        return link;
+                    })
+                    .ToList();
+
+                if (links.Any())
+                {
+                    series.LinkItems = links;
+                    remoteSeries.Add(series);
+                }
             }
-
-            var grouped = links.GroupBy(x => x.Series.Value);
-
-            // Put in the links that go with the books we actually have
-            foreach (var group in grouped)
-            {
-                group.Key.LinkItems = group.ToList();
-            }
-
-            remoteSeries = grouped.Select(x => x.Key).ToList();
 
             var toAdd = remoteSeries.ExceptBy(x => x.ForeignSeriesId, existing, x => x.ForeignSeriesId, StringComparer.Ordinal).ToList();
             var all = toAdd.Union(existing).ToList();
