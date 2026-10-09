@@ -107,7 +107,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                     return PollAuthor(foreignAuthorId);
                 }
 
-                return PollAuthorUncached(foreignAuthorId);
+                return PollAuthorUncached(foreignAuthorId, false);
             }
             catch (BookInfoException e)
             {
@@ -623,11 +623,9 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 }.RegisterPostEvictionCallback((key, value, reason, state) => _logger.Debug($"Clearing cache for {key} due to {reason}")));
         }
 
-        private Author PollAuthorUncached(string foreignAuthorId)
+        private Author PollAuthorUncached(string foreignAuthorId, bool useCache = true)
         {
             AuthorResource resource = null;
-
-            var useCache = true;
 
             for (var i = 0; i < 60; i++)
             {
