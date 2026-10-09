@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using FizzWare.NBuilder;
 using FluentAssertions;
@@ -15,8 +14,6 @@ using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.History;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.BookImport;
-using NzbDrone.Core.MediaFiles.BookImport.Specifications;
-using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
@@ -28,8 +25,6 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
     [TestFixture]
     public class ImportFixture : CoreTest<CompletedDownloadService>
     {
-        private const int AutumnRepublicId = 40224712;
-
         private TrackedDownload _trackedDownload;
         private Author _author;
 
@@ -76,8 +71,6 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             Mocker.GetMock<IHistoryService>()
                 .Setup(s => s.FindGrabsByDownloadId(It.IsAny<string>()))
                 .Returns(new List<EntityHistory>());
-
-            Mocker.SetConstant<IPartsLeftBehindService>(Mocker.Resolve<PartsLeftBehindService>());
 
             Mocker.GetMock<IProvideImportItemService>()
                 .Setup(s => s.ProvideImportItem(It.IsAny<DownloadClientItem>(), It.IsAny<DownloadClientItem>()))
@@ -512,195 +505,6 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             GivenGrabs(Grab(one.Id, now), Grab(two.Id, now.AddMilliseconds(3)));
 
             ImportAndGetPinnedBook().Should().BeNull();
-        }
-
-        private static string AutumnRepublicFolder => @"C:\DropFolder\Brian McClellan - The Autumn Republic - Book Three of the Powder Mage Trilogy (2015) MP3".AsOsAgnostic();
-
-        private Book GivenTheAutumnRepublic(int partsInLibrary)
-        {
-            var book = new Book { Id = AutumnRepublicId, ForeignBookId = "40224712", Title = "The Autumn Republic" };
-
-            _trackedDownload.RemoteBook.Books = new List<Book> { book };
-
-            Mocker.GetMock<IMediaFileService>()
-                  .Setup(s => s.GetFilesByBook(AutumnRepublicId))
-                  .Returns(Enumerable.Range(1, partsInLibrary)
-                      .Select(i => new BookFile { Part = i, Path = $"/books/Brian McClellan/The Autumn Republic/The Autumn Republic ({i}).mp3" })
-                      .ToList());
-
-            return book;
-        }
-
-        private ImportResult GivenPart(Book book, int number, params string[] errors)
-        {
-            return new ImportResult(new ImportDecision<LocalBook>(new LocalBook
-            {
-                Path = Path.Combine(AutumnRepublicFolder, $"BMAR{number:00}-56 Brian McClellan - The Autumn Republic.mp3"),
-                Book = book,
-                Author = _author,
-                PartCount = 56
-            }), errors);
-        }
-
-        private ImportResult GivenRejectedFile(Book book, string fileName, string reason)
-        {
-            return new ImportResult(new ImportDecision<LocalBook>(new LocalBook
-            {
-                Path = Path.Combine(AutumnRepublicFolder, fileName),
-                Book = book,
-                Author = _author,
-                PartCount = 56
-            }, new Rejection(reason)), reason);
-        }
-
-        private void GivenResults(List<ImportResult> results)
-        {
-            Mocker.GetMock<IDownloadedBooksImportService>()
-                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>(), It.IsAny<Book>()))
-                  .Returns(results);
-        }
-
-        private void GivenHistorySaysImported()
-        {
-            var history = Builder<EntityHistory>.CreateListOfSize(55)
-                .All()
-                .With(x => x.EventType = EntityHistoryEventType.BookFileImported)
-                .With(x => x.BookId = AutumnRepublicId)
-                .BuildList();
-
-            Mocker.GetMock<IHistoryService>()
-                  .Setup(s => s.FindByDownloadId(It.IsAny<string>()))
-                  .Returns(history);
-
-            Mocker.GetMock<ITrackedDownloadAlreadyImported>()
-                  .Setup(s => s.IsImported(It.IsAny<TrackedDownload>(), It.IsAny<List<EntityHistory>>()))
-                  .Returns(true);
-        }
-
-        // Live case, The Autumn Republic on 2026-10-09: 55 of 56 parts imported and BMAR01 was skipped as a
-        // duplicate part. The download was marked imported, so SABnzbd's remove-completed deleted BMAR01.
-        private List<ImportResult> GivenBmar01Skipped()
-        {
-            var book = GivenTheAutumnRepublic(55);
-            var results = Enumerable.Range(2, 55).Select(i => GivenPart(book, i)).ToList();
-
-            results.Add(GivenPart(book, 1, "Book has already been imported"));
-            GivenResults(results);
-
-            return results;
-        }
-
-        [Test]
-        public void should_not_mark_as_imported_when_a_part_of_the_book_was_left_behind()
-        {
-            GivenBmar01Skipped();
-
-            Subject.Import(_trackedDownload);
-
-            AssertNotImported();
-            _trackedDownload.Status.Should().Be(TrackedDownloadStatus.Warning);
-            _trackedDownload.StatusMessages.Should().Contain(m => m.Title == "BMAR01-56 Brian McClellan - The Autumn Republic.mp3");
-
-            Mocker.GetMock<IEventAggregator>()
-                  .Verify(v => v.PublishEvent(It.IsAny<BookImportIncompleteEvent>()), Times.Once());
-
-            ExceptionVerification.ExpectedWarns(1);
-        }
-
-        [Test]
-        public void should_not_mark_as_imported_from_history_when_a_part_of_the_book_was_left_behind()
-        {
-            GivenBmar01Skipped();
-            GivenHistorySaysImported();
-
-            Subject.Import(_trackedDownload);
-
-            AssertNotImported();
-
-            ExceptionVerification.ExpectedWarns(1);
-        }
-
-        [TestCase(ImportApprovedBooks.ConflictingPartsReason)]
-        [TestCase("Failed to add missing book")]
-        public void should_not_verify_an_external_scan_as_imported_when_a_part_was_rejected_as_not_imported(string reason)
-        {
-            var book = GivenTheAutumnRepublic(55);
-            var results = Enumerable.Range(2, 55).Select(i => GivenPart(book, i)).ToList();
-            var rejection = reason == "Failed to add missing book" ? new Rejection(reason, RejectionType.Temporary) : new Rejection(reason);
-
-            results.Add(new ImportResult(new ImportDecision<LocalBook>(GivenPart(book, 1).ImportDecision.Item, rejection), reason));
-
-            Subject.VerifyImport(_trackedDownload, results).Should().BeFalse();
-
-            _trackedDownload.State.Should().NotBe(TrackedDownloadState.Imported);
-
-            ExceptionVerification.ExpectedWarns(1);
-        }
-
-        [TestCase("Not an upgrade for existing book file(s)")]
-        [TestCase("Book match is not close enough: 61.2% vs 80% edition")]
-        [TestCase("Has the same filesize as existing file")]
-        public void should_mark_as_imported_when_only_a_preview_or_other_edition_of_the_book_was_rejected(string reason)
-        {
-            var book = GivenTheAutumnRepublic(56);
-            var results = Enumerable.Range(1, 56).Select(i => GivenPart(book, i)).ToList();
-
-            results.Add(GivenRejectedFile(book, "Brian McClellan - The Autumn Republic (Preview).mp3", reason));
-            GivenResults(results);
-
-            Subject.Import(_trackedDownload);
-
-            AssertImported();
-        }
-
-        [Test]
-        public void should_mark_as_imported_when_only_a_file_that_is_not_audio_was_left_behind()
-        {
-            var book = GivenTheAutumnRepublic(56);
-            var results = Enumerable.Range(1, 56).Select(i => GivenPart(book, i)).ToList();
-
-            results.Add(new ImportResult(new ImportDecision<LocalBook>(new LocalBook { Path = Path.Combine(AutumnRepublicFolder, "Brian McClellan - The Autumn Republic.pdf"), Book = book, Author = _author }), "Book has already been imported"));
-            GivenResults(results);
-
-            Subject.Import(_trackedDownload);
-
-            AssertImported();
-        }
-
-        // The first attempt moved 30 parts and stopped. The rescan imports nothing and rejects the other 26 as
-        // already imported, because history has this download's imports.
-        private void GivenARescanAfterAPartialMove(int partsInLibrary)
-        {
-            var book = GivenTheAutumnRepublic(partsInLibrary);
-            var reason = AlreadyImportedSpecification.AlreadyImportedReason + " 10/09/2026 10:23:54";
-
-            GivenResults(Enumerable.Range(31, 26)
-                .Select(i => new ImportResult(new ImportDecision<LocalBook>(GivenPart(book, i).ImportDecision.Item, new Rejection(reason)), reason))
-                .ToList());
-
-            GivenHistorySaysImported();
-        }
-
-        [Test]
-        public void should_not_mark_as_imported_when_a_rescan_after_a_partial_move_rejects_the_rest_as_already_imported()
-        {
-            GivenARescanAfterAPartialMove(30);
-
-            Subject.Import(_trackedDownload);
-
-            AssertNotImported();
-
-            ExceptionVerification.ExpectedWarns(1);
-        }
-
-        [Test]
-        public void should_mark_as_imported_when_a_rescan_finds_every_part_already_in_the_library()
-        {
-            GivenARescanAfterAPartialMove(56);
-
-            Subject.Import(_trackedDownload);
-
-            _trackedDownload.State.Should().Be(TrackedDownloadState.Imported);
         }
 
         private void AssertNotImported()

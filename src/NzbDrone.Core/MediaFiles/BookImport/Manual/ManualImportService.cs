@@ -14,7 +14,6 @@ using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.TrackedDownloads;
-using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.MetadataSource;
@@ -48,7 +47,6 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
         private readonly ITrackedDownloadService _trackedDownloadService;
         private readonly IDownloadedBooksImportService _downloadedTracksImportService;
         private readonly IProvideImportItemService _provideImportItemService;
-        private readonly IPartsLeftBehindService _partsLeftBehindService;
         private readonly IEventAggregator _eventAggregator;
         private readonly Logger _logger;
 
@@ -67,7 +65,6 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                                    ITrackedDownloadService trackedDownloadService,
                                    IDownloadedBooksImportService downloadedTracksImportService,
                                    IProvideImportItemService provideImportItemService,
-                                   IPartsLeftBehindService partsLeftBehindService,
                                    IEventAggregator eventAggregator,
                                    Logger logger)
         {
@@ -86,7 +83,6 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
             _trackedDownloadService = trackedDownloadService;
             _downloadedTracksImportService = downloadedTracksImportService;
             _provideImportItemService = provideImportItemService;
-            _partsLeftBehindService = partsLeftBehindService;
             _eventAggregator = eventAggregator;
             _logger = logger;
         }
@@ -406,40 +402,10 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                     }
                 }
 
-                var results = groupedTrackedDownload.Select(c => c.ImportResult).ToList();
-                var importedCount = results.Count(c => c.Result == ImportResultType.Imported);
+                var importedCount = groupedTrackedDownload.Select(c => c.ImportResult)
+                    .Count(c => c.Result == ImportResultType.Imported);
                 var downloadItemCount = Math.Max(1, trackedDownload.RemoteBook?.Books.Count ?? 1);
                 var allItemsImported = importedCount >= downloadItemCount;
-
-                // A part that didn't import, chosen or not, is still in the download folder, which remove-completed
-                // would delete
-                var leftBehind = _partsLeftBehindService.PartsLeftBehind(results);
-
-                if (leftBehind.Any())
-                {
-                    _logger.Warn("Not all parts imported for {0}, keeping the download until they are: {1}",
-                        trackedDownload.DownloadItem.Title,
-                        leftBehind.Select(Path.GetFileName).ConcatToString(", "));
-
-                    KeepInQueue(trackedDownload, results
-                        .Where(r => r.Result != ImportResultType.Imported && r.ImportDecision.Item != null)
-                        .Select(r => new TrackedDownloadStatusMessage(Path.GetFileName(r.ImportDecision.Item.Path), r.Errors)));
-
-                    continue;
-                }
-
-                var unchosen = PartsNotChosen(trackedDownload, results, message.Files);
-
-                if (unchosen.Any())
-                {
-                    _logger.Warn("Files in {0} match the imported book but weren't chosen, keeping the download until they are imported: {1}",
-                        trackedDownload.DownloadItem.Title,
-                        unchosen.Select(Path.GetFileName).ConcatToString(", "));
-
-                    KeepInQueue(trackedDownload, unchosen.Select(x => new TrackedDownloadStatusMessage(Path.GetFileName(x), "Matches the imported book but wasn't chosen for import")));
-
-                    continue;
-                }
 
                 if (allItemsImported)
                 {
@@ -447,59 +413,6 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                     _eventAggregator.PublishEvent(new DownloadCompletedEvent(trackedDownload, imported.First().ImportDecision.Item.Author.Id));
                 }
             }
-        }
-
-        private void KeepInQueue(TrackedDownload trackedDownload, IEnumerable<TrackedDownloadStatusMessage> statusMessages)
-        {
-            trackedDownload.State = TrackedDownloadState.ImportFailed;
-            trackedDownload.Warn(statusMessages.ToArray());
-            _eventAggregator.PublishEvent(new BookImportIncompleteEvent(trackedDownload));
-        }
-
-        // Audio files left in the download folder that weren't chosen for this import but match a book it imported
-        private List<string> PartsNotChosen(TrackedDownload trackedDownload, List<ImportResult> results, List<ManualImportFile> chosen)
-        {
-            var outputPath = trackedDownload.ImportItem.OutputPath.FullPath;
-            var imported = results.Where(r => r.Result == ImportResultType.Imported && r.ImportDecision.Item?.Book != null).ToList();
-
-            if (!imported.Any() || !_diskProvider.FolderExists(outputPath))
-            {
-                return new List<string>();
-            }
-
-            var chosenPaths = chosen.Select(f => f.Path).ToHashSet(PathEqualityComparer.Instance);
-            var unchosen = _diskScanService.GetBookFiles(outputPath)
-                .Where(f => MediaFileExtensions.AudioExtensions.Contains(Path.GetExtension(f.FullName)) && !chosenPaths.Contains(f.FullName))
-                .ToList();
-
-            if (!unchosen.Any())
-            {
-                return new List<string>();
-            }
-
-            var importedBooks = imported.Select(r => r.ImportDecision.Item.Book.ForeignBookId).ToHashSet();
-            var idOverrides = new IdentificationOverrides
-            {
-                Author = imported.First().ImportDecision.Item.Author
-            };
-            var itemInfo = new ImportDecisionMakerInfo
-            {
-                DownloadClientItem = trackedDownload.DownloadItem
-            };
-            var config = new ImportDecisionMakerConfig
-            {
-                Filter = FilterFilesType.None,
-                NewDownload = true,
-                SingleRelease = false,
-                IncludeExisting = false,
-                AddNewAuthors = false,
-                KeepAllEditions = true
-            };
-
-            return _importDecisionMaker.GetImportDecisions(unchosen, idOverrides, itemInfo, config)
-                .Where(d => d.Item?.Book != null && importedBooks.Contains(d.Item.Book.ForeignBookId))
-                .Select(d => d.Item.Path)
-                .ToList();
         }
     }
 }
