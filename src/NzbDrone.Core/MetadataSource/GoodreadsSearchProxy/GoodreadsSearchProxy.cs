@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Threading;
 using NLog;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Http;
@@ -27,19 +28,34 @@ namespace NzbDrone.Core.MetadataSource.Goodreads
             _logger = logger;
         }
 
+        // Tests swap this out so backoff doesn't really wait
+        internal Action<TimeSpan> Sleep { get; set; } = Thread.Sleep;
+
         public List<SearchJsonResource> Search(string query)
         {
             try
             {
-                // The metadata source answers ISBN and ASIN queries here too, falling back to a title search
-                var httpRequest = _requestBuilder.GetRequestBuilder().Create()
-                    .SetSegment("route", "search")
-                    .AddQueryParam("q", query)
-                    .Build();
+                HttpResponse Send()
+                {
+                    // The metadata source answers ISBN and ASIN queries here too, falling back to a title search
+                    var httpRequest = _requestBuilder.GetRequestBuilder().Create()
+                        .SetSegment("route", "search")
+                        .AddQueryParam("q", query)
+                        .Build();
 
-                var response = _cachedHttpClient.Get<List<SearchJsonResource>>(httpRequest, true, TimeSpan.FromDays(5));
+                    httpRequest.SuppressHttpError = true;
 
-                return response.Resource;
+                    return _cachedHttpClient.Get(httpRequest, true, TimeSpan.FromDays(5));
+                }
+
+                var response = MetadataRetry.Execute(Send, Sleep, _logger);
+
+                if (response.HasHttpError)
+                {
+                    throw new HttpException(response.Request, response);
+                }
+
+                return new HttpResponse<List<SearchJsonResource>>(response).Resource;
             }
             catch (HttpException ex)
             {

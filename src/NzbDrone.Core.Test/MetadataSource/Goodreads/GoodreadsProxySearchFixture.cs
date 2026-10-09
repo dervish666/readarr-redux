@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using FluentAssertions;
@@ -30,11 +29,11 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
                 .Returns(new HttpRequestBuilder("http://metadata.test/{route}").CreateFactory());
 
             Mocker.GetMock<ICachedHttpResponseService>()
-                .Setup(x => x.Get<List<SearchJsonResource>>(It.IsAny<HttpRequest>(), It.IsAny<bool>(), It.IsAny<TimeSpan>()))
+                .Setup(x => x.Get(It.IsAny<HttpRequest>(), It.IsAny<bool>(), It.IsAny<TimeSpan>()))
                 .Returns((HttpRequest request, bool useCache, TimeSpan ttl) =>
                 {
                     _request = request;
-                    return new HttpResponse<List<SearchJsonResource>>(new HttpResponse(request, new HttpHeader(), SearchResponse));
+                    return new HttpResponse(request, new HttpHeader(), SearchResponse);
                 });
         }
 
@@ -66,9 +65,9 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
         public void should_parse_ids_too_big_for_an_int()
         {
             Mocker.GetMock<ICachedHttpResponseService>()
-                .Setup(x => x.Get<List<SearchJsonResource>>(It.IsAny<HttpRequest>(), It.IsAny<bool>(), It.IsAny<TimeSpan>()))
+                .Setup(x => x.Get(It.IsAny<HttpRequest>(), It.IsAny<bool>(), It.IsAny<TimeSpan>()))
                 .Returns((HttpRequest request, bool useCache, TimeSpan ttl) =>
-                    new HttpResponse<List<SearchJsonResource>>(new HttpResponse(request, new HttpHeader(), "[{\"bookId\":3000000002,\"workId\":3000000001,\"author\":{\"id\":3000000000}}]")));
+                    new HttpResponse(request, new HttpHeader(), "[{\"bookId\":3000000002,\"workId\":3000000001,\"author\":{\"id\":3000000000}}]"));
 
             var result = Subject.Search("big");
 
@@ -77,12 +76,35 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
         }
 
         [Test]
+        public void should_retry_a_rate_limited_search()
+        {
+            var calls = 0;
+
+            Mocker.GetMock<ICachedHttpResponseService>()
+                .Setup(x => x.Get(It.IsAny<HttpRequest>(), It.IsAny<bool>(), It.IsAny<TimeSpan>()))
+                .Returns((HttpRequest request, bool useCache, TimeSpan ttl) =>
+                {
+                    if (++calls > 1)
+                    {
+                        return new HttpResponse(request, new HttpHeader(), SearchResponse);
+                    }
+
+                    var headers = new HttpHeader();
+                    headers.Add("Retry-After", "0");
+                    return new HttpResponse(request, headers, "Too Many Requests", HttpStatusCode.TooManyRequests);
+                });
+
+            Subject.Search("terry pratchett").Should().HaveCount(2);
+            calls.Should().Be(2);
+        }
+
+        [Test]
         public void should_throw_when_the_metadata_source_fails()
         {
             Mocker.GetMock<ICachedHttpResponseService>()
-                .Setup(x => x.Get<List<SearchJsonResource>>(It.IsAny<HttpRequest>(), It.IsAny<bool>(), It.IsAny<TimeSpan>()))
+                .Setup(x => x.Get(It.IsAny<HttpRequest>(), It.IsAny<bool>(), It.IsAny<TimeSpan>()))
                 .Returns((HttpRequest request, bool useCache, TimeSpan ttl) =>
-                    throw new HttpException(request, new HttpResponse(request, new HttpHeader(), "upstream down", HttpStatusCode.BadGateway)));
+                    new HttpResponse(request, new HttpHeader(), "upstream down", HttpStatusCode.BadRequest));
 
             Assert.Throws<GoodreadsException>(() => Subject.Search("terry pratchett"));
 

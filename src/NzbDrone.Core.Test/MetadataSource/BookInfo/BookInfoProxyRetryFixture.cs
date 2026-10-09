@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
@@ -159,6 +160,18 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
             Subject.GetBookInfo("1").Item2.ForeignBookId.Should().Be("1");
 
             _sleeps.Should().HaveCount(2);
+        }
+
+        [Test]
+        public void should_retry_a_body_that_stalls_after_the_headers()
+        {
+            // The dispatcher's timeout cancels the body read, and reports that as a receive failure
+            GivenResponses(r => throw new WebException("Failed to read complete http response", new TaskCanceledException(), WebExceptionStatus.ReceiveFailure, null),
+                           r => Respond(r, HttpStatusCode.OK));
+
+            Subject.GetBookInfo("1").Item2.ForeignBookId.Should().Be("1");
+
+            _sleeps.Should().HaveCount(1);
         }
 
         [Test]

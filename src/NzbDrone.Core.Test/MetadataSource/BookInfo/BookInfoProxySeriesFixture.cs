@@ -42,6 +42,23 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
         }
 
         [Test]
+        public void should_retry_series_through_a_gateway_error()
+        {
+            var calls = 0;
+
+            Mocker.GetMock<ICachedHttpResponseService>()
+                .Setup(s => s.Get(It.IsAny<HttpRequest>(), It.IsAny<bool>(), It.IsAny<TimeSpan>()))
+                .Returns((HttpRequest request, bool useCache, TimeSpan ttl) => ++calls == 1
+                    ? new HttpResponse(request, new HttpHeader(), "Bad Gateway", HttpStatusCode.BadGateway)
+                    : new HttpResponse(request, new HttpHeader(), SeriesResponse));
+
+            Subject.Sleep = t => { };
+
+            Subject.GetSeriesInfo(40650).Title.Should().Be("Discworld");
+            calls.Should().Be(2);
+        }
+
+        [Test]
         public void should_throw_http_exception_when_series_is_not_found()
         {
             Mocker.GetMock<ICachedHttpResponseService>()

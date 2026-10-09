@@ -26,16 +26,11 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 {
     public class BookInfoProxy : IProvideAuthorInfo, IProvideBookInfo, IProvideSeriesInfo, ISearchForNewBook, ISearchForNewAuthor, ISearchForNewEntity
     {
-        private const int MaxRateLimitedTries = 5;
-        private const int MaxGatewayRetries = 2;
-
         private static readonly JsonSerializerOptions SerializerSettings = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = false,
             Converters = { new STJUtcConverter() }
         };
-
-        private static readonly TimeSpan MaxRetryAfter = TimeSpan.FromSeconds(60);
 
         private readonly IHttpClient _httpClient;
         private readonly ICachedHttpResponseService _cachedHttpClient;
@@ -144,13 +139,16 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
         {
             _logger.Debug("Getting series {0}", foreignSeriesId);
 
-            var httpRequest = _requestBuilder.GetRequestBuilder().Create()
-                .SetSegment("route", $"series/{foreignSeriesId}")
-                .Build();
+            var httpResponse = ExecuteWithRetry(() =>
+            {
+                var httpRequest = _requestBuilder.GetRequestBuilder().Create()
+                    .SetSegment("route", $"series/{foreignSeriesId}")
+                    .Build();
 
-            httpRequest.SuppressHttpError = true;
+                httpRequest.SuppressHttpError = true;
 
-            var httpResponse = _cachedHttpClient.Get(httpRequest, useCache, TimeSpan.FromDays(7));
+                return _cachedHttpClient.Get(httpRequest, useCache, TimeSpan.FromDays(7));
+            });
 
             if (httpResponse.HasHttpError)
             {
@@ -159,7 +157,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                     throw new BadRequestException(foreignSeriesId.ToString());
                 }
 
-                throw new HttpException(httpRequest, httpResponse);
+                throw new HttpException(httpResponse.Request, httpResponse);
             }
 
             return JsonSerializer.Deserialize<SeriesResource>(httpResponse.Content, SerializerSettings);
@@ -790,80 +788,9 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             return (segments.Length > 1 ? segments[^2] : null, segments[^1], edition);
         }
 
-        // rreading-glasses answers 429 with a Retry-After of about 30s when its author queue is full, and a proxy in
-        // front of it answers 502 to 504 while it restarts. Both are worth waiting out, but only for so long: an
-        // uncapped loop could hold a command thread for half an hour, or forever.
         private HttpResponse ExecuteWithRetry(Func<HttpResponse> send)
         {
-            var rateLimited = 0;
-            var gatewayRetries = 0;
-
-            while (true)
-            {
-                HttpResponse response;
-
-                try
-                {
-                    response = send();
-                }
-                catch (WebException ex) when (ex.Status == WebExceptionStatus.Timeout && gatewayRetries < MaxGatewayRetries)
-                {
-                    BackOff(++gatewayRetries, "timed out");
-                    continue;
-                }
-
-                if (response.StatusCode == HttpStatusCode.TooManyRequests && ++rateLimited < MaxRateLimitedTries)
-                {
-                    WaitUntilRetry(response);
-                    continue;
-                }
-
-                if (IsGatewayError(response.StatusCode) && gatewayRetries < MaxGatewayRetries)
-                {
-                    BackOff(++gatewayRetries, $"returned {(int)response.StatusCode}");
-                    continue;
-                }
-
-                return response;
-            }
-        }
-
-        private static bool IsGatewayError(HttpStatusCode statusCode)
-        {
-            return statusCode == HttpStatusCode.BadGateway ||
-                   statusCode == HttpStatusCode.ServiceUnavailable ||
-                   statusCode == HttpStatusCode.GatewayTimeout;
-        }
-
-        // 1-2s, then 2-4s, jittered so concurrent commands don't retry in step
-        private void BackOff(int retry, string reason)
-        {
-            var delay = TimeSpan.FromSeconds(Math.Pow(2, retry - 1) * (1 + Random.Shared.NextDouble()));
-
-            _logger.Info("Metadata source {0}, retrying in {1:0.0}s", reason, delay.TotalSeconds);
-
-            Sleep(delay);
-        }
-
-        private void WaitUntilRetry(HttpResponse response)
-        {
-            var seconds = 5;
-
-            if (response.Headers.ContainsKey("Retry-After"))
-            {
-                var retryAfter = response.Headers["Retry-After"];
-
-                if (!int.TryParse(retryAfter, out seconds) || seconds < 0)
-                {
-                    seconds = 5;
-                }
-            }
-
-            var delay = TimeSpan.FromSeconds(Math.Min(seconds, MaxRetryAfter.TotalSeconds));
-
-            _logger.Info("BookInfo returned 429, backing off for {0}s", delay.TotalSeconds);
-
-            Sleep(delay);
+            return MetadataRetry.Execute(send, Sleep, _logger);
         }
 
         private static AuthorMetadata MapAuthorMetadata(AuthorResource resource)
