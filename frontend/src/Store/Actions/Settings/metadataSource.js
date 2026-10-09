@@ -14,6 +14,8 @@ import { set, update } from '../baseActions';
 const section = 'settings.metadataSource';
 const url = '/config/metadatasource';
 
+let latestTestId = 0;
+
 //
 // Actions Types
 
@@ -109,6 +111,9 @@ export default {
     },
 
     [TEST_METADATA_SOURCE]: function(getState, payload, dispatch) {
+      const testId = ++latestTestId;
+      const metadataSource = getMetadataSource(getState);
+
       dispatch(set({ section, isTesting: true, testError: null }));
 
       const promise = createAjaxRequest({
@@ -116,25 +121,30 @@ export default {
         method: 'POST',
         contentType: 'application/json',
         dataType: 'json',
-        data: JSON.stringify({ metadataSource: getMetadataSource(getState) })
+        data: JSON.stringify({ metadataSource })
       }).request;
 
+      // A slow test can finish after the address was edited or tested again. Its result would then sit under an
+      // address it wasn't run against, so drop it.
+      function finish(result) {
+        if (testId !== latestTestId) {
+          return;
+        }
+
+        if (getMetadataSource(getState) !== metadataSource) {
+          dispatch(set({ section, isTesting: false }));
+          return;
+        }
+
+        dispatch(set({ section, isTesting: false, ...result }));
+      }
+
       promise.done((data) => {
-        dispatch(set({
-          section,
-          isTesting: false,
-          probe: data,
-          probeFromSave: false
-        }));
+        finish({ probe: data, probeFromSave: false });
       });
 
       promise.fail((xhr) => {
-        dispatch(set({
-          section,
-          isTesting: false,
-          probe: null,
-          testError: xhr
-        }));
+        finish({ probe: null, testError: xhr });
       });
     }
   },
