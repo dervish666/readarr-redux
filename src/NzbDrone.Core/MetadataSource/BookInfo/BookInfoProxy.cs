@@ -174,8 +174,10 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
 
             // Read the raw works: MapAuthor drops works whose edition credits another author first, and a merged
-            // co-written book is often one of those
-            var resource = FetchAuthorResource(newId, true, redirectEdition);
+            // co-written book is often one of those. Fetch fresh, because a book is deleted or moved on this answer
+            // and a cached payload up to 30 minutes old may place the edition in a work it has since left. A stale
+            // copy served during an outage throws, so the book is kept.
+            var resource = FetchAuthorResource(newId, false, redirectEdition);
             var work = resource.Works.FirstOrDefault(w => w.ForeignId > 0 && w.Books != null && w.Books.Any(b => b.ForeignId.ToString() == foreignEditionId));
 
             if (work == null)

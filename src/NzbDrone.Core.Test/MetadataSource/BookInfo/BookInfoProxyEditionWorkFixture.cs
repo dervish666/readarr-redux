@@ -68,6 +68,22 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
         }
 
         [Test]
+        public void should_not_place_the_edition_from_a_cached_author_payload()
+        {
+            GivenEditionResponse(HttpStatusCode.SeeOther, "/author/1069006?edition=55199924");
+            GivenAuthorResponse(EditionAuthorResponse);
+
+            Subject.GetWorkIdForEdition("55199924");
+
+            // A cached payload up to 30 minutes old could place the edition in a work it has since left
+            Mocker.GetMock<ICachedHttpResponseService>()
+                .Verify(v => v.Get(It.IsAny<HttpRequest>(), true, It.IsAny<TimeSpan>()), Times.Never());
+
+            Mocker.GetMock<ICachedHttpResponseService>()
+                .Verify(v => v.Get(It.IsAny<HttpRequest>(), false, It.IsAny<TimeSpan>()), Times.Once());
+        }
+
+        [Test]
         public void should_report_edition_not_found_when_the_edition_404s()
         {
             GivenEditionResponse(HttpStatusCode.NotFound);
