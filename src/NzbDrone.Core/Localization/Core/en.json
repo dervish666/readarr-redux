@@ -591,7 +591,7 @@
   "MetadataSourceSavedWithWarning": "Saved, but the source did not pass its check.",
   "MetadataSourceSettingsSummary": "Where Readarr looks up authors, books and editions",
   "MetadataSourceStatusAuthFailure": "The metadata source at {url} answered HTTP {statusCode}. Its own upstream is refusing it, or it sits behind a login Readarr can't pass. For rreading-glasses, check the Goodreads credentials it was started with.",
-  "MetadataSourceStatusInvalidUrl": "'{url}' is not a valid address. Use a full http:// or https:// URL.",
+  "MetadataSourceStatusInvalidUrl": "'{url}' is not an address Readarr can use. Enter a plain http:// or https:// URL with no user name, password, ?query or #fragment.",
   "MetadataSourceStatusNotConfigured": "No metadata source is set, so Readarr cannot add authors or refresh their books.",
   "MetadataSourceStatusNotFound": "The metadata source at {url} returned 404 for a work that should exist (ID 1540236). Either the address is wrong or the source can no longer look books up upstream.",
   "MetadataSourceStatusOk": "{url} is reachable and serving book data.",
