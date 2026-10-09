@@ -1,0 +1,148 @@
+{
+  "ForeignId": 1540236,
+  "Title": "The Hobbit, or There and Back Again",
+  "FullTitle": "The Hobbit, or There and Back Again",
+  "ShortTitle": "The Hobbit, or There and Back Again",
+  "Url": "https://www.goodreads.com/work/1540236-the-hobbit",
+  "ReleaseDate": "1937-09-21 08:00:00",
+  "ReleaseDateRaw": "1937-09-21",
+  "Genres": [
+    "Fantasy",
+    "Classics",
+    "Fiction",
+    "Adventure",
+    "Young Adult",
+    "Audiobook",
+    "High Fantasy",
+    "Science Fiction Fantasy",
+    "Dragons",
+    "Novels"
+  ],
+  "RelatedWorks": [],
+  "Books": [
+    {
+      "ForeignId": 5907,
+      "Asin": "B0DN8P5BQF",
+      "Description": "Trimmed for the test fixture.",
+      "Title": "The Hobbit, or There and Back Again",
+      "FullTitle": "The Hobbit, or There and Back Again",
+      "ShortTitle": "The Hobbit, or There and Back Again",
+      "Language": "eng",
+      "Format": "Paperback",
+      "EditionInformation": "",
+      "Publisher": "Houghton Mifflin",
+      "ImageUrl": "https://m.media-amazon.com/images/S/compressed.photo.goodreads.com/books/1546071216i/5907.jpg",
+      "IsEbook": false,
+      "NumPages": 366,
+      "RatingCount": 4291491,
+      "AverageRating": 4.3,
+      "Url": "https://www.goodreads.com/book/show/5907.The_Hobbit_or_There_and_Back_Again",
+      "ReleaseDate": "2002-08-15 07:00:00",
+      "ReleaseDateRaw": "2002-08-15",
+      "Contributors": [
+        {
+          "ForeignId": 656983,
+          "Role": "Author"
+        }
+      ],
+      "KCA": "kca://book/amzn1.gr.book.v1.7HhPxEJT1NiirAiej27XwA",
+      "RatingSum": 18435209
+    }
+  ],
+  "Series": [
+    {
+      "ForeignId": 66175,
+      "Title": "Middle Earth",
+      "Description": "Trimmed for the test fixture.",
+      "LinkItems": [
+        {
+          "ForeignWorkId": 1540236,
+          "PositionInSeries": "1",
+          "SeriesPosition": 1,
+          "Primary": false
+        }
+      ],
+      "KCA": "kca://series/amzn1.gr.series.v1.V6TXARs2NmPvdnQ-ifoN7w"
+    }
+  ],
+  "Authors": [
+    {
+      "ForeignId": 656983,
+      "Name": "J.R.R. Tolkien",
+      "Description": "Trimmed for the test fixture.",
+      "ImageUrl": "https://i.gr-assets.com/images/S/compressed.photo.goodreads.com/authors/1648968349i/656983._UX200_CR0,44,200,200_.jpg",
+      "Url": "https://www.goodreads.com/author/show/656983.J_R_R_Tolkien",
+      "RatingCount": 0,
+      "AverageRating": 0,
+      "Works": [
+        {
+          "ForeignId": 1540236,
+          "Title": "The Hobbit, or There and Back Again",
+          "FullTitle": "The Hobbit, or There and Back Again",
+          "ShortTitle": "The Hobbit, or There and Back Again",
+          "Url": "https://www.goodreads.com/work/1540236-the-hobbit",
+          "ReleaseDate": "1937-09-21 08:00:00",
+          "ReleaseDateRaw": "1937-09-21",
+          "Genres": [
+            "Fantasy",
+            "Classics",
+            "Fiction",
+            "Adventure",
+            "Young Adult",
+            "Audiobook",
+            "High Fantasy",
+            "Science Fiction Fantasy",
+            "Dragons",
+            "Novels"
+          ],
+          "RelatedWorks": [],
+          "Books": null,
+          "Series": [
+            {
+              "ForeignId": 66175,
+              "Title": "Middle Earth",
+              "Description": "Trimmed for the test fixture.",
+              "LinkItems": [
+                {
+                  "ForeignWorkId": 1540236,
+                  "PositionInSeries": "1",
+                  "SeriesPosition": 1,
+                  "Primary": false
+                }
+              ],
+              "KCA": "kca://series/amzn1.gr.series.v1.V6TXARs2NmPvdnQ-ifoN7w"
+            }
+          ],
+          "Authors": null,
+          "KCA": "kca://work/amzn1.gr.work.v1.Upx53g0wmFL_YBYIGV2Lzg",
+          "BestBookId": 5907,
+          "RatingCount": 0,
+          "AverageRating": 0,
+          "RatingSum": 0
+        }
+      ],
+      "Series": [
+        {
+          "ForeignId": 66175,
+          "Title": "Middle Earth",
+          "Description": "Trimmed for the test fixture.",
+          "LinkItems": [
+            {
+              "ForeignWorkId": 1540236,
+              "PositionInSeries": "1",
+              "SeriesPosition": 1,
+              "Primary": false
+            }
+          ],
+          "KCA": "kca://series/amzn1.gr.series.v1.V6TXARs2NmPvdnQ-ifoN7w"
+        }
+      ],
+      "KCA": "kca://author/amzn1.gr.author.v1.pTArlfsRKKGTU_K__Rhomw"
+    }
+  ],
+  "KCA": "kca://work/amzn1.gr.work.v1.Upx53g0wmFL_YBYIGV2Lzg",
+  "BestBookId": 5907,
+  "RatingCount": 0,
+  "AverageRating": 0,
+  "RatingSum": 0
+}

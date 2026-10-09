@@ -1,4 +1,3 @@
-using NzbDrone.Common.Cloud;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Configuration;
@@ -14,24 +13,24 @@ namespace NzbDrone.Core.MetadataSource
     {
         private readonly IConfigService _configService;
 
-        private readonly IReadarrCloudRequestBuilder _defaultRequestFactory;
-
-        public MetadataRequestBuilder(IConfigService configService, IReadarrCloudRequestBuilder defaultRequestBuilder)
+        public MetadataRequestBuilder(IConfigService configService)
         {
             _configService = configService;
-            _defaultRequestFactory = defaultRequestBuilder;
         }
 
+        // There is no built-in default. Upstream's api.bookinfo.club is gone, and quietly pointing at someone else's
+        // server would be a call-home the user never chose, so an unset source fails loudly and MetadataSourceCheck
+        // tells the user where to set it.
         public IHttpRequestBuilderFactory GetRequestBuilder()
         {
-            if (_configService.MetadataSource.IsNotNullOrWhiteSpace())
+            var source = _configService.MetadataSource;
+
+            if (source.IsNullOrWhiteSpace())
             {
-                return new HttpRequestBuilder(_configService.MetadataSource.TrimEnd("/") + "/{route}").KeepAlive().CreateFactory();
+                throw new MetadataSourceNotConfiguredException();
             }
-            else
-            {
-                return _defaultRequestFactory.Metadata;
-            }
+
+            return new HttpRequestBuilder(source.Trim().TrimEnd("/") + "/{route}").KeepAlive().CreateFactory();
         }
     }
 }

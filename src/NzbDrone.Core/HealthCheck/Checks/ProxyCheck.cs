@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Net;
 using NLog;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Configuration.Events;
@@ -37,6 +38,12 @@ namespace NzbDrone.Core.HealthCheck.Checks
                 if (!addresses.Any())
                 {
                     return new HealthCheck(GetType(), HealthCheckResult.Error, string.Format(_localizationService.GetLocalizedString("ProxyCheckResolveIpMessage"), _configService.ProxyHostname), "#proxy-failed-resolve-ip");
+                }
+
+                // With no metadata source there is nothing to test the proxy against, and MetadataSourceCheck already reports it
+                if (_configService.MetadataSource.IsNullOrWhiteSpace())
+                {
+                    return new HealthCheck(GetType());
                 }
 
                 // Test the proxy against the metadata source, the one outside host every install needs (upstream pinged readarr.servarr.com)

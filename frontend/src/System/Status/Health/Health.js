@@ -14,6 +14,9 @@ import titleCase from 'Utilities/String/titleCase';
 import translate from 'Utilities/String/translate';
 import styles from './Health.css';
 
+// Checks the fork added. The Servarr wiki has no page for them, so they get no wiki link.
+const checksWithoutWiki = ['MetadataSourceCheck'];
+
 function getInternalLink(source) {
   switch (source) {
     case 'IndexerRssCheck':
@@ -45,6 +48,14 @@ function getInternalLink(source) {
           name={icons.SETTINGS}
           title={translate('Settings')}
           to="/settings/connect"
+        />
+      );
+    case 'MetadataSourceCheck':
+      return (
+        <IconButton
+          name={icons.SETTINGS}
+          title={translate('Settings')}
+          to="/settings/metadatasource"
         />
       );
     case 'RootFolderCheck':
@@ -194,11 +205,14 @@ class Health extends Component {
                         <TableRowCell>{item.message}</TableRowCell>
 
                         <TableRowCell>
-                          <IconButton
-                            name={icons.WIKI}
-                            to={item.wikiUrl}
-                            title={translate('ReadTheWikiForMoreInformation')}
-                          />
+                          {
+                            !checksWithoutWiki.includes(item.source) &&
+                              <IconButton
+                                name={icons.WIKI}
+                                to={item.wikiUrl}
+                                title={translate('ReadTheWikiForMoreInformation')}
+                              />
+                          }
 
                           {
                             internalLink

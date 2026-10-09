@@ -115,6 +115,17 @@ function Settings() {
 
         <Link
           className={styles.link}
+          to="/settings/metadatasource"
+        >
+          {translate('MetadataSource')}
+        </Link>
+
+        <div className={styles.summary}>
+          {translate('MetadataSourceSettingsSummary')}
+        </div>
+
+        <Link
+          className={styles.link}
           to="/settings/tags"
         >
           {translate('Tags')}
