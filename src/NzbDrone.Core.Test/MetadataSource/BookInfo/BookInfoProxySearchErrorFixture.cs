@@ -1,8 +1,11 @@
+using System;
 using System.Collections.Generic;
+using System.Net;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.Http;
+using NzbDrone.Core.Http;
 using NzbDrone.Core.MetadataSource;
 using NzbDrone.Core.MetadataSource.BookInfo;
 using NzbDrone.Core.MetadataSource.Goodreads;
@@ -28,6 +31,42 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
                     new SearchJsonResource { BookId = 11, WorkId = 1, Author = new AuthorJsonResource { Id = 5 } },
                     new SearchJsonResource { BookId = 21, WorkId = 2, Author = new AuthorJsonResource { Id = 5 } }
                 });
+
+            Subject.Sleep = t => { };
+        }
+
+        private void GivenMetadataSourceFailing()
+        {
+            Mocker.GetMock<IHttpClient>()
+                .Setup(s => s.Get(It.IsAny<HttpRequest>()))
+                .Returns<HttpRequest>(r => new HttpResponse(r, new HttpHeader(), "Bad Gateway", HttpStatusCode.BadGateway));
+
+            Mocker.GetMock<ICachedHttpResponseService>()
+                .Setup(s => s.Get(It.IsAny<HttpRequest>(), It.IsAny<bool>(), It.IsAny<TimeSpan>()))
+                .Returns((HttpRequest request, bool useCache, TimeSpan ttl) => new HttpResponse(request, new HttpHeader(), "Bad Gateway", HttpStatusCode.BadGateway));
+        }
+
+        // /search answered, but looking up what it found failed: that is an outage, not "no such book"
+        [TestCase("author:1654")]
+        [TestCase("work:194190")]
+        [TestCase("edition:13153953")]
+        public void should_throw_when_looking_up_by_id_fails(string query)
+        {
+            GivenMetadataSourceFailing();
+
+            Assert.Throws<BookInfoException>(() => Subject.SearchForNewBook(query, null));
+
+            ExceptionVerification.IgnoreWarns();
+        }
+
+        [Test]
+        public void should_throw_when_hydrating_isbn_search_results_fails()
+        {
+            GivenMetadataSourceFailing();
+
+            Assert.Throws<BookInfoException>(() => Subject.SearchByIsbn("9780552166591"));
+
+            ExceptionVerification.IgnoreWarns();
         }
 
         private void GivenBulkResponse(string body)

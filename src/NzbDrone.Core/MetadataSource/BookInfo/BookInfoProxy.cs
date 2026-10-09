@@ -361,11 +361,6 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             {
                 return new List<Book>();
             }
-            catch (BookInfoException e)
-            {
-                _logger.Warn(e, "Error searching by author id");
-                return new List<Book>();
-            }
         }
 
         public List<Book> SearchByGoodreadsWorkId(long id)
@@ -378,11 +373,6 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
             catch (BookNotFoundException)
             {
-                return new List<Book>();
-            }
-            catch (BookInfoException e)
-            {
-                _logger.Warn(e, "Error searching by work id");
                 return new List<Book>();
             }
         }
@@ -405,11 +395,6 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
             catch (EditionNotFoundException)
             {
-                return new List<Book>();
-            }
-            catch (BookInfoException e)
-            {
-                _logger.Warn(e, "Error searching by book id");
                 return new List<Book>();
             }
         }

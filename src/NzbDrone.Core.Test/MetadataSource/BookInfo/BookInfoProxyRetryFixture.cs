@@ -129,10 +129,9 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
                 .Setup(s => s.Get(It.IsAny<HttpRequest>()))
                 .Returns<HttpRequest>(r => ++calls > 10 ? throw new InvalidOperationException("uncapped 429 loop") : Respond(r, HttpStatusCode.TooManyRequests, "0"));
 
-            Subject.SearchByGoodreadsBookId(11, false).Should().BeEmpty();
+            Assert.Throws<BookInfoException>(() => Subject.SearchByGoodreadsBookId(11, false));
 
             calls.Should().Be(5);
-            ExceptionVerification.ExpectedWarns(1);
         }
 
         [TestCase(HttpStatusCode.BadGateway)]
