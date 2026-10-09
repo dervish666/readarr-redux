@@ -152,6 +152,57 @@ namespace NzbDrone.Core.Test.Http
             response.StatusCode.Should().Be(statusCode);
         }
 
+        [TestCase("", "application/json")]
+        [TestCase("{\"ForeignId\":1,\"Works\":[", "application/json")]
+        [TestCase("{\"ForeignId\":1,\"Works\":[", null)]
+        [TestCase("<html><body>Bad Gateway</body></html>", "text/html")]
+        public void should_not_keep_a_body_that_is_empty_or_malformed(string body, string contentType)
+        {
+            Mocker.GetMock<IHttpClient>()
+                .Setup(s => s.Get(It.IsAny<HttpRequest>()))
+                .Returns<HttpRequest>(r =>
+                {
+                    var headers = new HttpHeader();
+
+                    if (contentType != null)
+                    {
+                        headers.Add("Content-Type", contentType);
+                    }
+
+                    return new HttpResponse(r, headers, body);
+                });
+
+            Subject.Get(SuppressedRequest(), true, TimeSpan.FromHours(1)).Content.Should().Be(body);
+
+            Mocker.GetMock<ICachedHttpResponseRepository>()
+                .Verify(v => v.Upsert(It.IsAny<CachedHttpResponse>()), Times.Never());
+        }
+
+        [TestCase("{\"ForeignId\":1,\"Works\":[]}", "application/json")]
+        [TestCase("[{\"bookId\":1}]", null)]
+        [TestCase("<?xml version=\"1.0\"?><GoodreadsResponse></GoodreadsResponse>", "application/xml")]
+        public void should_keep_a_complete_body(string body, string contentType)
+        {
+            Mocker.GetMock<IHttpClient>()
+                .Setup(s => s.Get(It.IsAny<HttpRequest>()))
+                .Returns<HttpRequest>(r =>
+                {
+                    var headers = new HttpHeader();
+
+                    if (contentType != null)
+                    {
+                        headers.Add("Content-Type", contentType);
+                    }
+
+                    return new HttpResponse(r, headers, body);
+                });
+
+            Subject.Get(SuppressedRequest(), true, TimeSpan.FromHours(1));
+
+            Mocker.GetMock<ICachedHttpResponseRepository>()
+                .Verify(v => v.Upsert(It.Is<CachedHttpResponse>(c => c.Value == body)), Times.Once());
+        }
+
         [Test]
         public void should_rethrow_timeout_when_nothing_is_cached()
         {

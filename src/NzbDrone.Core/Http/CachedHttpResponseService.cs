@@ -1,6 +1,8 @@
 using System;
 using System.Net;
+using System.Text.Json;
 using NLog;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
 
 namespace NzbDrone.Core.Http
@@ -66,7 +68,7 @@ namespace NzbDrone.Core.Http
                 return Stale(request, cached, result.StatusCode.ToString());
             }
 
-            if (!result.HasHttpError)
+            if (!result.HasHttpError && IsComplete(result))
             {
                 if (cached == null)
                 {
@@ -102,6 +104,44 @@ namespace NzbDrone.Core.Http
         private static bool IsOutage(HttpStatusCode statusCode)
         {
             return statusCode == HttpStatusCode.Unauthorized || (int)statusCode >= 500;
+        }
+
+        // Only a complete answer may replace the copy an outage falls back to. An empty body, truncated or malformed
+        // JSON, or an HTML error page sent with a 200 would otherwise be replayed until the source recovers.
+        private static bool IsComplete(HttpResponse response)
+        {
+            var body = response.Content;
+
+            if (body.IsNullOrWhiteSpace())
+            {
+                return false;
+            }
+
+            var contentType = response.Headers.ContentType ?? string.Empty;
+
+            if (contentType.Contains("html", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            var start = body.TrimStart()[0];
+
+            if (!contentType.Contains("json", StringComparison.OrdinalIgnoreCase) && start != '{' && start != '[')
+            {
+                return true;
+            }
+
+            try
+            {
+                using (JsonDocument.Parse(body))
+                {
+                    return true;
+                }
+            }
+            catch (JsonException)
+            {
+                return false;
+            }
         }
 
         private HttpResponse Stale(HttpRequest request, CachedHttpResponse cached, string reason)
