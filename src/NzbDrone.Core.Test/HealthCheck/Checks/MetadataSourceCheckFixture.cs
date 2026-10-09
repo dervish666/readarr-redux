@@ -103,6 +103,14 @@ namespace NzbDrone.Core.Test.HealthCheck.Checks
         }
 
         [Test]
+        public void should_error_on_a_redirect()
+        {
+            GivenProbe(MetadataSourceProbeStatus.Redirect, 301);
+
+            Subject.Check().ShouldBeError("MetadataSourceStatusRedirect");
+        }
+
+        [Test]
         public void should_error_on_404_for_the_known_work()
         {
             GivenProbe(MetadataSourceProbeStatus.NotFound, 404);
@@ -130,6 +138,7 @@ namespace NzbDrone.Core.Test.HealthCheck.Checks
         [TestCase(MetadataSourceProbeStatus.AuthFailure)]
         [TestCase(MetadataSourceProbeStatus.ServerError)]
         [TestCase(MetadataSourceProbeStatus.RateLimited)]
+        [TestCase(MetadataSourceProbeStatus.Redirect)]
         [TestCase(MetadataSourceProbeStatus.NotFound)]
         [TestCase(MetadataSourceProbeStatus.UnexpectedResponse)]
         [TestCase(MetadataSourceProbeStatus.InvalidUrl)]

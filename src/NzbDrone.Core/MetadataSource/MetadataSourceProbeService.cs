@@ -20,6 +20,7 @@ namespace NzbDrone.Core.MetadataSource
         AuthFailure,
         ServerError,
         RateLimited,
+        Redirect,
         NotFound,
         UnexpectedResponse
     }
@@ -30,6 +31,7 @@ namespace NzbDrone.Core.MetadataSource
         public MetadataSourceProbeStatus Status { get; set; }
         public int? StatusCode { get; set; }
         public string Error { get; set; }
+        public string Location { get; set; }
         public DateTime Time { get; set; }
 
         public string MessageKey => Status switch
@@ -41,6 +43,7 @@ namespace NzbDrone.Core.MetadataSource
             MetadataSourceProbeStatus.AuthFailure => "MetadataSourceStatusAuthFailure",
             MetadataSourceProbeStatus.ServerError => "MetadataSourceStatusServerError",
             MetadataSourceProbeStatus.RateLimited => "MetadataSourceStatusRateLimited",
+            MetadataSourceProbeStatus.Redirect => "MetadataSourceStatusRedirect",
             MetadataSourceProbeStatus.NotFound => "MetadataSourceStatusNotFound",
             _ => "MetadataSourceStatusUnexpectedResponse"
         };
@@ -49,7 +52,8 @@ namespace NzbDrone.Core.MetadataSource
         {
             { "url", Url },
             { "statusCode", StatusCode },
-            { "error", Error }
+            { "error", Error },
+            { "location", Location }
         };
     }
 
@@ -142,8 +146,10 @@ namespace NzbDrone.Core.MetadataSource
                 .Accept(HttpAccept.Json)
                 .Build();
 
+            // No redirects. BookInfoProxy reads a redirect on a work as "this work moved to an author" and never follows
+            // it, and following one would let a source point the probe at any host on the user's network.
             request.SuppressHttpError = true;
-            request.AllowAutoRedirect = true;
+            request.AllowAutoRedirect = false;
             request.RequestTimeout = RequestTimeout;
 
             HttpResponse response;
@@ -160,7 +166,8 @@ namespace NzbDrone.Core.MetadataSource
             }
 
             var statusCode = (int)response.StatusCode;
-            var status = Classify(response);
+            var location = GetRedirectLocation(response);
+            var status = location != null ? MetadataSourceProbeStatus.Redirect : Classify(response);
 
             if (status == MetadataSourceProbeStatus.Ok)
             {
@@ -168,10 +175,26 @@ namespace NzbDrone.Core.MetadataSource
             }
             else
             {
-                _logger.Warn("Metadata source {0} check failed: {1} (HTTP {2}) for {3}", baseUrl, status, statusCode, request.Url);
+                _logger.Warn("Metadata source {0} check failed: {1} (HTTP {2}) for {3}{4}", baseUrl, status, statusCode, request.Url, location == null ? string.Empty : " -> " + location);
             }
 
-            return Result(baseUrl, status, statusCode);
+            var result = Result(baseUrl, status, statusCode);
+            result.Location = location;
+
+            return result;
+        }
+
+        // The absolute address a redirect points at, so the user can see what to type instead
+        private static string GetRedirectLocation(HttpResponse response)
+        {
+            var location = response.HasHttpRedirect ? response.Headers.GetSingleValue("Location") : null;
+
+            if (location.IsNullOrWhiteSpace())
+            {
+                return null;
+            }
+
+            return Uri.TryCreate((Uri)response.Request.Url, location, out var absolute) ? absolute.ToString() : location;
         }
 
         private MetadataSourceProbeStatus Classify(HttpResponse response)

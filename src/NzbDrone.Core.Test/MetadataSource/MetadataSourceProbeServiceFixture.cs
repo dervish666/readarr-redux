@@ -30,11 +30,21 @@ namespace NzbDrone.Core.Test.MetadataSource
             Mocker.SetConstant<ICacheManager>(Mocker.Resolve<CacheManager>());
         }
 
-        private void GivenResponse(HttpStatusCode statusCode, string content, string contentType = "application/json")
+        private void GivenResponse(HttpStatusCode statusCode, string content, string contentType = "application/json", string location = null)
         {
             Mocker.GetMock<IHttpClient>()
                   .Setup(s => s.Execute(It.IsAny<HttpRequest>()))
-                  .Returns<HttpRequest>(r => new HttpResponse(r, new HttpHeader { ContentType = contentType }, content, statusCode));
+                  .Returns<HttpRequest>(r =>
+                  {
+                      var headers = new HttpHeader { ContentType = contentType };
+
+                      if (location != null)
+                      {
+                          headers["Location"] = location;
+                      }
+
+                      return new HttpResponse(r, headers, content, statusCode);
+                  });
         }
 
         private void GivenException(Exception exception)
@@ -196,8 +206,46 @@ namespace NzbDrone.Core.Test.MetadataSource
             ExceptionVerification.ExpectedWarns(1);
         }
 
-        [TestCase(HttpStatusCode.BadRequest)]
+        [Test]
+        public void should_not_follow_redirects()
+        {
+            GivenResponse(HttpStatusCode.OK, WorkJson);
+
+            Subject.Probe(SourceUrl);
+
+            Mocker.GetMock<IHttpClient>()
+                  .Verify(s => s.Execute(It.Is<HttpRequest>(r => !r.AllowAutoRedirect)), Times.Once());
+        }
+
         [TestCase(HttpStatusCode.MovedPermanently)]
+        [TestCase(HttpStatusCode.Found)]
+        [TestCase(HttpStatusCode.SeeOther)]
+        [TestCase(HttpStatusCode.TemporaryRedirect)]
+        [TestCase(HttpStatusCode.PermanentRedirect)]
+        public void should_report_a_redirect_and_where_it_points(HttpStatusCode statusCode)
+        {
+            GivenResponse(statusCode, string.Empty, "text/plain", "https://metadata.example.org/work/1540236");
+
+            var result = Subject.Probe(SourceUrl);
+
+            result.Status.Should().Be(MetadataSourceProbeStatus.Redirect);
+            result.StatusCode.Should().Be((int)statusCode);
+            result.Location.Should().Be("https://metadata.example.org/work/1540236");
+            result.MessageTokens["location"].Should().Be("https://metadata.example.org/work/1540236");
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_resolve_a_relative_redirect_against_the_request()
+        {
+            GivenResponse(HttpStatusCode.Found, string.Empty, "text/plain", "/api/work/1540236");
+
+            Subject.Probe(SourceUrl).Location.Should().Be("http://metadata.local:8790/api/work/1540236");
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [TestCase(HttpStatusCode.BadRequest)]
+        [TestCase(HttpStatusCode.NotModified)]
         public void should_report_unexpected_response_for_other_status_codes(HttpStatusCode statusCode)
         {
             GivenResponse(statusCode, "nope", "text/plain");
@@ -275,6 +323,7 @@ namespace NzbDrone.Core.Test.MetadataSource
         [TestCase(MetadataSourceProbeStatus.AuthFailure, "MetadataSourceStatusAuthFailure")]
         [TestCase(MetadataSourceProbeStatus.ServerError, "MetadataSourceStatusServerError")]
         [TestCase(MetadataSourceProbeStatus.RateLimited, "MetadataSourceStatusRateLimited")]
+        [TestCase(MetadataSourceProbeStatus.Redirect, "MetadataSourceStatusRedirect")]
         [TestCase(MetadataSourceProbeStatus.NotFound, "MetadataSourceStatusNotFound")]
         [TestCase(MetadataSourceProbeStatus.UnexpectedResponse, "MetadataSourceStatusUnexpectedResponse")]
         public void every_status_should_have_a_message_key(MetadataSourceProbeStatus status, string key)
