@@ -37,7 +37,25 @@ namespace NzbDrone.Core.Http
                 return new HttpResponse(request, new HttpHeader(), cached.Value, (HttpStatusCode)cached.StatusCode);
             }
 
-            var result = _httpClient.Get(request);
+            HttpResponse result;
+
+            try
+            {
+                result = _httpClient.Get(request);
+            }
+            catch (HttpException ex) when (cached != null && IsOutage(ex.Response.StatusCode))
+            {
+                return Stale(request, cached, ex.Response.StatusCode.ToString());
+            }
+            catch (WebException ex) when (cached != null)
+            {
+                return Stale(request, cached, ex.Status.ToString());
+            }
+
+            if (result.HasHttpError && cached != null && IsOutage(result.StatusCode))
+            {
+                return Stale(request, cached, result.StatusCode.ToString());
+            }
 
             if (!result.HasHttpError)
             {
@@ -68,6 +86,20 @@ namespace NzbDrone.Core.Http
             }
 
             return result;
+        }
+
+        // A metadata source that is down, or whose upstream key was revoked, answers 401, 5xx or nothing at all.
+        // The last good answer beats an error for every author and book until it recovers. 404 and 429 are real answers.
+        private static bool IsOutage(HttpStatusCode statusCode)
+        {
+            return statusCode == HttpStatusCode.Unauthorized || (int)statusCode >= 500;
+        }
+
+        private HttpResponse Stale(HttpRequest request, CachedHttpResponse cached, string reason)
+        {
+            _logger.Warn("{0} from [GET] {1}, using the response cached at {2:u}", reason, request.Url, cached.LastRefresh);
+
+            return new HttpResponse(request, new HttpHeader(), cached.Value, (HttpStatusCode)cached.StatusCode);
         }
 
         public HttpResponse<T> Get<T>(HttpRequest request, bool useCache, TimeSpan ttl)
