@@ -779,6 +779,29 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void should_not_renumber_when_the_names_count_more_parts_than_there_are_files()
+        {
+            // Part 4 of 4 is missing, so numbering 1 to 3 by name would hide the gap
+            var saved = new List<BookFile>();
+            var decisions = GivenAudioParts(saved, ("Book 01 of 04.mp3", 1), ("Book 02 of 04.mp3", 1), ("Book 03 of 04.mp3", 3));
+
+            var results = Subject.Import(decisions, false);
+
+            AssertNotRenumbered(decisions, results, new[] { 1, 1, 3 }, 1);
+        }
+
+        [Test]
+        public void should_not_renumber_when_another_number_in_the_names_counts_past_the_files()
+        {
+            var saved = new List<BookFile>();
+            var decisions = GivenAudioParts(saved, ("01 Chapter 10.mp3", 1), ("02 Chapter 09.mp3", 1), ("03 Chapter 08.mp3", 3));
+
+            var results = Subject.Import(decisions, false);
+
+            AssertNotRenumbered(decisions, results, new[] { 1, 1, 3 }, 1);
+        }
+
+        [Test]
         public void should_renumber_when_two_numbers_in_the_names_give_the_same_order()
         {
             var saved = new List<BookFile>();

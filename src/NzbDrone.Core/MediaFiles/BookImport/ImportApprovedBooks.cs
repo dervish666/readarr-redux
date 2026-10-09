@@ -520,8 +520,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
         // The part number each file's name gives it, or null unless all of these hold: the files are one edition in
         // one folder (two editions, or discs in their own folders, each count from 1), no tag claims a part beyond
-        // the file count (that means parts are missing, which renumbering would hide), and the numbers in the names
-        // that run 1 to N across the N files all put the files in the same order.
+        // the file count (that means parts are missing, which renumbering would hide), no number in the names is
+        // past the file count either, and the numbers in the names that run 1 to N across the N files all put the
+        // files in the same order.
         private static Dictionary<string, int> PartsFromFilenames(List<IGrouping<string, ImportDecision<LocalBook>>> files)
         {
             var items = files.Select(f => f.First().Item).ToList();
@@ -540,7 +541,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
             var tokenCount = tokens[0].Count;
 
-            if (tokens.Any(t => t.Count != tokenCount))
+            // A number past the file count ("01 of 04" with 3 files, "Chapter 10", a year, "64 Kbps") says the
+            // names count something other than these files, or that parts are missing
+            if (tokens.Any(t => t.Count != tokenCount) || tokens.SelectMany(t => t).Any(n => n < 0 || n > files.Count))
             {
                 return null;
             }
