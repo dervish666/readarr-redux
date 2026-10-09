@@ -512,23 +512,320 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
-        public void should_keep_the_old_files_when_a_part_of_a_multi_part_upgrade_was_skipped()
+        public void should_replace_every_old_part_when_the_tags_of_a_multi_part_upgrade_repeat_a_part()
         {
             var disk = new Dictionary<string, string>();
             var database = new List<BookFile>();
             var decisions = GivenMultiPartUpgrade(disk, database);
 
-            // Two files claim part 2, so the second is skipped as already imported and part 3 is missing
+            // part2.mp3 and part3.mp3 are both tagged track 2, so the parts are numbered from the filenames
             decisions[2].Item.Part = 2;
 
-            Subject.Import(decisions, true);
+            var results = Subject.Import(decisions, true);
 
+            results.Should().OnlyContain(r => r.Result == ImportResultType.Imported);
+            decisions.Select(d => d.Item.Part).Should().Equal(1, 2, 3);
+            disk.Should().HaveCount(3);
+            disk.Values.Should().OnlyContain(x => x == "new");
+        }
+
+        // The Autumn Republic, a DrunkenSlug MP3 release of 56 files named "BMAR01-56 ..." to "BMAR56-56 ...".
+        // Every import on Tower put BMARnn on part nn-1 from BMAR02 on, so the tags run one behind the filenames
+        // and BMAR01 claims a part another, larger, file also claims. It was skipped as already imported each time.
+        private List<ImportDecision<LocalBook>> GivenTheAutumnRepublic(List<BookFile> saved)
+        {
+            var first = _approvedDecisions.First().Item;
+            var folder = @"C:\Test\Downloads\Brian McClellan - The Autumn Republic - Book Three of the Powder Mage Trilogy (2015) MP3".AsOsAgnostic();
+
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(s => s.AddMany(It.IsAny<List<BookFile>>()))
+                .Callback<List<BookFile>>(files => saved.AddRange(files));
+
+            return Enumerable.Range(1, 56).Select(i => new ImportDecision<LocalBook>(new LocalBook
+            {
+                Author = first.Author,
+                Book = first.Book,
+                Edition = first.Edition,
+                Part = i == 1 ? 1 : i - 1,
+                PartCount = 56,
+                Size = i == 1 ? 2.Megabytes() : (8 + (i % 10)).Megabytes(),
+                Path = Path.Combine(folder, $"BMAR{i:00}-56 Brian McClellan - The Autumn Republic.mp3"),
+                Quality = new QualityModel(Quality.MP3),
+                FileTrackInfo = new ParsedTrackInfo()
+            })).ToList();
+        }
+
+        [Test]
+        public void should_import_every_part_when_two_files_are_tagged_with_the_same_part()
+        {
+            var saved = new List<BookFile>();
+            var decisions = GivenTheAutumnRepublic(saved);
+
+            var results = Subject.Import(decisions, false);
+
+            results.Should().HaveCount(56);
+            results.Should().OnlyContain(r => r.Result == ImportResultType.Imported);
+
+            saved.Select(f => f.Part).Should().BeEquivalentTo(Enumerable.Range(1, 56));
+            saved.Should().OnlyContain(f => f.PartCount == 56);
+        }
+
+        [Test]
+        public void should_number_parts_in_filename_order_when_the_tags_repeat_a_part()
+        {
+            var saved = new List<BookFile>();
+            var decisions = GivenTheAutumnRepublic(saved);
+
+            Subject.Import(decisions, false);
+
+            foreach (var file in saved)
+            {
+                var number = int.Parse(Path.GetFileName(file.Path).Substring(4, 2));
+                file.Part.Should().Be(number, Path.GetFileName(file.Path));
+            }
+        }
+
+        [Test]
+        public void should_keep_tagged_part_numbers_that_are_unique()
+        {
+            var saved = new List<BookFile>();
+            var decisions = GivenTheAutumnRepublic(saved);
+
+            // BMAR01 tagged as the opening credits, part 56, so every file has its own number
+            decisions[0].Item.Part = 56;
+
+            Subject.Import(decisions, false);
+
+            saved.Should().HaveCount(56);
+            saved.Single(f => f.Path.Contains("BMAR01-56")).Part.Should().Be(56);
+            saved.Single(f => f.Path.Contains("BMAR02-56")).Part.Should().Be(1);
+        }
+
+        [Test]
+        public void should_still_import_one_ebook_when_two_formats_claim_the_same_part()
+        {
+            var first = _approvedDecisions.First().Item;
+            var folder = @"C:\Test\Downloads\Book".AsOsAgnostic();
+
+            var decisions = new[] { ("Book.epub", Quality.EPUB), ("Book.azw3", Quality.AZW3) }
+                .Select(x => new ImportDecision<LocalBook>(new LocalBook
+                {
+                    Author = first.Author,
+                    Book = first.Book,
+                    Edition = first.Edition,
+                    Part = 1,
+                    PartCount = 2,
+                    Path = Path.Combine(folder, x.Item1),
+                    Quality = new QualityModel(x.Item2),
+                    FileTrackInfo = new ParsedTrackInfo()
+                }))
+                .ToList();
+
+            var results = Subject.Import(decisions, false);
+
+            results.Should().ContainSingle(r => r.Result == ImportResultType.Imported);
+            decisions.Select(d => d.Item.Part).Should().Equal(1, 1);
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        // Audio files of the fixture's book under one download folder, as "Folder/Name.mp3" with their tagged part
+        private List<ImportDecision<LocalBook>> GivenAudioParts(List<BookFile> saved, params (string Path, int Part)[] files)
+        {
+            var first = _approvedDecisions.First().Item;
+            var folder = @"C:\Test\Downloads\Book".AsOsAgnostic();
+
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(s => s.AddMany(It.IsAny<List<BookFile>>()))
+                .Callback<List<BookFile>>(added => saved.AddRange(added));
+
+            return files.Select(f => new ImportDecision<LocalBook>(new LocalBook
+            {
+                Author = first.Author,
+                Book = first.Book,
+                Edition = first.Edition,
+                Part = f.Part,
+                PartCount = files.Length,
+                Size = 10.Megabytes(),
+                Path = Path.Combine(new[] { folder }.Concat(f.Path.Split('/')).ToArray()),
+                Quality = new QualityModel(Quality.MP3),
+                FileTrackInfo = new ParsedTrackInfo()
+            })).ToList();
+        }
+
+        // Without a provable numbering the tagged parts stand: the first file for each part imports and every
+        // other file claiming it is skipped, with a warning rather than silently
+        private void AssertNotRenumbered(List<ImportDecision<LocalBook>> decisions, List<ImportResult> results, int[] tagged, int skipped)
+        {
+            decisions.Select(d => d.Item.Part).Should().Equal(tagged);
+            results.Should().NotContain(r => r.Result == ImportResultType.Rejected);
+            results.Where(r => r.Result == ImportResultType.Skipped).Should().HaveCount(skipped)
+                .And.OnlyContain(r => r.Errors.Contains("Book has already been imported"));
+
+            ExceptionVerification.ExpectedWarns(skipped);
+        }
+
+        [Test]
+        public void should_not_renumber_clashing_parts_when_the_filenames_skip_a_number()
+        {
+            var saved = new List<BookFile>();
+            var decisions = GivenAudioParts(saved, ("Book - Part 1.mp3", 1), ("Book - Part 2.mp3", 1), ("Book - Part 4.mp3", 4));
+
+            var results = Subject.Import(decisions, false);
+
+            AssertNotRenumbered(decisions, results, new[] { 1, 1, 4 }, 1);
+            saved.Select(f => f.Part).Should().BeEquivalentTo(new[] { 1, 4 });
+        }
+
+        [Test]
+        public void should_not_renumber_clashing_parts_when_a_tag_claims_a_part_beyond_the_file_count()
+        {
+            // The names run 1 to 3 but a tag says part 4, so a part is missing and numbering by name would hide it
+            var saved = new List<BookFile>();
+            var decisions = GivenAudioParts(saved, ("Book - Part 1.mp3", 1), ("Book - Part 2.mp3", 1), ("Book - Part 3.mp3", 4));
+
+            var results = Subject.Import(decisions, false);
+
+            AssertNotRenumbered(decisions, results, new[] { 1, 1, 4 }, 1);
+        }
+
+        [Test]
+        public void should_keep_the_old_files_when_an_upgrade_has_clashing_parts_its_names_cannot_number()
+        {
+            var disk = new Dictionary<string, string>();
+            var database = new List<BookFile>();
+            var decisions = GivenMultiPartUpgrade(disk, database);
+
+            // Tagged 1, 1, 3 and named part1, part2, part4
+            decisions[1].Item.Part = 1;
+            decisions[2].Item.Path = decisions[2].Item.Path.Replace("part3", "part4");
+
+            var results = Subject.Import(decisions, true);
+
+            decisions.Select(d => d.Item.Part).Should().Equal(1, 1, 3);
+            results.Should().ContainSingle(r => r.Result == ImportResultType.Skipped);
             disk.Values.Where(x => x == "old").Should().HaveCount(3);
 
             Mocker.GetMock<IRecycleBinProvider>()
                 .Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
 
-            ExceptionVerification.ExpectedWarns(3);
+            ExceptionVerification.ExpectedWarns(4);
+        }
+
+        [Test]
+        public void should_not_number_two_editions_together()
+        {
+            var saved = new List<BookFile>();
+            var decisions = GivenAudioParts(saved,
+                ("Book 1.mp3", 1),
+                ("Book 2.mp3", 2),
+                ("Book 3.mp3", 3),
+                ("Book 4.mp3", 1),
+                ("Book 5.mp3", 2),
+                ("Book 6.mp3", 3));
+
+            var otherEdition = Builder<Edition>.CreateNew()
+                .With(e => e.Id = 2)
+                .With(e => e.ForeignEditionId = "other edition")
+                .With(e => e.Book = decisions[0].Item.Book)
+                .Build();
+
+            decisions.Skip(3).ToList().ForEach(d => d.Item.Edition = otherEdition);
+
+            var results = Subject.Import(decisions, false);
+
+            AssertNotRenumbered(decisions, results, new[] { 1, 2, 3, 1, 2, 3 }, 3);
+        }
+
+        [Test]
+        public void should_not_number_parts_across_disc_folders()
+        {
+            var saved = new List<BookFile>();
+            var decisions = GivenAudioParts(saved,
+                ("Disc 1/Track 1.mp3", 1),
+                ("Disc 1/Track 2.mp3", 2),
+                ("CD 2/Track 1.mp3", 1),
+                ("CD 2/Track 2.mp3", 2));
+
+            var results = Subject.Import(decisions, false);
+
+            AssertNotRenumbered(decisions, results, new[] { 1, 2, 1, 2 }, 2);
+        }
+
+        [Test]
+        public void should_not_number_parts_across_disc_folders_even_when_the_names_count_up()
+        {
+            var saved = new List<BookFile>();
+            var decisions = GivenAudioParts(saved,
+                ("Disc 1/01.mp3", 1),
+                ("Disc 1/02.mp3", 2),
+                ("Disc 2/03.mp3", 1),
+                ("Disc 2/04.mp3", 2));
+
+            var results = Subject.Import(decisions, false);
+
+            AssertNotRenumbered(decisions, results, new[] { 1, 2, 1, 2 }, 2);
+        }
+
+        [Test]
+        public void should_not_renumber_when_two_numbers_in_the_names_give_different_orders()
+        {
+            var saved = new List<BookFile>();
+            var decisions = GivenAudioParts(saved, ("01 Chapter 03.mp3", 1), ("02 Chapter 02.mp3", 1), ("03 Chapter 01.mp3", 3));
+
+            var results = Subject.Import(decisions, false);
+
+            AssertNotRenumbered(decisions, results, new[] { 1, 1, 3 }, 1);
+        }
+
+        [Test]
+        public void should_not_renumber_when_the_names_count_more_parts_than_there_are_files()
+        {
+            // Part 4 of 4 is missing, so numbering 1 to 3 by name would hide the gap
+            var saved = new List<BookFile>();
+            var decisions = GivenAudioParts(saved, ("Book 01 of 04.mp3", 1), ("Book 02 of 04.mp3", 1), ("Book 03 of 04.mp3", 3));
+
+            var results = Subject.Import(decisions, false);
+
+            AssertNotRenumbered(decisions, results, new[] { 1, 1, 3 }, 1);
+        }
+
+        [Test]
+        public void should_not_renumber_when_another_number_in_the_names_counts_past_the_files()
+        {
+            var saved = new List<BookFile>();
+            var decisions = GivenAudioParts(saved, ("01 Chapter 10.mp3", 1), ("02 Chapter 09.mp3", 1), ("03 Chapter 08.mp3", 3));
+
+            var results = Subject.Import(decisions, false);
+
+            AssertNotRenumbered(decisions, results, new[] { 1, 1, 3 }, 1);
+        }
+
+        [Test]
+        public void should_renumber_when_two_numbers_in_the_names_give_the_same_order()
+        {
+            var saved = new List<BookFile>();
+            var decisions = GivenAudioParts(saved, ("Book 01 (01 of 03).mp3", 1), ("Book 02 (02 of 03).mp3", 1), ("Book 03 (03 of 03).mp3", 3));
+
+            var results = Subject.Import(decisions, false);
+
+            decisions.Select(d => d.Item.Part).Should().Equal(1, 2, 3);
+            results.Should().OnlyContain(r => r.Result == ImportResultType.Imported);
+        }
+
+        [Test]
+        public void should_not_let_a_rejected_preview_reorder_correctly_tagged_parts()
+        {
+            var saved = new List<BookFile>();
+            var decisions = GivenAudioParts(saved, ("Opening.mp3", 1), ("Closing.mp3", 2), ("Preview.mp3", 0));
+
+            decisions[2].Reject(new Rejection("Not an upgrade for existing book file(s)"));
+
+            Subject.Import(decisions, false);
+
+            saved.Should().HaveCount(2);
+            saved.Single(f => f.Path.EndsWith("Opening.mp3")).Part.Should().Be(1);
+            saved.Single(f => f.Path.EndsWith("Closing.mp3")).Part.Should().Be(2);
         }
 
         // Books A and B have the same title, so both are renamed onto one path. Book B still has a row for that
