@@ -6,6 +6,8 @@ using NLog;
 using NzbDrone.Common.Cache;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
+using NzbDrone.Common.Serializer;
+using NzbDrone.Core.MetadataSource.BookInfo;
 
 namespace NzbDrone.Core.MetadataSource
 {
@@ -64,12 +66,19 @@ namespace NzbDrone.Core.MetadataSource
     {
         // Goodreads work 1540236 is The Hobbit, so a Goodreads-backed source (rreading-glasses, api.bookinfo.pro) that
         // 404s it is broken rather than missing a book. Hardcover-backed hardcover.bookinfo.pro has a different book
-        // under the same number, which is why IsWork checks the shape and not the title. The work is about 20 KB; an
-        // author such as Terry Pratchett runs to several MB.
+        // under the same number, which is why IsWork checks the ID and shape but not the title. The work is about 20 KB;
+        // an author such as Terry Pratchett runs to several MB.
         public const string ProbeWorkId = "1540236";
 
         private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(10);
         private static readonly TimeSpan CacheLifetime = TimeSpan.FromMinutes(5);
+
+        // The same settings BookInfoProxy reads works with
+        private static readonly JsonSerializerOptions SerializerSettings = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = false,
+            Converters = { new STJUtcConverter() }
+        };
 
         private readonly IHttpClient _httpClient;
         private readonly ICached<MetadataSourceProbeResult> _cache;
@@ -165,7 +174,7 @@ namespace NzbDrone.Core.MetadataSource
             return Result(baseUrl, status, statusCode);
         }
 
-        private static MetadataSourceProbeStatus Classify(HttpResponse response)
+        private MetadataSourceProbeStatus Classify(HttpResponse response)
         {
             switch (response.StatusCode)
             {
@@ -183,31 +192,35 @@ namespace NzbDrone.Core.MetadataSource
             return (int)response.StatusCode >= 500 ? MetadataSourceProbeStatus.ServerError : MetadataSourceProbeStatus.UnexpectedResponse;
         }
 
-        // Matches the names BookInfoProxy deserialises case-sensitively, so a pass here means the real client can read it.
-        // A 200 web page, which is what rreading-glasses and api.bookinfo.pro return for an unknown path such as /v1/, fails.
-        private static bool IsWork(string content)
+        // Deserialises into BookInfoProxy's own WorkResource with the same settings, so a string, fractional or
+        // overflowing ID fails here exactly as it would there. A 200 web page, which is what rreading-glasses and
+        // api.bookinfo.pro return for an unknown path such as /v1/, fails too.
+        private bool IsWork(string content)
         {
             if (content.IsNullOrWhiteSpace())
             {
                 return false;
             }
 
+            WorkResource work;
+
             try
             {
-                using var document = JsonDocument.Parse(content);
-                var root = document.RootElement;
-
-                return root.ValueKind == JsonValueKind.Object &&
-                       root.TryGetProperty("ForeignId", out var foreignId) &&
-                       foreignId.ValueKind == JsonValueKind.Number &&
-                       root.TryGetProperty("Title", out var title) &&
-                       title.ValueKind == JsonValueKind.String &&
-                       title.GetString().IsNotNullOrWhiteSpace();
+                work = JsonSerializer.Deserialize<WorkResource>(content, SerializerSettings);
             }
-            catch (JsonException)
+            catch (Exception ex)
             {
+                // The caller reports UnexpectedResponse; this keeps the reason
+                _logger.Debug(ex, "Metadata source probe response is not a work");
                 return false;
             }
+
+            // A work with no editions or no author can't be added, so it doesn't count as serving data
+            return work != null &&
+                   work.ForeignId.ToString() == ProbeWorkId &&
+                   work.Title.IsNotNullOrWhiteSpace() &&
+                   work.Books is { Count: > 0 } &&
+                   work.Authors is { Count: > 0 };
         }
 
         private static MetadataSourceProbeResult Result(string url, MetadataSourceProbeStatus status, int? statusCode = null, string error = null)

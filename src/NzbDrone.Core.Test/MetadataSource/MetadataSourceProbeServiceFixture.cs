@@ -15,10 +15,14 @@ namespace NzbDrone.Core.Test.MetadataSource
     public class MetadataSourceProbeServiceFixture : CoreTest<MetadataSourceProbeService>
     {
         private const string SourceUrl = "http://metadata.local:8790";
-        private const string WorkJson = "{\"ForeignId\":1540236,\"Title\":\"The Hobbit, or There and Back Again\",\"Books\":[],\"Authors\":[]}";
+        private const string Book = "{\"ForeignId\":1,\"Title\":\"The Hobbit\"}";
+        private const string Author = "{\"ForeignId\":656983,\"Name\":\"J.R.R. Tolkien\"}";
 
         // What rreading-glasses and api.bookinfo.pro send for any path they don't route, such as an extra /v1
         private const string SwaggerHtml = "<!DOCTYPE html><html><head><title>BookInfo Metadata API - Swagger UI</title></head><body></body></html>";
+
+        // rreading-glasses' answer for the probe work, trimmed to one edition with the blurbs blanked
+        private string WorkJson => ReadAllText("Files/MetadataSource/work-1540236.json");
 
         [SetUp]
         public void Setup()
@@ -151,11 +155,27 @@ namespace NzbDrone.Core.Test.MetadataSource
             ExceptionVerification.ExpectedWarns(1);
         }
 
+        [Test]
+        public void should_report_ok_for_another_book_under_the_probe_id()
+        {
+            // hardcover.bookinfo.pro numbers its works differently, and 1540236 is a different book there
+            GivenResponse(HttpStatusCode.OK, "{\"ForeignId\":1540236,\"Title\":\"The Hellion is Tamed\",\"Books\":[" + Book + "],\"Authors\":[" + Author + "]}");
+
+            Subject.Probe(SourceUrl).Status.Should().Be(MetadataSourceProbeStatus.Ok);
+        }
+
         [TestCase("{\"Ids\":[]}")]
         [TestCase("[]")]
-        [TestCase("{\"ForeignId\":\"1540236\",\"Title\":\"The Hobbit\"}")]
-        [TestCase("{\"foreignId\":1540236,\"title\":\"The Hobbit\"}")]
-        [TestCase("{\"ForeignId\":1540236,\"Title\":\"\"}")]
+        [TestCase("{\"ForeignId\":\"1540236\",\"Title\":\"The Hobbit\",\"Books\":[" + Book + "],\"Authors\":[" + Author + "]}")]
+        [TestCase("{\"foreignId\":1540236,\"title\":\"The Hobbit\",\"books\":[" + Book + "],\"authors\":[" + Author + "]}")]
+        [TestCase("{\"ForeignId\":1540236,\"Title\":\"\",\"Books\":[" + Book + "],\"Authors\":[" + Author + "]}")]
+        [TestCase("{\"ForeignId\":1540236,\"Title\":\"The Hobbit\"}")]
+        [TestCase("{\"ForeignId\":1540236,\"Title\":\"The Hobbit\",\"Books\":[],\"Authors\":[" + Author + "]}")]
+        [TestCase("{\"ForeignId\":1540236,\"Title\":\"The Hobbit\",\"Books\":[" + Book + "],\"Authors\":[]}")]
+        [TestCase("{\"ForeignId\":1540236,\"Title\":\"The Hobbit\",\"Books\":[" + Book + "]}")]
+        [TestCase("{\"ForeignId\":1540236.5,\"Title\":\"The Hobbit\",\"Books\":[" + Book + "],\"Authors\":[" + Author + "]}")]
+        [TestCase("{\"ForeignId\":99999999999,\"Title\":\"The Hobbit\",\"Books\":[" + Book + "],\"Authors\":[" + Author + "]}")]
+        [TestCase("{\"ForeignId\":42,\"Title\":\"The Hobbit\",\"Books\":[" + Book + "],\"Authors\":[" + Author + "]}")]
         public void should_report_unexpected_response_when_json_is_not_a_work(string json)
         {
             GivenResponse(HttpStatusCode.OK, json);
