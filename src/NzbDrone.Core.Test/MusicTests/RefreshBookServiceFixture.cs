@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Web;
 using FizzWare.NBuilder;
 using FluentAssertions;
 using Moq;
@@ -11,6 +12,7 @@ using NzbDrone.Common.Http;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Books.Commands;
 using NzbDrone.Core.Exceptions;
+using NzbDrone.Core.Http;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MetadataSource;
 using NzbDrone.Core.MetadataSource.BookInfo;
@@ -51,6 +53,10 @@ namespace NzbDrone.Core.Test.MusicTests
 
             Mocker.GetMock<IEditionService>()
                 .Setup(s => s.GetEditionsForRefresh(It.IsAny<int>(), It.IsAny<List<string>>()))
+                .Returns(new List<Edition>());
+
+            Mocker.GetMock<IEditionService>()
+                .Setup(s => s.GetEditionsByBook(It.IsAny<int>()))
                 .Returns(new List<Edition>());
         }
 
@@ -290,6 +296,237 @@ namespace NzbDrone.Core.Test.MusicTests
 
             ExceptionVerification.ExpectedErrors(3);
             ExceptionVerification.ExpectedWarns(4);
+        }
+
+        // The real proxy against rreading-glasses over mocked HTTP. Every work 404s, as a work Goodreads merged
+        // away does, and /book/{edition} answers editionStatus. A 303 points at /author/5?edition={edition}, whose
+        // payload holds the edition under work newWorkId.
+        private void GivenMergedWork(HttpStatusCode editionStatus, string newWorkId = "2")
+        {
+            Mocker.GetMock<IMetadataRequestBuilder>()
+                .Setup(s => s.GetRequestBuilder())
+                .Returns(new HttpRequestBuilder("http://rreading-glasses.local/{route}").CreateFactory());
+
+            Mocker.GetMock<IHttpClient>()
+                .Setup(s => s.Get(It.IsAny<HttpRequest>()))
+                .Returns((HttpRequest request) =>
+                {
+                    var path = new Uri(request.Url.FullUri).AbsolutePath;
+                    var headers = new HttpHeader();
+
+                    if (path.StartsWith("/work/"))
+                    {
+                        return new HttpResponse(request, headers, string.Empty, HttpStatusCode.NotFound);
+                    }
+
+                    if (editionStatus == HttpStatusCode.SeeOther)
+                    {
+                        headers.Add("Location", $"/author/5?edition={path.Split('/').Last()}");
+                    }
+
+                    return new HttpResponse(request, headers, string.Empty, editionStatus);
+                });
+
+            Mocker.GetMock<ICachedHttpResponseService>()
+                .Setup(s => s.Get(It.IsAny<HttpRequest>(), It.IsAny<bool>(), It.IsAny<TimeSpan>()))
+                .Returns((HttpRequest request, bool useCache, TimeSpan ttl) =>
+                {
+                    var edition = HttpUtility.ParseQueryString(new Uri(request.Url.FullUri).Query)["edition"];
+                    var content = "{\"ForeignId\":5,\"Name\":\"Author Five\",\"Works\":[{\"ForeignId\":" + newWorkId + ",\"Title\":\"Merged\"," +
+                                  "\"Books\":[{\"ForeignId\":" + edition + ",\"Title\":\"Merged\",\"Contributors\":[{\"ForeignId\":5,\"Role\":\"Author\"}]}]}],\"Series\":[]}";
+
+                    return new HttpResponse(request, new HttpHeader(), content);
+                });
+
+            Mocker.SetConstant<IProvideBookInfo>(Mocker.Resolve<BookInfoProxy>());
+        }
+
+        private void GivenMonitoredEdition(string foreignEditionId = "11", bool monitored = true)
+        {
+            Mocker.GetMock<IEditionService>()
+                .Setup(s => s.GetEditionsByBook(It.IsAny<int>()))
+                .Returns((int bookId) => new List<Edition>
+                {
+                    Builder<Edition>.CreateNew()
+                        .With(e => e.Id = bookId)
+                        .With(e => e.BookId = bookId)
+                        .With(e => e.ForeignEditionId = foreignEditionId ?? $"1{bookId}")
+                        .With(e => e.Monitored = monitored)
+                        .Build()
+                });
+        }
+
+        private void VerifyEditionLookups(int times)
+        {
+            Mocker.GetMock<IHttpClient>()
+                .Verify(v => v.Get(It.Is<HttpRequest>(r => r.Url.FullUri.Contains("/book/"))), Times.Exactly(times));
+        }
+
+        private void VerifyBookDeleted(Times times)
+        {
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.DeleteBook(_book.Id, false, false), times);
+        }
+
+        [Test]
+        public void should_delete_book_whose_work_was_merged_into_a_book_already_in_the_library()
+        {
+            GivenMergedWork(HttpStatusCode.SeeOther);
+            GivenMonitoredEdition();
+
+            Mocker.GetMock<IBookService>()
+                .Setup(s => s.FindById("2"))
+                .Returns(Builder<Book>.CreateNew().With(b => b.Id = 2).With(b => b.ForeignBookId = "2").Build());
+
+            RefreshWithBookMissingFromAuthorList();
+
+            VerifyEditionLookups(1);
+            VerifyBookDeleted(Times.Once());
+
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.UpdateMany(It.IsAny<List<Book>>()), Times.Never());
+
+            ExceptionVerification.ExpectedErrors(1);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_move_book_whose_work_was_merged_into_a_work_not_in_the_library()
+        {
+            GivenMergedWork(HttpStatusCode.SeeOther);
+            GivenMonitoredEdition();
+
+            _book.TitleSlug = _book.ForeignBookId;
+            _book.Monitored = true;
+
+            RefreshWithBookMissingFromAuthorList();
+
+            VerifyEditionLookups(1);
+            VerifyBookDeleted(Times.Never());
+
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.UpdateMany(It.Is<List<Book>>(l => l.Single() == _book)), Times.Once());
+
+            _book.ForeignBookId.Should().Be("2");
+            _book.TitleSlug.Should().Be("2");
+            _book.Monitored.Should().BeTrue();
+
+            ExceptionVerification.ExpectedErrors(1);
+        }
+
+        [Test]
+        public void should_keep_book_under_its_old_id_when_another_book_holds_the_new_works_slug()
+        {
+            GivenMergedWork(HttpStatusCode.SeeOther);
+            GivenMonitoredEdition();
+
+            _book.TitleSlug = _book.ForeignBookId;
+
+            // Books.TitleSlug is unique, so moving this book onto work 2 would fail to save
+            Mocker.GetMock<IBookService>()
+                .Setup(s => s.FindBySlug("2"))
+                .Returns(Builder<Book>.CreateNew().With(b => b.Id = 99).With(b => b.ForeignBookId = "3").With(b => b.TitleSlug = "2").Build());
+
+            RefreshWithBookMissingFromAuthorList();
+
+            VerifyEditionLookups(1);
+            VerifyBookDeleted(Times.Never());
+
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.UpdateMany(It.IsAny<List<Book>>()), Times.Never());
+
+            _book.ForeignBookId.Should().Be("1");
+            _book.TitleSlug.Should().Be("1");
+
+            ExceptionVerification.ExpectedErrors(1);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_delete_book_whose_work_and_edition_are_both_gone()
+        {
+            GivenMergedWork(HttpStatusCode.NotFound);
+            GivenMonitoredEdition();
+
+            RefreshWithBookMissingFromAuthorList();
+
+            VerifyEditionLookups(1);
+            VerifyBookDeleted(Times.Once());
+
+            ExceptionVerification.ExpectedErrors(1);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_delete_book_whose_work_is_gone_without_a_monitored_edition_to_follow()
+        {
+            GivenMergedWork(HttpStatusCode.SeeOther);
+            GivenMonitoredEdition(monitored: false);
+
+            RefreshWithBookMissingFromAuthorList();
+
+            VerifyEditionLookups(0);
+            VerifyBookDeleted(Times.Once());
+
+            ExceptionVerification.ExpectedErrors(1);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_keep_book_whose_work_is_gone_when_the_edition_lookup_errors()
+        {
+            GivenMergedWork(HttpStatusCode.InternalServerError);
+            GivenMonitoredEdition();
+
+            RefreshWithBookMissingFromAuthorList();
+
+            VerifyEditionLookups(1);
+            VerifyBookDeleted(Times.Never());
+
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.UpdateMany(It.IsAny<List<Book>>()), Times.Never());
+
+            ExceptionVerification.ExpectedErrors(2);
+        }
+
+        [Test]
+        public void should_count_failed_edition_lookups_against_the_missing_book_lookup_bound()
+        {
+            var books = GivenBooksMissingFromAuthorList(10);
+
+            GivenMergedWork(HttpStatusCode.InternalServerError);
+            GivenMonitoredEdition(foreignEditionId: null);
+
+            Subject.RefreshBookInfo(books, new List<Book>(), _author, true, false, null);
+
+            Mocker.GetMock<IHttpClient>()
+                .Verify(v => v.Get(It.Is<HttpRequest>(r => r.Url.FullUri.Contains("/work/"))), Times.Exactly(3));
+
+            VerifyEditionLookups(3);
+
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.DeleteBook(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never());
+
+            ExceptionVerification.ExpectedErrors(6);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_not_look_up_the_edition_of_a_book_that_has_files()
+        {
+            GivenMergedWork(HttpStatusCode.SeeOther);
+            GivenMonitoredEdition();
+
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(s => s.GetFilesByBook(_book.Id))
+                .Returns(Builder<BookFile>.CreateListOfSize(1).BuildList());
+
+            RefreshWithBookMissingFromAuthorList();
+
+            VerifyEditionLookups(0);
+            VerifyBookDeleted(Times.Never());
+
+            ExceptionVerification.ExpectedErrors(2);
         }
 
         [Test]

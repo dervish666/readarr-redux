@@ -135,6 +135,57 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
         }
 
+        // Goodreads merges works without leaving a redirect, so rreading-glasses answers 404 for the old work. Its
+        // editions still resolve: /book/{id} answers 303 to /author/{author}?edition={id}, a payload holding just the
+        // work the edition is in now. Only a 404 on the edition itself counts as not found.
+        public string GetWorkIdForEdition(string foreignEditionId)
+        {
+            var httpResponse = ExecuteWithRetry(() =>
+            {
+                var httpRequest = _requestBuilder.GetRequestBuilder().Create()
+                    .SetSegment("route", $"book/{foreignEditionId}")
+                    .Build();
+
+                httpRequest.SuppressHttpError = true;
+
+                return _httpClient.Get(httpRequest);
+            });
+
+            if (httpResponse.StatusCode == HttpStatusCode.NotFound)
+            {
+                throw new EditionNotFoundException(foreignEditionId);
+            }
+
+            if (!httpResponse.HasHttpRedirect)
+            {
+                throw new BookInfoException("Edition {0} lookup returned {1}", foreignEditionId, (int)httpResponse.StatusCode);
+            }
+
+            var (type, newId, redirectEdition) = ParseRedirect(httpResponse);
+
+            if (type == "work")
+            {
+                return newId;
+            }
+
+            if (type != "author")
+            {
+                throw new BookInfoException("Edition {0} redirected to an unexpected {1}", foreignEditionId, httpResponse.Headers.GetSingleValue("Location"));
+            }
+
+            // Read the raw works: MapAuthor drops works whose edition credits another author first, and a merged
+            // co-written book is often one of those
+            var resource = FetchAuthorResource(newId, true, redirectEdition);
+            var work = resource.Works.FirstOrDefault(w => w.ForeignId > 0 && w.Books != null && w.Books.Any(b => b.ForeignId.ToString() == foreignEditionId));
+
+            if (work == null)
+            {
+                throw new BookInfoException("Edition {0} redirected to author {1}, whose works do not include it", foreignEditionId, newId);
+            }
+
+            return work.ForeignId.ToString();
+        }
+
         public SeriesResource GetSeriesInfo(long foreignSeriesId, bool useCache = true)
         {
             _logger.Debug("Getting series {0}", foreignSeriesId);
@@ -609,6 +660,11 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         private Author PollAuthorUncached(string foreignAuthorId, bool useCache = true, string edition = null)
         {
+            return MapAuthor(FetchAuthorResource(foreignAuthorId, useCache, edition));
+        }
+
+        private AuthorResource FetchAuthorResource(string foreignAuthorId, bool useCache, string edition)
+        {
             AuthorResource resource = null;
 
             for (var i = 0; i < 60; i++)
@@ -678,7 +734,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 throw new BookInfoException($"Failed to get works for {foreignAuthorId}");
             }
 
-            return MapAuthor(resource);
+            return resource;
         }
 
         private Tuple<string, Book, List<AuthorMetadata>> PollBook(string foreignBookId)

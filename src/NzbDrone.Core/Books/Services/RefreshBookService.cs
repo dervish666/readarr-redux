@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using NLog;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Instrumentation.Extensions;
 using NzbDrone.Core.Books.Commands;
 using NzbDrone.Core.Books.Events;
@@ -114,7 +115,13 @@ namespace NzbDrone.Core.Books
             if (book == null)
             {
                 data = GetSkyhookData(local);
-                book = data?.Books.Value.SingleOrDefault(x => x.ForeignBookId == local.ForeignBookId);
+
+                if (data == null)
+                {
+                    return FollowMergedWork(local);
+                }
+
+                book = data.Books.Value.SingleOrDefault(x => x.ForeignBookId == local.ForeignBookId);
 
                 // The lookup found the work under another id (a Goodreads merge or canonical redirect). Merging
                 // would delete this book, so keep it as it is and leave the merge to the user.
@@ -131,6 +138,78 @@ namespace NzbDrone.Core.Books
                 result.Entity.Id = local.Id;
             }
 
+            return result;
+        }
+
+        // The work 404'd. Goodreads merges works without leaving a redirect, so before the book is deleted ask where
+        // its monitored edition lives now. An empty result lets the base class delete as before; any lookup error
+        // propagates, so the book is kept and the failure counts against the author's lookup bound.
+        private RemoteData FollowMergedWork(Book local)
+        {
+            var result = new RemoteData();
+
+            // Books with files or added by hand are never deleted, so leave them as they were
+            if (!ShouldDelete(local))
+            {
+                return result;
+            }
+
+            var edition = _editionService.GetEditionsByBook(local.Id).FirstOrDefault(x => x.Monitored && x.ForeignEditionId.IsNotNullOrWhiteSpace());
+
+            if (edition == null)
+            {
+                return result;
+            }
+
+            string workId;
+
+            try
+            {
+                workId = _bookInfo.GetWorkIdForEdition(edition.ForeignEditionId);
+            }
+            catch (EditionNotFoundException)
+            {
+                _logger.Debug("Edition {0} of {1} is gone too", edition.ForeignEditionId, local);
+                return result;
+            }
+
+            if (workId == local.ForeignBookId)
+            {
+                _logger.Warn("Book {0} was not found, but its edition {1} still points at it. Keeping it", local, edition.ForeignEditionId);
+                result.Keep = true;
+                return result;
+            }
+
+            var existing = _bookService.FindById(workId);
+
+            if (existing != null)
+            {
+                // A duplicate now with no files to move, so the base class deletes it
+                _logger.Info("Book {0} was merged into {1}, which is already in the library", local, existing);
+                return result;
+            }
+
+            // Books.TitleSlug is unique and is the work id, so another book holding it would fail this save
+            var slugOwner = _bookService.FindBySlug(workId);
+
+            if (slugOwner != null && slugOwner.Id != local.Id)
+            {
+                _logger.Warn("Book {0} moved to new work {1}, but {2} already uses that as its slug. Keeping it under its old id", local, workId, slugOwner);
+                result.Keep = true;
+                return result;
+            }
+
+            _logger.Info("Book {0} moved to new work {1}. The next refresh fills in its details", local, workId);
+
+            if (local.TitleSlug == local.ForeignBookId)
+            {
+                local.TitleSlug = workId;
+            }
+
+            local.ForeignBookId = workId;
+            _bookService.UpdateMany(new List<Book> { local });
+
+            result.Keep = true;
             return result;
         }
 
