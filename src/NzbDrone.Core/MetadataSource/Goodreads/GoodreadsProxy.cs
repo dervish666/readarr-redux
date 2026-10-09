@@ -8,55 +8,18 @@ using NzbDrone.Core.Http;
 
 namespace NzbDrone.Core.MetadataSource.Goodreads
 {
-    public class GoodreadsProxy : IProvideSeriesInfo, IProvideListInfo
+    // Only Goodreads listopia is still fetched from goodreads.com directly, with a key baked into the binary.
+    // It breaks when Goodreads revokes that key, and nothing on the metadata source replaces it.
+    public class GoodreadsProxy : IProvideListInfo
     {
         private readonly ICachedHttpResponseService _cachedHttpClient;
         private readonly Logger _logger;
-        private readonly IHttpRequestBuilderFactory _requestBuilder;
 
         public GoodreadsProxy(ICachedHttpResponseService cachedHttpClient,
                               Logger logger)
         {
             _cachedHttpClient = cachedHttpClient;
             _logger = logger;
-
-            _requestBuilder = new HttpRequestBuilder("https://www.goodreads.com/{route}")
-                .AddQueryParam("key", new string("gSuM2Onzl6sjMU25HY1Xcd".Reverse().ToArray()))
-                .AddQueryParam("_nc", "1")
-                .SetHeader("User-Agent", "Dalvik/1.6.0 (Linux; U; Android 4.1.2; GT-I9100 Build/JZO54K)")
-                .KeepAlive()
-                .CreateFactory();
-        }
-
-        public SeriesResource GetSeriesInfo(int foreignSeriesId, bool useCache = true)
-        {
-            _logger.Debug("Getting Series with GoodreadsId of {0}", foreignSeriesId);
-
-            var httpRequest = _requestBuilder.Create()
-                .SetSegment("route", $"series/{foreignSeriesId}")
-                .AddQueryParam("format", "xml")
-                .Build();
-
-            httpRequest.AllowAutoRedirect = true;
-            httpRequest.SuppressHttpError = true;
-
-            var httpResponse = _cachedHttpClient.Get(httpRequest, useCache, TimeSpan.FromDays(7));
-
-            if (httpResponse.HasHttpError)
-            {
-                if (httpResponse.StatusCode == HttpStatusCode.BadRequest)
-                {
-                    throw new BadRequestException(foreignSeriesId.ToString());
-                }
-                else
-                {
-                    throw new HttpException(httpRequest, httpResponse);
-                }
-            }
-
-            var resource = httpResponse.Deserialize<ShowSeriesResource>();
-
-            return resource.Series;
         }
 
         public ListResource GetListInfo(int foreignListId, int page, bool useCache = true)

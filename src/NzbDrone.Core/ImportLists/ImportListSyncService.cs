@@ -119,7 +119,7 @@ namespace NzbDrone.Core.ImportLists
 
                 var importList = _importListFactory.Get(report.ImportListId);
 
-                if (report.Book.IsNotNullOrWhiteSpace() || report.EditionGoodreadsId.IsNotNullOrWhiteSpace())
+                if (report.Book.IsNotNullOrWhiteSpace() || report.EditionGoodreadsId.IsNotNullOrWhiteSpace() || report.BookGoodreadsId.IsNotNullOrWhiteSpace())
                 {
                     if (report.EditionGoodreadsId.IsNullOrWhiteSpace() || report.AuthorGoodreadsId.IsNullOrWhiteSpace() || report.BookGoodreadsId.IsNullOrWhiteSpace())
                     {
@@ -195,11 +195,24 @@ namespace NzbDrone.Core.ImportLists
             }
             else if (report.BookGoodreadsId.IsNotNullOrWhiteSpace())
             {
+                // Series lists name every work, most of them usually in the library already
+                var localBook = _bookService.FindById(report.BookGoodreadsId);
+
+                if (localBook != null)
+                {
+                    report.Book = localBook.Title;
+                    report.Author ??= localBook.AuthorMetadata.Value.Name;
+                    report.AuthorGoodreadsId ??= localBook.AuthorMetadata.Value.ForeignAuthorId;
+                    return;
+                }
+
                 var mappedBook = _bookInfoProxy.GetBookInfo(report.BookGoodreadsId);
+                var mappedAuthor = mappedBook.Item3.FirstOrDefault(a => a.ForeignAuthorId == mappedBook.Item1) ?? mappedBook.Item3.First();
 
                 report.BookGoodreadsId = mappedBook.Item2.ForeignBookId;
                 report.Book = mappedBook.Item2.Title;
-                report.AuthorGoodreadsId = mappedBook.Item3.First().ForeignAuthorId;
+                report.Author ??= mappedAuthor.Name;
+                report.AuthorGoodreadsId = mappedAuthor.ForeignAuthorId;
             }
             else
             {

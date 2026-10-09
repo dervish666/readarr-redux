@@ -397,6 +397,52 @@ namespace NzbDrone.Core.Test.ImportListTests
         }
 
         [Test]
+        public void should_add_series_item_that_only_carries_a_work_id()
+        {
+            _importListReports.First().Author = null;
+            _importListReports.First().BookGoodreadsId = "194190";
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Setup(v => v.GetBookInfo("194190"))
+                .Returns(Tuple.Create("1654",
+                    new Book { ForeignBookId = "194190", Title = "The Colour of Magic" },
+                    new List<AuthorMetadata> { new AuthorMetadata { ForeignAuthorId = "1654", Name = "Terry Pratchett" } }));
+
+            Subject.Execute(new ImportListSyncCommand());
+
+            Mocker.GetMock<IAddBookService>()
+                .Verify(v => v.AddBooks(It.Is<List<Book>>(t => t.Count == 1 && t.First().ForeignBookId == "194190"), false));
+            Mocker.GetMock<IAddAuthorService>()
+                .Verify(v => v.AddAuthors(It.Is<List<Author>>(t => t.Count == 1 &&
+                                                                   t.First().ForeignAuthorId == "1654" &&
+                                                                   t.First().Metadata.Value.Name == "Terry Pratchett"), false));
+        }
+
+        [Test]
+        public void should_not_look_up_series_item_already_in_library()
+        {
+            _importListReports.First().Author = null;
+            _importListReports.First().BookGoodreadsId = "194190";
+
+            Mocker.GetMock<IImportListFactory>()
+                .Setup(v => v.Get(It.IsAny<int>()))
+                .Returns(new ImportListDefinition { ShouldMonitor = ImportListMonitorType.SpecificBook, ShouldMonitorExisting = true });
+
+            var author = new Author { Id = 1, Monitored = true, Metadata = new AuthorMetadata { ForeignAuthorId = "1654", Name = "Terry Pratchett" } };
+
+            Mocker.GetMock<IBookService>()
+                .Setup(v => v.FindById("194190"))
+                .Returns(new Book { Id = 7, ForeignBookId = "194190", Title = "The Colour of Magic", Author = author, AuthorMetadata = author.Metadata.Value });
+
+            Subject.Execute(new ImportListSyncCommand());
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Verify(v => v.GetBookInfo(It.IsAny<string>()), Times.Never());
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.SetBookMonitored(7, true), Times.Once());
+        }
+
+        [Test]
         public void should_not_fetch_if_no_lists_are_enabled()
         {
             Mocker.GetMock<IImportListFactory>()

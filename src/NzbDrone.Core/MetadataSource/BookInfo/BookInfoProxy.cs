@@ -23,7 +23,7 @@ using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace NzbDrone.Core.MetadataSource.BookInfo
 {
-    public class BookInfoProxy : IProvideAuthorInfo, IProvideBookInfo, ISearchForNewBook, ISearchForNewAuthor, ISearchForNewEntity
+    public class BookInfoProxy : IProvideAuthorInfo, IProvideBookInfo, IProvideSeriesInfo, ISearchForNewBook, ISearchForNewAuthor, ISearchForNewEntity
     {
         private static readonly JsonSerializerOptions SerializerSettings = new JsonSerializerOptions
         {
@@ -129,6 +129,31 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 _logger.Warn(e, "Unexpected error getting book info: {foreignBookId}", foreignBookId);
                 throw;
             }
+        }
+
+        public SeriesResource GetSeriesInfo(int foreignSeriesId, bool useCache = true)
+        {
+            _logger.Debug("Getting series {0}", foreignSeriesId);
+
+            var httpRequest = _requestBuilder.GetRequestBuilder().Create()
+                .SetSegment("route", $"series/{foreignSeriesId}")
+                .Build();
+
+            httpRequest.SuppressHttpError = true;
+
+            var httpResponse = _cachedHttpClient.Get(httpRequest, useCache, TimeSpan.FromDays(7));
+
+            if (httpResponse.HasHttpError)
+            {
+                if (httpResponse.StatusCode == HttpStatusCode.BadRequest)
+                {
+                    throw new BadRequestException(foreignSeriesId.ToString());
+                }
+
+                throw new HttpException(httpRequest, httpResponse);
+            }
+
+            return JsonSerializer.Deserialize<SeriesResource>(httpResponse.Content, SerializerSettings);
         }
 
         public List<object> SearchForNewEntity(string title)
