@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json.Serialization;
 using NzbDrone.Core.Datastore;
 
 namespace NzbDrone.Core.Qualities
 {
+    [JsonConverter(typeof(QualityConverter))]
     public class Quality : IEmbeddedDocument, IEquatable<Quality>
     {
         public int Id { get; set; }
