@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using NLog;
@@ -10,6 +11,7 @@ using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.MediaFiles.BookImport.Aggregation;
 using NzbDrone.Core.MediaFiles.BookImport.Identification;
+using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Profiles.Qualities;
 using NzbDrone.Core.RootFolders;
@@ -129,14 +131,26 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     _augmentingService.Augment(localTrack, true);
                     localTracks.Add(localTrack);
                 }
+                catch (FileNotFoundException)
+                {
+                    // Deleted or moved since the folder was listed. Keep a rejection rather than drop the file: a
+                    // download whose last part vanished must still look incomplete, or an upgrade imports the other
+                    // parts and recycles the old complete book.
+                    _logger.Warn("{0} disappeared before it could be read", localTrack.Path);
+
+                    SetFallbackQuality(localTrack);
+                    decisions.Add(new ImportDecision<LocalBook>(localTrack, new Rejection("File disappeared during import")));
+                }
                 catch (AugmentingFailedException)
                 {
+                    SetFallbackQuality(localTrack);
                     decisions.Add(new ImportDecision<LocalBook>(localTrack, new Rejection("Unable to parse file")));
                 }
                 catch (Exception e)
                 {
                     _logger.Error(e, "Couldn't import file. {0}", localTrack.Path);
 
+                    SetFallbackQuality(localTrack);
                     decisions.Add(new ImportDecision<LocalBook>(localTrack, new Rejection("Unexpected error processing file")));
                 }
             }
@@ -144,6 +158,13 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             _logger.Debug($"Tags parsed for {files.Count} files in {watch.ElapsedMilliseconds}ms");
 
             return Tuple.Create(localTracks, decisions);
+        }
+
+        // Augmenting sets the quality, so a file it failed on has none. A rescan still stores a rejected new file as
+        // an unmapped BookFile, and BookFiles.Quality is NOT NULL: one such file failed the whole RescanFolders task.
+        private static void SetFallbackQuality(LocalBook localTrack)
+        {
+            localTrack.Quality ??= localTrack.FileTrackInfo?.Quality ?? QualityParser.ParseQuality(localTrack.Path);
         }
 
         public List<ImportDecision<LocalBook>> GetImportDecisions(List<IFileInfo> musicFiles, IdentificationOverrides idOverrides, ImportDecisionMakerInfo itemInfo, ImportDecisionMakerConfig config)

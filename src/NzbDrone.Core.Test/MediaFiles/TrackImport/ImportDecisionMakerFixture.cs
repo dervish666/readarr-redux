@@ -380,5 +380,64 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport
 
             ExceptionVerification.ExpectedErrors(1);
         }
+
+        // A rescan stores every rejected new file as an unmapped BookFile, and BookFiles.Quality is NOT NULL
+        [Test]
+        public void should_give_a_file_that_fails_augmenting_a_quality()
+        {
+            Mocker.GetMock<IAugmentingService>()
+                  .Setup(c => c.Augment(It.IsAny<LocalBook>(), It.IsAny<bool>()))
+                  .Throws<TestException>();
+
+            GivenAudioFiles(new[] { @"C:\Test\Unsorted\Author - Book.m4b".AsOsAgnostic() });
+
+            var decision = Subject.GetImportDecisions(_fileInfos, _idOverrides, null, _idConfig).Single();
+
+            decision.Approved.Should().BeFalse();
+            decision.Item.Quality.Should().NotBeNull();
+            decision.Item.Quality.Quality.Should().Be(Quality.M4B);
+
+            ExceptionVerification.ExpectedErrors(1);
+        }
+
+        [Test]
+        public void should_prefer_the_tag_quality_for_a_file_that_fails_augmenting()
+        {
+            Mocker.GetMock<IAugmentingService>()
+                  .Setup(c => c.Augment(It.IsAny<LocalBook>(), It.IsAny<bool>()))
+                  .Throws<TestException>();
+
+            Mocker.GetMock<IMetadataTagService>()
+                .Setup(s => s.ReadTags(It.IsAny<IFileInfo>()))
+                .Returns(new ParsedTrackInfo { Quality = new QualityModel(Quality.FLAC) });
+
+            GivenAudioFiles(new[] { @"C:\Test\Unsorted\Author - Book.m4b".AsOsAgnostic() });
+
+            Subject.GetImportDecisions(_fileInfos, _idOverrides, null, _idConfig).Single().Item.Quality.Quality.Should().Be(Quality.FLAC);
+
+            ExceptionVerification.ExpectedErrors(1);
+        }
+
+        // The Hero of Ages on Tower: deleted from the UI while a rescan was reading the folder, then inserted as an
+        // unmapped file with no quality, which failed the whole RescanFolders task. It must still come back as a
+        // rejection, so an upgrade missing that part keeps its old files.
+        [Test]
+        public void should_reject_a_file_removed_before_it_could_be_read_with_a_quality()
+        {
+            Mocker.GetMock<IAugmentingService>()
+                  .Setup(c => c.Augment(It.IsAny<LocalBook>(), It.IsAny<bool>()))
+                  .Throws(new System.IO.FileNotFoundException("File doesn't exist"));
+
+            GivenAudioFiles(new[] { @"C:\Test\Unsorted\The Hero of Ages.m4b".AsOsAgnostic() });
+
+            var decision = Subject.GetImportDecisions(_fileInfos, _idOverrides, null, _idConfig).Single();
+
+            decision.Approved.Should().BeFalse();
+            decision.Rejections.Single().Reason.Should().Be("File disappeared during import");
+            decision.Item.Quality.Quality.Should().Be(Quality.M4B);
+            decision.Item.Book.Should().BeNull();
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
     }
 }

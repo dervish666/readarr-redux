@@ -14,7 +14,6 @@ using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.MetadataSource;
-using NzbDrone.Core.RootFolders;
 
 namespace NzbDrone.Core.Books
 {
@@ -33,8 +32,6 @@ namespace NzbDrone.Core.Books
 
         private readonly IBookService _bookService;
         private readonly IAuthorService _authorService;
-        private readonly IRootFolderService _rootFolderService;
-        private readonly IAddAuthorService _addAuthorService;
         private readonly IEditionService _editionService;
         private readonly IProvideAuthorInfo _authorInfo;
         private readonly IProvideBookInfo _bookInfo;
@@ -48,8 +45,6 @@ namespace NzbDrone.Core.Books
 
         public RefreshBookService(IBookService bookService,
                                   IAuthorService authorService,
-                                  IRootFolderService rootFolderService,
-                                  IAddAuthorService addAuthorService,
                                   IEditionService editionService,
                                   IAuthorMetadataService authorMetadataService,
                                   IProvideAuthorInfo authorInfo,
@@ -65,8 +60,6 @@ namespace NzbDrone.Core.Books
         {
             _bookService = bookService;
             _authorService = authorService;
-            _rootFolderService = rootFolderService;
-            _addAuthorService = addAuthorService;
             _editionService = editionService;
             _authorInfo = authorInfo;
             _bookInfo = bookInfo;
@@ -247,30 +240,25 @@ namespace NzbDrone.Core.Books
 
         protected override void EnsureNewParent(Book local, Book remote)
         {
-            // Make sure the appropriate author exists (it could be that an book changes parent)
-            // The authorMetadata entry will be in the db but make sure a corresponding author is too
-            // so that the book doesn't just disappear.
+            // The metadata can credit a book to someone else: a narrator, publisher or duplicate profile listed
+            // first. A book may move to an author already in the library, but a refresh never adds one. Adding
+            // them filled the library with narrators and publishers, monitored and grabbing.
+            var credited = remote.AuthorMetadata.Value;
 
-            // TODO filter by metadata id before hitting database
-            _logger.Trace($"Ensuring parent author exists [{remote.AuthorMetadata.Value.ForeignAuthorId}]");
+            _logger.Trace($"Ensuring parent author exists [{credited.ForeignAuthorId}]");
 
-            var newAuthor = _authorService.FindById(remote.AuthorMetadata.Value.ForeignAuthorId);
-
-            if (newAuthor == null)
+            if (_authorService.FindById(credited.ForeignAuthorId) != null)
             {
-                var oldAuthor = local.Author.Value;
-                var addAuthor = new Author
-                {
-                    Metadata = remote.AuthorMetadata.Value,
-                    MetadataProfileId = oldAuthor.MetadataProfileId,
-                    QualityProfileId = oldAuthor.QualityProfileId,
-                    RootFolderPath = _rootFolderService.GetBestRootFolderPath(oldAuthor.Path),
-                    Monitored = oldAuthor.Monitored,
-                    Tags = oldAuthor.Tags
-                };
-                _logger.Debug($"Adding missing parent author {addAuthor}");
-                _addAuthorService.AddAuthor(addAuthor);
+                return;
             }
+
+            _logger.Warn("Book {0} is credited to {1} [{2}] in the metadata, who is not in the library. Keeping it under {3}; add that author by hand if the credit is right",
+                local,
+                credited.Name,
+                credited.ForeignAuthorId,
+                local.AuthorMetadata.Value.Name);
+
+            remote.AuthorMetadata = local.AuthorMetadata.Value;
         }
 
         protected override bool ShouldDelete(Book local)
