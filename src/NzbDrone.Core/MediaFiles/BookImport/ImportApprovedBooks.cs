@@ -33,7 +33,10 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
     public class ImportApprovedBooks : IImportApprovedBooks
     {
+        public const string ConflictingPartsReason = "Conflicting part numbers, manual import required";
+
         private static readonly RegexReplace PadNumbers = new RegexReplace(@"\d+", n => n.Value.PadLeft(9, '0'), RegexOptions.Compiled);
+        private static readonly Regex NumberTokens = new Regex(@"\d+", RegexOptions.Compiled);
 
         private readonly IUpgradeMediaFiles _bookFileUpgrader;
         private readonly IMediaFileService _mediaFileService;
@@ -142,6 +145,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     }
                 }
 
+                ResolveClashingParts(decisionList, book);
+
                 // set the correct release to be monitored before importing the new files
                 var newRelease = bookDecision.First().Item.Edition;
                 _logger.Debug("Updating release to {0}", newRelease);
@@ -208,6 +213,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     //check if already imported
                     if (importResults.Where(r => r.ImportDecision.Item.Book.Id == localTrack.Book.Id).Any(r => r.ImportDecision.Item.Part == localTrack.Part))
                     {
+                        _logger.Debug("Skipping {0}, part {1} of {2} has already been imported", localTrack.Path, localTrack.Part, localTrack.Book);
                         importResults.Add(new ImportResult(importDecision, "Book has already been imported"));
                         incompleteBooks.Add(localTrack.Book.ForeignBookId);
                         continue;
@@ -453,6 +459,105 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             }
 
             return importResults;
+        }
+
+        // An audiobook's part numbers come from its files' track tags, and only one file per part number imports.
+        // When two files claim the same part, number them from their filenames only where that is provably right,
+        // and otherwise reject the files that clash rather than import whichever is larger and leave the other
+        // in the download folder.
+        private void ResolveClashingParts(List<ImportDecision<LocalBook>> decisions, Book book)
+        {
+            // Rejected files (a preview, a file that isn't an upgrade) don't take part, and a file listed twice is
+            // still one file
+            var files = decisions.Where(d => d.Approved && d.Item.Path != null)
+                .GroupBy(d => d.Item.Path, PathEqualityComparer.Instance)
+                .ToList();
+
+            // The formats of an ebook all claim part 1 and the best one imports, so only audiobooks clash
+            if (files.Count < 2 || !files.All(f => MediaFileExtensions.AudioExtensions.Contains(Path.GetExtension(f.Key))))
+            {
+                return;
+            }
+
+            var clashing = files.GroupBy(f => f.First().Item.Part)
+                .Where(g => g.Count() > 1)
+                .SelectMany(g => g)
+                .ToList();
+
+            if (!clashing.Any())
+            {
+                return;
+            }
+
+            var numbers = PartsFromFilenames(files);
+
+            if (numbers != null)
+            {
+                _logger.Info("Track tags of {0} give {1} files the same part, numbering its {2} files from their filenames", book, clashing.Count, files.Count);
+
+                foreach (var file in files)
+                {
+                    foreach (var decision in file)
+                    {
+                        decision.Item.Part = numbers[file.Key];
+                        decision.Item.PartCount = files.Count;
+                    }
+                }
+
+                return;
+            }
+
+            _logger.Warn("Files of {0} claim the same part and their filenames can't number them, manual import required: {1}",
+                book,
+                clashing.Select(f => Path.GetFileName(f.Key)).ConcatToString(", "));
+
+            foreach (var decision in clashing.SelectMany(f => f))
+            {
+                decision.Reject(new Rejection(ConflictingPartsReason));
+            }
+        }
+
+        // The part number each file's name gives it, or null unless all of these hold: the files are one edition in
+        // one folder (two editions, or discs in their own folders, each count from 1), no tag claims a part beyond
+        // the file count (that means parts are missing, which renumbering would hide), and one numeric token in the
+        // names runs 1 to N across the N files.
+        private static Dictionary<string, int> PartsFromFilenames(List<IGrouping<string, ImportDecision<LocalBook>>> files)
+        {
+            var items = files.Select(f => f.First().Item).ToList();
+
+            if (items.Select(x => x.Edition?.ForeignEditionId).Distinct().Count() != 1 ||
+                items.Select(x => Path.GetDirectoryName(x.Path)).Distinct(PathEqualityComparer.Instance).Count() != 1 ||
+                items.Max(x => x.Part) > files.Count)
+            {
+                return null;
+            }
+
+            var tokens = files.Select(f => NumberTokens.Matches(Path.GetFileNameWithoutExtension(f.Key))
+                    .Select(m => int.TryParse(m.Value, out var n) ? n : -1)
+                    .ToList())
+                .ToList();
+
+            var tokenCount = tokens[0].Count;
+
+            if (tokens.Any(t => t.Count != tokenCount))
+            {
+                return null;
+            }
+
+            var expected = Enumerable.Range(1, files.Count);
+
+            for (var i = 0; i < tokenCount; i++)
+            {
+                var values = tokens.Select(t => t[i]).ToList();
+
+                if (values.OrderBy(v => v).SequenceEqual(expected))
+                {
+                    return files.Select((f, n) => new { f.Key, Part = values[n] })
+                        .ToDictionary(x => x.Key, x => x.Part, PathEqualityComparer.Instance);
+                }
+            }
+
+            return null;
         }
 
         private Author EnsureAuthorAdded(List<ImportDecision<LocalBook>> decisions, List<Author> addedAuthors)
