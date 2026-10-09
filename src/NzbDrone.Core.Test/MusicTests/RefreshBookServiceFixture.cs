@@ -298,11 +298,14 @@ namespace NzbDrone.Core.Test.MusicTests
             ExceptionVerification.ExpectedWarns(4);
         }
 
-        // The real proxy against rreading-glasses over mocked HTTP. Every work 404s, as a work Goodreads merged
+        // The real proxy against rreading-glasses over mocked HTTP. The book's work 404s, as a work Goodreads merged
         // away does, and /book/{edition} answers editionStatus. A 303 points at /author/5?edition={edition}, whose
-        // payload holds the edition under work newWorkId.
-        private void GivenMergedWork(HttpStatusCode editionStatus, string newWorkId = "2")
+        // payload holds the edition under work newWorkId. That work itself credits newWorkAuthorId, and the book
+        // being refreshed belongs to author 5.
+        private void GivenMergedWork(HttpStatusCode editionStatus, string newWorkId = "2", string newWorkAuthorId = "5")
         {
+            _book.AuthorMetadata.Value.ForeignAuthorId = "5";
+
             Mocker.GetMock<IMetadataRequestBuilder>()
                 .Setup(s => s.GetRequestBuilder())
                 .Returns(new HttpRequestBuilder("http://rreading-glasses.local/{route}").CreateFactory());
@@ -313,6 +316,15 @@ namespace NzbDrone.Core.Test.MusicTests
                 {
                     var path = new Uri(request.Url.FullUri).AbsolutePath;
                     var headers = new HttpHeader();
+
+                    if (path == $"/work/{newWorkId}")
+                    {
+                        var work = "{\"ForeignId\":" + newWorkId + ",\"Title\":\"Merged\",\"Books\":[{\"ForeignId\":11,\"Title\":\"Merged\"," +
+                                   "\"Contributors\":[{\"ForeignId\":" + newWorkAuthorId + ",\"Role\":\"Author\"}]}],\"Series\":[]," +
+                                   "\"Authors\":[{\"ForeignId\":" + newWorkAuthorId + ",\"Name\":\"Author " + newWorkAuthorId + "\"}]}";
+
+                        return new HttpResponse(request, headers, work);
+                    }
 
                     if (path.StartsWith("/work/"))
                     {
@@ -374,9 +386,11 @@ namespace NzbDrone.Core.Test.MusicTests
             GivenMergedWork(HttpStatusCode.SeeOther);
             GivenMonitoredEdition();
 
+            _book.Monitored = true;
+
             Mocker.GetMock<IBookService>()
                 .Setup(s => s.FindById("2"))
-                .Returns(Builder<Book>.CreateNew().With(b => b.Id = 2).With(b => b.ForeignBookId = "2").Build());
+                .Returns(Builder<Book>.CreateNew().With(b => b.Id = 2).With(b => b.ForeignBookId = "2").With(b => b.Monitored = true).Build());
 
             RefreshWithBookMissingFromAuthorList();
 
@@ -385,6 +399,65 @@ namespace NzbDrone.Core.Test.MusicTests
 
             Mocker.GetMock<IBookService>()
                 .Verify(v => v.UpdateMany(It.IsAny<List<Book>>()), Times.Never());
+
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.SetBookMonitored(It.IsAny<int>(), It.IsAny<bool>()), Times.Never());
+
+            Mocker.GetMock<IEditionService>()
+                .Verify(v => v.SetMonitored(It.IsAny<Edition>()), Times.Never());
+
+            ExceptionVerification.ExpectedErrors(1);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_monitor_the_unmonitored_library_book_a_monitored_duplicate_was_merged_into()
+        {
+            GivenMergedWork(HttpStatusCode.SeeOther);
+            GivenMonitoredEdition();
+
+            _book.Monitored = true;
+
+            Mocker.GetMock<IBookService>()
+                .Setup(s => s.FindById("2"))
+                .Returns(Builder<Book>.CreateNew().With(b => b.Id = 2).With(b => b.ForeignBookId = "2").With(b => b.Monitored = false).Build());
+
+            RefreshWithBookMissingFromAuthorList();
+
+            VerifyBookDeleted(Times.Once());
+
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.SetBookMonitored(2, true), Times.Once());
+
+            // The edition the user monitored moves to the target before the duplicate's editions are deleted with it
+            Mocker.GetMock<IEditionService>()
+                .Verify(v => v.UpdateMany(It.Is<List<Edition>>(l => l.Single().ForeignEditionId == "11" && l.Single().BookId == 2)), Times.Once());
+
+            Mocker.GetMock<IEditionService>()
+                .Verify(v => v.SetMonitored(It.Is<Edition>(e => e.ForeignEditionId == "11" && e.BookId == 2)), Times.Once());
+
+            ExceptionVerification.ExpectedErrors(1);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_keep_book_whose_work_was_merged_into_another_authors_work_not_in_the_library()
+        {
+            GivenMergedWork(HttpStatusCode.SeeOther, newWorkAuthorId: "36289");
+            GivenMonitoredEdition();
+
+            _book.TitleSlug = _book.ForeignBookId;
+
+            RefreshWithBookMissingFromAuthorList();
+
+            VerifyEditionLookups(1);
+            VerifyBookDeleted(Times.Never());
+
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.UpdateMany(It.IsAny<List<Book>>()), Times.Never());
+
+            _book.ForeignBookId.Should().Be("1");
+            _book.TitleSlug.Should().Be("1");
 
             ExceptionVerification.ExpectedErrors(1);
             ExceptionVerification.ExpectedWarns(1);

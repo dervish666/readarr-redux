@@ -184,7 +184,18 @@ namespace NzbDrone.Core.Books
 
             if (existing != null)
             {
-                // A duplicate now with no files to move, so the base class deletes it
+                // A duplicate now with no files to move, so the base class deletes it. If it was the wanted copy,
+                // pass that on first, with its edition, which would otherwise be deleted along with it.
+                if (local.Monitored && !existing.Monitored)
+                {
+                    edition.BookId = existing.Id;
+                    _editionService.UpdateMany(new List<Edition> { edition });
+                    _editionService.SetMonitored(edition);
+                    _bookService.SetBookMonitored(existing.Id, true);
+
+                    _logger.Info("Monitoring {0} and its edition {1} in place of {2}", existing, edition, local);
+                }
+
                 _logger.Info("Book {0} was merged into {1}, which is already in the library", local, existing);
                 return result;
             }
@@ -195,6 +206,27 @@ namespace NzbDrone.Core.Books
             if (slugOwner != null && slugOwner.Id != local.Id)
             {
                 _logger.Warn("Book {0} moved to new work {1}, but {2} already uses that as its slug. Keeping it under its old id", local, workId, slugOwner);
+                result.Keep = true;
+                return result;
+            }
+
+            // A refresh keeps the book's AuthorMetadataId whoever the work credits, so a book moved onto another
+            // author's work would sit under the wrong author for good. Leave that move to the user.
+            var newWork = _bookInfo.GetBookInfo(workId);
+            var authorId = local.AuthorMetadata.Value.ForeignAuthorId;
+
+            if (newWork.Item1 != authorId)
+            {
+                var newAuthor = newWork.Item3.FirstOrDefault(x => x.ForeignAuthorId == newWork.Item1);
+
+                _logger.Warn("Book {0} moved to new work {1} by {2} [{3}], not {4} [{5}]. Keeping it under its old id; add that author to follow the new work",
+                    local,
+                    workId,
+                    newAuthor?.Name,
+                    newWork.Item1,
+                    local.AuthorMetadata.Value.Name,
+                    authorId);
+
                 result.Keep = true;
                 return result;
             }
