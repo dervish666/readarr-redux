@@ -1,9 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.MetadataSource;
+using NzbDrone.Core.MetadataSource.BookInfo;
 using NzbDrone.Core.MetadataSource.Goodreads;
 using NzbDrone.Core.Parser.Model;
 
@@ -213,9 +215,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
                 {
                     remoteBooks = _bookSearchService.SearchByIsbn(isbns[0]);
                 }
-                catch (GoodreadsException e)
+                catch (Exception e) when (e is GoodreadsException or BookInfoException)
                 {
-                    _logger.Info(e, "Skipping ISBN search due to Goodreads Error");
+                    _logger.Info(e, "Skipping ISBN search due to a metadata source error");
                     remoteBooks = new List<Book>();
                 }
 
@@ -235,9 +237,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
                 {
                     remoteBooks = _bookSearchService.SearchByAsin(asins[0]);
                 }
-                catch (GoodreadsException e)
+                catch (Exception e) when (e is GoodreadsException or BookInfoException)
                 {
-                    _logger.Info(e, "Skipping ASIN search due to Goodreads Error");
+                    _logger.Info(e, "Skipping ASIN search due to a metadata source error");
                     remoteBooks = new List<Book>();
                 }
 
@@ -250,7 +252,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
             if (goodreads.Count == 1 &&
                 goodreads[0].IsNotNullOrWhiteSpace())
             {
-                if (int.TryParse(goodreads[0], out var id))
+                if (long.TryParse(goodreads[0], out var id))
                 {
                     _logger.Trace($"Searching by goodreads id {id}");
 
@@ -258,9 +260,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
                     {
                         remoteBooks = _bookSearchService.SearchByGoodreadsBookId(id, true);
                     }
-                    catch (GoodreadsException e)
+                    catch (Exception e) when (e is GoodreadsException or BookInfoException)
                     {
-                        _logger.Info(e, "Skipping Goodreads ID search due to Goodreads Error");
+                        _logger.Info(e, "Skipping Goodreads ID search due to a metadata source error");
                         remoteBooks = new List<Book>();
                     }
 
@@ -313,9 +315,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
                 {
                     remoteBooks = _bookSearchService.SearchForNewBook(bookTag, authorTag);
                 }
-                catch (GoodreadsException e)
+                catch (Exception e) when (e is GoodreadsException or BookInfoException)
                 {
-                    _logger.Info(e, "Skipping author/title search due to Goodreads Error");
+                    _logger.Info(e, "Skipping author/title search due to a metadata source error");
                     remoteBooks = new List<Book>();
                 }
 
@@ -336,9 +338,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
             {
                 remoteBooks = _bookSearchService.SearchForNewBook(bookTag, null);
             }
-            catch (GoodreadsException e)
+            catch (Exception e) when (e is GoodreadsException or BookInfoException)
             {
-                _logger.Info(e, "Skipping book title search due to Goodreads Error");
+                _logger.Info(e, "Skipping book title search due to a metadata source error");
                 remoteBooks = new List<Book>();
             }
 
@@ -354,9 +356,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
                 {
                     remoteBooks = _bookSearchService.SearchForNewBook(a, null);
                 }
-                catch (GoodreadsException e)
+                catch (Exception e) when (e is GoodreadsException or BookInfoException)
                 {
-                    _logger.Info(e, "Skipping author search due to Goodreads Error");
+                    _logger.Info(e, "Skipping author search due to a metadata source error");
                     remoteBooks = new List<Book>();
                 }
 

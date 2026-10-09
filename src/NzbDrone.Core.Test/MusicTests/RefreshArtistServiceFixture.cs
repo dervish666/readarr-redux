@@ -1,18 +1,24 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using FizzWare.NBuilder;
 using FluentAssertions;
 using Moq;
+using Newtonsoft.Json;
 using NUnit.Framework;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Common.Http;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Books.Commands;
 using NzbDrone.Core.Books.Events;
 using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.History;
+using NzbDrone.Core.Http;
 using NzbDrone.Core.ImportLists.Exclusions;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MetadataSource;
+using NzbDrone.Core.MetadataSource.BookInfo;
 using NzbDrone.Core.Profiles.Metadata;
 using NzbDrone.Core.RootFolders;
 using NzbDrone.Core.Test.Framework;
@@ -117,6 +123,113 @@ namespace NzbDrone.Core.Test.MusicTests
             Mocker.GetMock<IAuthorService>(MockBehavior.Strict)
                 .Setup(x => x.UpdateAuthor(It.IsAny<Author>()))
                 .Returns((Author a) => a);
+        }
+
+        [Test]
+        public void should_change_nothing_when_metadata_source_is_down_and_only_a_cached_answer_exists()
+        {
+            _author.Metadata.Value.ForeignAuthorId = "123";
+            GivenBooksForRefresh(_books);
+            AllowAuthorUpdate();
+
+            Mocker.GetMock<IAuthorService>(MockBehavior.Strict)
+                .Setup(s => s.FindById("123"))
+                .Returns(_author);
+
+            Mocker.GetMock<IMetadataRequestBuilder>()
+                .Setup(s => s.GetRequestBuilder())
+                .Returns(new HttpRequestBuilder("http://metadata.test/{route}").CreateFactory());
+
+            // A last good answer from before the outage, with fewer works than the library has now
+            Mocker.GetMock<ICachedHttpResponseRepository>()
+                .Setup(s => s.FindByUrl("http://metadata.test/author/123"))
+                .Returns(new CachedHttpResponse
+                {
+                    Url = "http://metadata.test/author/123",
+                    Value = "{\"ForeignId\":123,\"Name\":\"Old Snapshot\",\"Works\":[],\"Series\":[]}",
+                    StatusCode = 200,
+                    LastRefresh = DateTime.UtcNow.AddDays(-3),
+                    Expiry = DateTime.UtcNow.AddDays(-3).AddMinutes(30)
+                });
+
+            Mocker.GetMock<IHttpClient>()
+                .Setup(s => s.Get(It.IsAny<HttpRequest>()))
+                .Returns<HttpRequest>(r => new HttpResponse(r, new HttpHeader(), "upstream down", HttpStatusCode.ServiceUnavailable));
+
+            Mocker.SetConstant<ICachedHttpResponseService>(Mocker.Resolve<CachedHttpResponseService>());
+            Mocker.SetConstant<IProvideAuthorInfo>(Mocker.Resolve<BookInfoProxy>());
+
+            Subject.Execute(new RefreshAuthorCommand(_author.Id));
+
+            // The old snapshot never reaches the refresh: no metadata written, no merge, no book refresh
+            Mocker.GetMock<IAuthorMetadataService>()
+                .Verify(v => v.UpsertMany(It.IsAny<List<AuthorMetadata>>()), Times.Never());
+            Mocker.GetMock<IAuthorService>()
+                .Verify(v => v.FindById(It.IsAny<string>()), Times.Never());
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.GetBooksForRefresh(It.IsAny<int>(), It.IsAny<List<string>>()), Times.Never());
+            Mocker.GetMock<IAuthorService>()
+                .Verify(v => v.UpdateAuthor(It.IsAny<Author>()), Times.Never());
+            Mocker.GetMock<IAuthorService>()
+                .Verify(v => v.DeleteAuthor(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never());
+
+            ExceptionVerification.ExpectedErrors(1);
+            ExceptionVerification.ExpectedWarns(2);
+        }
+
+        [Test]
+        public void should_leave_remaining_authors_alone_once_the_retry_budget_is_spent()
+        {
+            var authors = Builder<Author>.CreateListOfSize(3)
+                .All()
+                .With(a => a.Metadata = Builder<AuthorMetadata>.CreateNew().Build())
+                .Build()
+                .ToList();
+
+            Mocker.GetMock<IAuthorService>(MockBehavior.Strict)
+                .Setup(s => s.GetAuthors(It.IsAny<List<int>>()))
+                .Returns(authors);
+
+            // The first author's lookup waits out the whole budget and still fails
+            Mocker.GetMock<IProvideAuthorInfo>()
+                .Setup(s => s.GetAuthorInfo(It.IsAny<string>(), true))
+                .Callback(() => MetadataRetryBudget.TrySpend(TimeSpan.FromHours(1)))
+                .Throws(new BookInfoException("BookInfo returned 429"));
+
+            Subject.Execute(new BulkRefreshAuthorCommand(authors.Select(a => a.Id).ToList()));
+
+            Mocker.GetMock<IProvideAuthorInfo>()
+                .Verify(v => v.GetAuthorInfo(It.IsAny<string>(), true), Times.Once());
+            Mocker.GetMock<IAuthorService>()
+                .Verify(v => v.DeleteAuthor(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never());
+
+            ExceptionVerification.ExpectedErrors(1);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_refresh_on_schedule_when_changed_authors_cannot_be_fetched()
+        {
+            Mocker.GetMock<IAuthorService>(MockBehavior.Strict)
+                .Setup(s => s.GetAllAuthors())
+                .Returns(new List<Author> { _author });
+
+            // A 502 page or plain-text error where JSON was expected
+            Mocker.GetMock<IProvideAuthorInfo>()
+                .Setup(s => s.GetChangedAuthors(It.IsAny<DateTime>()))
+                .Throws(new JsonException("Unexpected character encountered while parsing value: <"));
+
+            var command = new RefreshAuthorCommand
+            {
+                LastExecutionTime = DateTime.UtcNow.AddHours(-12),
+                LastStartTime = DateTime.UtcNow.AddHours(-12)
+            };
+
+            Subject.Execute(command);
+
+            Mocker.GetMock<ICheckIfAuthorShouldBeRefreshed>()
+                .Verify(v => v.ShouldRefresh(_author), Times.Once());
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]

@@ -24,7 +24,7 @@ namespace NzbDrone.Core.ImportLists.Goodreads
         public string BaseUrl { get; set; }
 
         [FieldDefinition(0, Label = "Series ID", HelpText = "Goodreads series ID")]
-        public int SeriesId { get; set; }
+        public long SeriesId { get; set; }
 
         public NzbDroneValidationResult Validate()
         {

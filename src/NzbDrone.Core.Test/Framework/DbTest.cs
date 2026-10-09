@@ -93,6 +93,14 @@ namespace NzbDrone.Core.Test.Framework
                         break;
                     }
 
+                case MigrationType.Cache:
+                    {
+                        var cacheDb = new CacheDatabase(database);
+
+                        Mocker.SetConstant<ICacheDatabase>(cacheDb);
+                        break;
+                    }
+
                 default:
                     {
                         throw new ArgumentException("Invalid MigrationType");
@@ -160,7 +168,12 @@ namespace NzbDrone.Core.Test.Framework
 
         private string GetTestSqliteDb(MigrationType type)
         {
-            return type == MigrationType.Main ? TestFolderInfo.GetDatabase() : TestFolderInfo.GetLogDatabase();
+            return type switch
+            {
+                MigrationType.Main => TestFolderInfo.GetDatabase(),
+                MigrationType.Cache => TestFolderInfo.GetCacheDatabase(),
+                _ => TestFolderInfo.GetLogDatabase()
+            };
         }
 
         protected virtual void SetupLogging()

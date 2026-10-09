@@ -7,6 +7,6 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
     {
         public bool Limited { get; set; }
         public DateTime Since { get; set; }
-        public List<int> Ids { get; set; }
+        public List<long> Ids { get; set; }
     }
 }

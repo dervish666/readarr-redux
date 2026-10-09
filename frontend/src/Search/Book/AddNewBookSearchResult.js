@@ -93,6 +93,10 @@ class AddNewBookSearchResult extends Component {
 
     const linkProps = isExistingBook ? { to: `/book/${titleSlug}` } : { onPress: this.onPress };
 
+    // The metadata source's own page for the edition, whichever site that is
+    const editionLinks = editions && editions.length > 1 ? editions[0].links : null;
+    const sourceUrl = editionLinks && editionLinks.length ? editionLinks[0].url : null;
+
     const height = calculateHeight(230, isSmallScreen);
 
     return (
@@ -139,11 +143,11 @@ class AddNewBookSearchResult extends Component {
                 }
 
                 {
-                  editions && editions.length > 1 ?
+                  sourceUrl ?
                     <Link
                       className={styles.mbLink}
-                      to={`https://goodreads.com/book/show/${editions[0].foreignEditionId}`}
-                      onPress={this.onTVDBLinkPress}
+                      to={sourceUrl}
+                      onPress={this.onMBLinkPress}
                     >
                       <Icon
                         className={styles.mbLinkIcon}

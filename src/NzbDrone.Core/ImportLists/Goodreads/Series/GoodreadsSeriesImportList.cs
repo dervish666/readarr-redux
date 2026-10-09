@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using FluentValidation.Results;
 using NLog;
@@ -7,6 +8,7 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.MetadataSource;
+using NzbDrone.Core.MetadataSource.BookInfo;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
 
@@ -38,26 +40,38 @@ namespace NzbDrone.Core.ImportLists.Goodreads
             {
                 var series = _seriesInfo.GetSeriesInfo(Settings.SeriesId);
 
-                foreach (var work in series.Works)
+                // The metadata source lists the series' works by ID only. The sync looks up each one it doesn't have.
+                foreach (var work in series.LinkItems ?? new List<SeriesWorkLinkResource>())
                 {
                     result.Add(new ImportListItemInfo
                     {
-                        BookGoodreadsId = work.Id.ToString(),
-                        Book = work.OriginalTitle,
-                        EditionGoodreadsId = work.BestBook.Id.ToString(),
-                        Author = work.BestBook.AuthorName,
-                        AuthorGoodreadsId = work.BestBook.AuthorId.ToString()
+                        BookGoodreadsId = work.ForeignWorkId.ToString()
                     });
                 }
 
                 _importListStatusService.RecordSuccess(Definition.Id);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.Warn(ex, "Unable to fetch series {0} from the metadata source", Settings.SeriesId);
                 _importListStatusService.RecordFailure(Definition.Id);
             }
 
             return CleanupListItems(result);
+        }
+
+        // Items carry only a work ID, so the base class's de-duplication by author and title would merge them all
+        protected override IList<ImportListItemInfo> CleanupListItems(IEnumerable<ImportListItemInfo> releases)
+        {
+            var result = releases.DistinctBy(r => r.BookGoodreadsId).ToList();
+
+            result.ForEach(c =>
+            {
+                c.ImportListId = Definition.Id;
+                c.ImportList = Definition.Name;
+            });
+
+            return result;
         }
 
         protected override void Test(List<ValidationFailure> failures)
@@ -74,7 +88,7 @@ namespace NzbDrone.Core.ImportLists.Goodreads
             }
             catch (HttpException e)
             {
-                _logger.Warn(e, "Goodreads API Error");
+                _logger.Warn(e, "Metadata source error fetching series {0}", Settings.SeriesId);
                 if (e.Response.StatusCode == HttpStatusCode.NotFound)
                 {
                     return new ValidationFailure(nameof(Settings.SeriesId), $"Series {Settings.SeriesId} not found");
@@ -84,7 +98,7 @@ namespace NzbDrone.Core.ImportLists.Goodreads
             }
             catch (Exception ex)
             {
-                _logger.Warn(ex, "Unable to connect to Goodreads");
+                _logger.Warn(ex, "Unable to connect to the metadata source");
 
                 return new ValidationFailure(string.Empty, "Unable to connect to import list, check the log for more details");
             }

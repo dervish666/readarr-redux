@@ -8,10 +8,10 @@ namespace NzbDrone.Core.MetadataSource.Goodreads
         public string ImageUrl { get; set; }
 
         [JsonProperty("bookId")]
-        public int BookId { get; set; }
+        public long BookId { get; set; }
 
         [JsonProperty("workId")]
-        public int WorkId { get; set; }
+        public long WorkId { get; set; }
 
         [JsonProperty("bookUrl")]
         public string BookUrl { get; set; }
@@ -56,7 +56,7 @@ namespace NzbDrone.Core.MetadataSource.Goodreads
     public class AuthorJsonResource
     {
         [JsonProperty("id")]
-        public int Id { get; set; }
+        public long Id { get; set; }
 
         [JsonProperty("name")]
         public string Name { get; set; }

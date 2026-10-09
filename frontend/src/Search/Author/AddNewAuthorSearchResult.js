@@ -80,6 +80,7 @@ class AddNewAuthorSearchResult extends Component {
       ratings,
       folder,
       images,
+      links,
       isExistingAuthor,
       isSmallScreen
     } = this.props;
@@ -89,6 +90,9 @@ class AddNewAuthorSearchResult extends Component {
     } = this.state;
 
     const linkProps = isExistingAuthor ? { to: `/author/${titleSlug}` } : { onPress: this.onPress };
+
+    // The metadata source's own page for the author, whichever site that is
+    const sourceUrl = links && links.length ? links[0].url : null;
 
     const endedString = 'Deceased';
 
@@ -146,17 +150,21 @@ class AddNewAuthorSearchResult extends Component {
                     null
                 }
 
-                <Link
-                  className={styles.mbLink}
-                  to={`https://goodreads.com/author/show/${foreignAuthorId}`}
-                  onPress={this.onMBLinkPress}
-                >
-                  <Icon
-                    className={styles.mbLinkIcon}
-                    name={icons.EXTERNAL_LINK}
-                    size={28}
-                  />
-                </Link>
+                {
+                  sourceUrl ?
+                    <Link
+                      className={styles.mbLink}
+                      to={sourceUrl}
+                      onPress={this.onMBLinkPress}
+                    >
+                      <Icon
+                        className={styles.mbLinkIcon}
+                        name={icons.EXTERNAL_LINK}
+                        size={28}
+                      />
+                    </Link> :
+                    null
+                }
               </div>
             </div>
 
@@ -226,6 +234,7 @@ AddNewAuthorSearchResult.propTypes = {
   ratings: PropTypes.object.isRequired,
   folder: PropTypes.string.isRequired,
   images: PropTypes.arrayOf(PropTypes.object).isRequired,
+  links: PropTypes.arrayOf(PropTypes.object),
   isExistingAuthor: PropTypes.bool.isRequired,
   isSmallScreen: PropTypes.bool.isRequired
 };

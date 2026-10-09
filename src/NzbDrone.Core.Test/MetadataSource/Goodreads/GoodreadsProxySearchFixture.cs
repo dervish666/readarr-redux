@@ -1,10 +1,12 @@
 using System;
-using System.Collections.Generic;
+using System.Linq;
+using System.Net;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Http;
+using NzbDrone.Core.MetadataSource;
 using NzbDrone.Core.MetadataSource.Goodreads;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Test.Common;
@@ -14,56 +16,99 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
     [TestFixture]
     public class GoodreadsProxySearchFixture : CoreTest<GoodreadsSearchProxy>
     {
+        // Recorded from a Goodreads-backed rreading-glasses on 2026-10-09: search results carry IDs only
+        private const string SearchResponse = "[{\"bookId\":12070,\"workId\":4110990,\"author\":{\"id\":1221698}},{\"bookId\":34497,\"workId\":194190,\"author\":{\"id\":1654}}]";
+
+        private HttpRequest _request;
+
         [SetUp]
         public void Setup()
         {
-            UseRealHttp();
+            Mocker.GetMock<IMetadataRequestBuilder>()
+                .Setup(s => s.GetRequestBuilder())
+                .Returns(new HttpRequestBuilder("http://metadata.test/{route}").CreateFactory());
 
             Mocker.GetMock<ICachedHttpResponseService>()
-                .Setup(x => x.Get<List<SearchJsonResource>>(It.IsAny<HttpRequest>(), It.IsAny<bool>(), It.IsAny<TimeSpan>()))
-                .Returns((HttpRequest request, bool useCache, TimeSpan ttl) => Mocker.Resolve<IHttpClient>().Get<List<SearchJsonResource>>(request));
+                .Setup(x => x.Get(It.IsAny<HttpRequest>(), It.IsAny<bool>(), It.IsAny<TimeSpan>()))
+                .Returns((HttpRequest request, bool useCache, TimeSpan ttl) =>
+                {
+                    _request = request;
+                    return new HttpResponse(request, new HttpHeader(), SearchResponse);
+                });
         }
 
-        [TestCase("Robert Harris", 575)]
-        [TestCase("Lyndsay Ely", 8056539)]
-        [TestCase("Elisa Puricelli Guerra", 4481805)]
-        public void successful_author_search(string title, int expected)
+        [TestCase("terry pratchett")]
+        [TestCase("9780552166591")]
+        [TestCase("B0031W1E86")]
+        public void should_search_the_configured_metadata_source(string query)
         {
-            var result = Subject.Search(title);
+            Subject.Search(query);
 
-            result.Should().NotBeEmpty();
-
-            result[0].Author.Id.Should().Be(expected);
-
-            ExceptionVerification.IgnoreWarns();
+            _request.Url.Host.Should().Be("metadata.test");
+            _request.Url.Path.Should().Be("/search");
+            _request.Url.Query.Should().Be("q=" + Uri.EscapeDataString(query));
         }
 
-        [TestCase("Harry Potter and the sorcerer's stone a detailed summary", 72245296)]
-        [TestCase("B0192CTMYG", 61209488)]
-        [TestCase("9780439554930", 3)]
-        public void successful_book_search(string title, int expected)
+        [Test]
+        public void should_parse_search_results_that_only_carry_ids()
         {
-            var result = Subject.Search(title);
+            var result = Subject.Search("terry pratchett");
 
-            result.Should().NotBeEmpty();
-
-            result[0].BookId.Should().Be(expected);
-
-            ExceptionVerification.IgnoreWarns();
+            result.Should().HaveCount(2);
+            result[0].BookId.Should().Be(12070);
+            result[0].WorkId.Should().Be(4110990);
+            result[0].Author.Id.Should().Be(1221698);
+            result[1].Author.Id.Should().Be(1654);
         }
 
-        [TestCase("readarrid:")]
-        [TestCase("readarrid: 99999999999999999999")]
-        [TestCase("readarrid: 0")]
-        [TestCase("readarrid: -12")]
-        [TestCase("readarrid: aaaa")]
-        [TestCase("adjalkwdjkalwdjklawjdlKAJD")]
-        public void no_author_search_result(string term)
+        [Test]
+        public void should_parse_ids_too_big_for_an_int()
         {
-            var result = Subject.Search(term);
-            result.Should().BeEmpty();
+            Mocker.GetMock<ICachedHttpResponseService>()
+                .Setup(x => x.Get(It.IsAny<HttpRequest>(), It.IsAny<bool>(), It.IsAny<TimeSpan>()))
+                .Returns((HttpRequest request, bool useCache, TimeSpan ttl) =>
+                    new HttpResponse(request, new HttpHeader(), "[{\"bookId\":3000000002,\"workId\":3000000001,\"author\":{\"id\":3000000000}}]"));
 
-            ExceptionVerification.IgnoreWarns();
+            var result = Subject.Search("big");
+
+            result.Single().BookId.ToString().Should().Be("3000000002");
+            result.Single().Author.Id.ToString().Should().Be("3000000000");
+        }
+
+        [Test]
+        public void should_retry_a_rate_limited_search()
+        {
+            var calls = 0;
+
+            Mocker.GetMock<ICachedHttpResponseService>()
+                .Setup(x => x.Get(It.IsAny<HttpRequest>(), It.IsAny<bool>(), It.IsAny<TimeSpan>()))
+                .Returns((HttpRequest request, bool useCache, TimeSpan ttl) =>
+                {
+                    if (++calls > 1)
+                    {
+                        return new HttpResponse(request, new HttpHeader(), SearchResponse);
+                    }
+
+                    var headers = new HttpHeader();
+                    headers.Add("Retry-After", "0");
+                    return new HttpResponse(request, headers, "Too Many Requests", HttpStatusCode.TooManyRequests);
+                });
+
+            Subject.Search("terry pratchett").Should().HaveCount(2);
+            calls.Should().Be(2);
+        }
+
+        [Test]
+        public void should_throw_when_the_metadata_source_fails()
+        {
+            Mocker.GetMock<ICachedHttpResponseService>()
+                .Setup(x => x.Get(It.IsAny<HttpRequest>(), It.IsAny<bool>(), It.IsAny<TimeSpan>()))
+                .Returns((HttpRequest request, bool useCache, TimeSpan ttl) =>
+                    new HttpResponse(request, new HttpHeader(), "upstream down", HttpStatusCode.BadRequest));
+
+            Assert.Throws<GoodreadsException>(() => Subject.Search("terry pratchett"));
+
+            ExceptionVerification.ExpectedWarns(1);
         }
     }
 }

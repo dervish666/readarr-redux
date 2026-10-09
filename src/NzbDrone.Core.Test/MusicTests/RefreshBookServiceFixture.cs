@@ -282,8 +282,8 @@ namespace NzbDrone.Core.Test.MusicTests
 
             Subject.RefreshBookInfo(books, new List<Book>(), _author, true, false, null);
 
-            // Three lookups of 60 tries each, instead of all ten
-            requests.Should().Be(3 * 60);
+            // Three lookups of 5 tries each (the proxy's 429 cap), instead of all ten
+            requests.Should().Be(3 * 5);
 
             Mocker.GetMock<IBookService>()
                 .Verify(v => v.DeleteBook(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never());

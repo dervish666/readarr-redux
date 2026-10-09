@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Text.Json;
 using System.Threading;
+using System.Web;
 using LazyCache;
 using LazyCache.Providers;
 using Microsoft.Extensions.Caching.Memory;
@@ -23,7 +24,7 @@ using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace NzbDrone.Core.MetadataSource.BookInfo
 {
-    public class BookInfoProxy : IProvideAuthorInfo, IProvideBookInfo, ISearchForNewBook, ISearchForNewAuthor, ISearchForNewEntity
+    public class BookInfoProxy : IProvideAuthorInfo, IProvideBookInfo, IProvideSeriesInfo, ISearchForNewBook, ISearchForNewAuthor, ISearchForNewEntity
     {
         private static readonly JsonSerializerOptions SerializerSettings = new JsonSerializerOptions
         {
@@ -69,6 +70,9 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             };
         }
 
+        // Tests swap this out so backoff doesn't really wait
+        internal Action<TimeSpan> Sleep { get; set; } = Thread.Sleep;
+
         public HashSet<string> GetChangedAuthors(DateTime startTime)
         {
             var httpRequest = _requestBuilder.GetRequestBuilder().Create()
@@ -99,7 +103,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                     return PollAuthor(foreignAuthorId);
                 }
 
-                return PollAuthorUncached(foreignAuthorId);
+                return PollAuthorUncached(foreignAuthorId, false);
             }
             catch (BookInfoException e)
             {
@@ -131,6 +135,34 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
         }
 
+        public SeriesResource GetSeriesInfo(long foreignSeriesId, bool useCache = true)
+        {
+            _logger.Debug("Getting series {0}", foreignSeriesId);
+
+            var httpResponse = ExecuteWithRetry(() =>
+            {
+                var httpRequest = _requestBuilder.GetRequestBuilder().Create()
+                    .SetSegment("route", $"series/{foreignSeriesId}")
+                    .Build();
+
+                httpRequest.SuppressHttpError = true;
+
+                return _cachedHttpClient.Get(httpRequest, useCache, TimeSpan.FromDays(7));
+            });
+
+            if (httpResponse.HasHttpError)
+            {
+                if (httpResponse.StatusCode == HttpStatusCode.BadRequest)
+                {
+                    throw new BadRequestException(foreignSeriesId.ToString());
+                }
+
+                throw new HttpException(httpResponse.Request, httpResponse);
+            }
+
+            return JsonSerializer.Deserialize<SeriesResource>(httpResponse.Content, SerializerSettings);
+        }
+
         public List<object> SearchForNewEntity(string title)
         {
             var books = SearchForNewBook(title, null, false);
@@ -153,7 +185,8 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
         public List<Author> SearchForNewAuthor(string title)
         {
-            var books = SearchForNewBook(title, null);
+            // All editions would fetch every author in the results in full, making rreading-glasses crawl each one
+            var books = SearchForNewBook(title, null, false);
 
             return books
                 .Select(x => x.Author.Value)
@@ -187,7 +220,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
                     if (prefix == "author" || prefix == "work" || prefix == "edition")
                     {
-                        var isValid = int.TryParse(slug, out var searchId);
+                        var isValid = long.TryParse(slug, out var searchId);
                         if (!isValid)
                         {
                             return new List<Book>();
@@ -220,7 +253,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 _logger.Warn(ex, ex.Message);
                 throw new GoodreadsException("Search for '{0}' failed. Unable to communicate with Goodreads.", ex, title);
             }
-            catch (Exception ex) when (ex is not BookInfoException)
+            catch (Exception ex) when (ex is not BookInfoException and not MetadataSourceNotConfiguredException)
             {
                 _logger.Warn(ex, ex.Message);
                 throw new GoodreadsException("Search for '{0}' failed. Invalid response received from Goodreads.", ex, title);
@@ -244,10 +277,10 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             {
                 result = _goodreadsSearchProxy.Search(query);
             }
-            catch (Exception e)
+            catch (Exception e) when (e is not MetadataSourceNotConfiguredException)
             {
-                _logger.Warn(e, "Error searching for {0}", query);
-                return new List<Book>();
+                // A failed search is not an empty one. Callers have to tell "metadata source down" from "no match".
+                throw new BookInfoException("{0}", e, e.Message);
             }
 
             var books = new List<Book>();
@@ -300,16 +333,15 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                     _logger.Warn(ex);
                     throw new BookInfoException("Search for '{0}' failed. Unable to communicate with ReadarrAPI, returning status code: {1}.", ex, query, ex.Response.StatusCode);
                 }
-                catch (Exception e)
+                catch (Exception e) when (e is not MetadataSourceNotConfiguredException)
                 {
                     _logger.Warn(e, "Error mapping search results");
-
-                    return new List<Book>();
+                    throw new BookInfoException("Search for '{0}' failed. Invalid response received from the metadata source.", e, query);
                 }
             }
         }
 
-        private List<Book> SearchByGoodreadsAuthorId(int id)
+        private List<Book> SearchByGoodreadsAuthorId(long id)
         {
             try
             {
@@ -329,14 +361,9 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             {
                 return new List<Book>();
             }
-            catch (BookInfoException e)
-            {
-                _logger.Warn(e, "Error searching by author id");
-                return new List<Book>();
-            }
         }
 
-        public List<Book> SearchByGoodreadsWorkId(int id)
+        public List<Book> SearchByGoodreadsWorkId(long id)
         {
             try
             {
@@ -348,14 +375,9 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             {
                 return new List<Book>();
             }
-            catch (BookInfoException e)
-            {
-                _logger.Warn(e, "Error searching by work id");
-                return new List<Book>();
-            }
         }
 
-        public List<Book> SearchByGoodreadsBookId(int id, bool getAllEditions)
+        public List<Book> SearchByGoodreadsBookId(long id, bool getAllEditions)
         {
             try
             {
@@ -375,38 +397,21 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             {
                 return new List<Book>();
             }
-            catch (BookInfoException e)
-            {
-                _logger.Warn(e, "Error searching by book id");
-                return new List<Book>();
-            }
         }
 
-        private Book GetEditionInfo(int id, bool getAllEditions)
+        private Book GetEditionInfo(long id, bool getAllEditions)
         {
-            HttpRequest httpRequest;
-            HttpResponse httpResponse;
-
-            while (true)
+            var httpResponse = ExecuteWithRetry(() =>
             {
-                httpRequest = _requestBuilder.GetRequestBuilder().Create()
+                var httpRequest = _requestBuilder.GetRequestBuilder().Create()
                     .SetSegment("route", $"book/{id}")
                     .Build();
 
                 httpRequest.SuppressHttpError = true;
 
                 // we expect a redirect
-                httpResponse = _httpClient.Get(httpRequest);
-
-                if (httpResponse.StatusCode == HttpStatusCode.TooManyRequests)
-                {
-                    WaitUntilRetry(httpResponse);
-                }
-                else
-                {
-                    break;
-                }
-            }
+                return _httpClient.Get(httpRequest);
+            });
 
             if (httpResponse.StatusCode == HttpStatusCode.NotFound)
             {
@@ -415,20 +420,17 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
             if (!httpResponse.HasHttpRedirect)
             {
-                throw new BookInfoException($"Unexpected response from {httpRequest.Url}");
+                throw new BookInfoException($"Unexpected response from {httpResponse.Request.Url}");
             }
 
-            var location = httpResponse.Headers.GetSingleValue("Location");
-            var split = location.Split('/').Reverse().ToList();
-            var newId = split[0];
-            var type = split[1];
+            var (type, newId, redirectEdition) = ParseRedirect(httpResponse);
 
             Book book;
             List<AuthorMetadata> authors;
 
             if (type == "author")
             {
-                var author = PollAuthor(newId);
+                var author = PollAuthor(newId, redirectEdition);
 
                 book = author.Books.Value.FirstOrDefault(b => b.Editions.Value.Any(e => e.ForeignEditionId == id.ToString()));
                 authors = new List<AuthorMetadata> { author.Metadata.Value };
@@ -473,11 +475,9 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             return book;
         }
 
-        private List<Book> MapSearchResult(List<int> ids)
+        private List<Book> MapSearchResult(List<long> ids)
         {
-            HttpResponse<BulkBookResource> httpResponse;
-
-            while (true)
+            var httpResponse = ExecuteWithRetry(() =>
             {
                 var httpRequest = _requestBuilder.GetRequestBuilder().Create()
                     .SetSegment("route", "book/bulk")
@@ -488,21 +488,17 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 httpRequest.ContentSummary = ids.ToJson(Formatting.None);
 
                 httpRequest.AllowAutoRedirect = true;
-                httpRequest.SuppressHttpErrorStatusCodes = new[] { HttpStatusCode.TooManyRequests };
+                httpRequest.SuppressHttpError = true;
 
-                httpResponse = _httpClient.Post<BulkBookResource>(httpRequest);
+                return _httpClient.Post(httpRequest);
+            });
 
-                if (httpResponse.StatusCode == HttpStatusCode.TooManyRequests)
-                {
-                    WaitUntilRetry(httpResponse);
-                }
-                else
-                {
-                    break;
-                }
+            if (httpResponse.HasHttpError)
+            {
+                throw new HttpException(httpResponse.Request, httpResponse);
             }
 
-            var mapped = MapBulkBook(httpResponse.Resource);
+            var mapped = MapBulkBook(new HttpResponse<BulkBookResource>(httpResponse).Resource);
 
             var idStr = ids.Select(x => x.ToString()).ToList();
 
@@ -523,10 +519,18 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
             foreach (var work in resource.Works)
             {
-                var book = MapBook(work);
-                var authorId = work.Books.OrderByDescending(b => b.AverageRating * b.RatingCount).First().Contributors.First().ForeignId.ToString();
+                var authorId = GetAuthorId(work);
 
-                AddDbIds(authorId, book, authors);
+                // One work with no editions or contributors used to empty the whole result
+                if (authorId == 0)
+                {
+                    _logger.Warn("Skipping work {0} in search results, it has no editions or contributors", work.ForeignId);
+                    continue;
+                }
+
+                var book = MapBook(work);
+
+                AddDbIds(authorId.ToString(), book, authors);
 
                 books.Add(book);
             }
@@ -586,10 +590,13 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             book.AuthorMetadataId = author.AuthorMetadataId;
         }
 
-        private Author PollAuthor(string foreignAuthorId)
+        // An edition redirect asks for the author holding just that edition, so it is cached apart from the full author
+        private Author PollAuthor(string foreignAuthorId, string edition = null)
         {
-            return _authorCache.GetOrAdd(foreignAuthorId,
-                () => PollAuthorUncached(foreignAuthorId),
+            var key = edition == null ? foreignAuthorId : $"{foreignAuthorId}?edition={edition}";
+
+            return _authorCache.GetOrAdd(key,
+                () => PollAuthorUncached(foreignAuthorId, true, edition),
                 new LazyCacheEntryOptions
                 {
                     AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10),
@@ -600,31 +607,40 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 }.RegisterPostEvictionCallback((key, value, reason, state) => _logger.Debug($"Clearing cache for {key} due to {reason}")));
         }
 
-        private Author PollAuthorUncached(string foreignAuthorId)
+        private Author PollAuthorUncached(string foreignAuthorId, bool useCache = true, string edition = null)
         {
             AuthorResource resource = null;
 
-            var useCache = true;
-
             for (var i = 0; i < 60; i++)
             {
-                var httpRequest = _requestBuilder.GetRequestBuilder().Create()
-                    .SetSegment("route", $"author/{foreignAuthorId}")
-                    .Build();
+                var httpResponse = ExecuteWithRetry(() =>
+                {
+                    var builder = _requestBuilder.GetRequestBuilder().Create()
+                        .SetSegment("route", $"author/{foreignAuthorId}");
 
-                httpRequest.AllowAutoRedirect = true;
-                httpRequest.SuppressHttpError = true;
+                    if (edition != null)
+                    {
+                        builder.AddQueryParam("edition", edition);
+                    }
 
-                var httpResponse = _cachedHttpClient.Get(httpRequest, useCache, TimeSpan.FromMinutes(30));
+                    var httpRequest = builder.Build();
+
+                    httpRequest.AllowAutoRedirect = true;
+                    httpRequest.SuppressHttpError = true;
+
+                    return _cachedHttpClient.Get(httpRequest, useCache, TimeSpan.FromMinutes(30));
+                });
+
+                // An old snapshot would roll a refresh back, dropping fileless editions added since and switching
+                // the monitored one, so an outage stays an outage here
+                if (httpResponse.Headers.ContainsKey(CachedHttpResponseService.StaleResponseHeader))
+                {
+                    throw new BookInfoException("Metadata source unavailable for author {0}, not using the copy cached at {1}", foreignAuthorId, httpResponse.Headers[CachedHttpResponseService.StaleResponseHeader]);
+                }
 
                 if (httpResponse.HasHttpError)
                 {
-                    if (httpResponse.StatusCode == HttpStatusCode.TooManyRequests)
-                    {
-                        WaitUntilRetry(httpResponse);
-                        continue;
-                    }
-                    else if (httpResponse.StatusCode == HttpStatusCode.NotFound)
+                    if (httpResponse.StatusCode == HttpStatusCode.NotFound)
                     {
                         throw new AuthorNotFoundException(foreignAuthorId);
                     }
@@ -648,7 +664,13 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 }
 
                 useCache = false;
-                Thread.Sleep(2000);
+
+                if (!MetadataRetryBudget.TrySpend(TimeSpan.FromSeconds(2)))
+                {
+                    break;
+                }
+
+                Sleep(TimeSpan.FromSeconds(2));
             }
 
             if (resource?.Works == null)
@@ -665,20 +687,17 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
             for (var i = 0; i < 60; i++)
             {
-                var httpRequest = _requestBuilder.GetRequestBuilder().Create()
-                    .SetSegment("route", $"work/{foreignBookId}")
-                    .Build();
-
-                httpRequest.SuppressHttpError = true;
-
-                // this may redirect to an author
-                var httpResponse = _httpClient.Get(httpRequest);
-
-                if (httpResponse.StatusCode == HttpStatusCode.TooManyRequests)
+                var httpResponse = ExecuteWithRetry(() =>
                 {
-                    WaitUntilRetry(httpResponse);
-                    continue;
-                }
+                    var httpRequest = _requestBuilder.GetRequestBuilder().Create()
+                        .SetSegment("route", $"work/{foreignBookId}")
+                        .Build();
+
+                    httpRequest.SuppressHttpError = true;
+
+                    // this may redirect to an author
+                    return _httpClient.Get(httpRequest);
+                });
 
                 if (httpResponse.StatusCode == HttpStatusCode.NotFound)
                 {
@@ -687,10 +706,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
                 if (httpResponse.HasHttpRedirect)
                 {
-                    var location = httpResponse.Headers.GetSingleValue("Location");
-                    var split = location.Split('/').Reverse().ToList();
-                    var newId = split[0];
-                    var type = split[1];
+                    var (type, newId, _) = ParseRedirect(httpResponse);
 
                     if (type == "author")
                     {
@@ -728,12 +744,12 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
                 resource = JsonSerializer.Deserialize<WorkResource>(httpResponse.Content, SerializerSettings);
 
-                if (resource.Books != null)
+                if (resource.Books != null || !MetadataRetryBudget.TrySpend(TimeSpan.FromSeconds(2)))
                 {
                     break;
                 }
 
-                Thread.Sleep(2000);
+                Sleep(TimeSpan.FromSeconds(2));
             }
 
             if (resource?.Books == null || resource?.Authors == null || (!resource?.Authors?.Any() ?? false))
@@ -751,23 +767,21 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             return Tuple.Create(authorId, book, metadata);
         }
 
-        private void WaitUntilRetry(HttpResponse response)
+        // rreading-glasses redirects /book/{id} to /author/{author}?edition={id} and /work/{id} to /author/{author}.
+        // Splitting the Location on '/' passed "{author}?edition={id}" on as the author ID, which only worked because
+        // SetSegment pastes it in unescaped, and a trailing slash broke it.
+        private static (string Type, string Id, string Edition) ParseRedirect(HttpResponse response)
         {
-            var seconds = 5;
+            var location = new Uri(new Uri(response.Request.Url.FullUri), response.Headers.GetSingleValue("Location"));
+            var segments = location.AbsolutePath.Trim('/').Split('/');
+            var edition = HttpUtility.ParseQueryString(location.Query)["edition"];
 
-            if (response.Headers.ContainsKey("Retry-After"))
-            {
-                var retryAfter = response.Headers["Retry-After"];
+            return (segments.Length > 1 ? segments[^2] : null, segments[^1], edition);
+        }
 
-                if (!int.TryParse(retryAfter, out seconds))
-                {
-                    seconds = 5;
-                }
-            }
-
-            _logger.Info("BookInfo returned 429, backing off for {0}s", seconds);
-
-            Thread.Sleep(TimeSpan.FromSeconds(seconds));
+        private HttpResponse ExecuteWithRetry(Func<HttpResponse> send)
+        {
+            return MetadataRetry.Execute(send, Sleep, _logger);
         }
 
         private static AuthorMetadata MapAuthorMetadata(AuthorResource resource)
@@ -797,7 +811,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
             if (resource.Url.IsNotNullOrWhiteSpace())
             {
-                metadata.Links.Add(new Links { Url = resource.Url, Name = "Goodreads" });
+                metadata.Links.Add(new Links { Url = resource.Url, Name = LinkSite(resource.Url) });
             }
 
             return metadata;
@@ -883,10 +897,10 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 CleanTitle = Parser.Parser.CleanAuthorName(resource.Title),
                 ReleaseDate = resource.ReleaseDate,
                 Genres = resource.Genres,
-                RelatedBooks = resource.RelatedWorks
+                RelatedBooks = resource.RelatedWorks?.Where(x => x <= int.MaxValue).Select(x => (int)x).ToList()
             };
 
-            book.Links.Add(new Links { Url = resource.Url, Name = "Goodreads Editions" });
+            book.Links.Add(new Links { Url = resource.Url, Name = $"{LinkSite(resource.Url)} Editions" });
 
             if (resource.Books != null)
             {
@@ -982,14 +996,25 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 });
             }
 
-            edition.Links.Add(new Links { Url = resource.Url, Name = "Goodreads Book" });
+            edition.Links.Add(new Links { Url = resource.Url, Name = $"{LinkSite(resource.Url)} Book" });
 
             return edition;
         }
 
-        private static int GetAuthorId(WorkResource b)
+        // A link without a usable URL keeps the old label
+        private static string LinkSite(string url)
         {
-            return b.Books.OrderByDescending(x => x.RatingCount * x.AverageRating).FirstOrDefault(x => x.Contributors.Any())?.Contributors.First().ForeignId ?? 0;
+            return MetadataProvider.NameFromUrl(url) ?? "Goodreads";
+        }
+
+        private static long GetAuthorId(WorkResource b)
+        {
+            if (b.Books == null)
+            {
+                return 0;
+            }
+
+            return b.Books.OrderByDescending(x => x.RatingCount * x.AverageRating).FirstOrDefault(x => x.Contributors?.Any() == true)?.Contributors.First().ForeignId ?? 0;
         }
     }
 }

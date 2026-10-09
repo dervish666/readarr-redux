@@ -30,7 +30,8 @@ namespace NzbDrone.Core.MetadataSource
                 throw new MetadataSourceNotConfiguredException();
             }
 
-            return new HttpRequestBuilder(source.Trim().TrimEnd("/") + "/{route}").KeepAlive().CreateFactory();
+            // Spaces out bursts such as a full refresh, which otherwise reach rreading-glasses as fast as it answers
+            return new HttpRequestBuilder(source.Trim().TrimEnd("/") + "/{route}").KeepAlive().WithRateLimit(0.25).CreateFactory();
         }
     }
 }

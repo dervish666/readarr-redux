@@ -27,6 +27,16 @@ namespace NzbDrone.Core.Test.MetadataSource
             details.BaseUrl.ToString().Should().Contain("testing");
         }
 
+        [TestCase]
+        public void should_rate_limit_requests_to_user_defined_source()
+        {
+            GivenMetadataSource("http://api.readarr.com/api/testing/");
+
+            var request = Subject.GetRequestBuilder().Create().SetSegment("route", "author/1").Build();
+
+            request.RateLimit.Should().BeGreaterThan(TimeSpan.Zero);
+        }
+
         [TestCase(null)]
         [TestCase("")]
         [TestCase("  ")]

@@ -4,7 +4,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 {
     public class SeriesResource
     {
-        public int ForeignId { get; set; }
+        public long ForeignId { get; set; }
         public string Title { get; set; }
         public string Description { get; set; }
 
@@ -13,7 +13,7 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
 
     public class SeriesWorkLinkResource
     {
-        public int ForeignWorkId { get; set; }
+        public long ForeignWorkId { get; set; }
         public string PositionInSeries { get; set; }
         public int SeriesPosition { get; set; }
         public bool Primary { get; set; }
