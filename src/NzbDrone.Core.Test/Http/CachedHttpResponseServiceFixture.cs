@@ -79,6 +79,22 @@ namespace NzbDrone.Core.Test.Http
         }
 
         [Test]
+        public void should_mark_expired_entry_as_stale_and_live_response_as_not()
+        {
+            GivenExpiredCacheEntry();
+            GivenLiveResponse(HttpStatusCode.ServiceUnavailable);
+
+            Subject.Get(SuppressedRequest(), true, TimeSpan.FromHours(1)).Headers.ContainsKey(CachedHttpResponseService.StaleResponseHeader).Should().BeTrue();
+
+            Mocker.GetMock<IHttpClient>()
+                .Setup(s => s.Get(It.IsAny<HttpRequest>()))
+                .Returns<HttpRequest>(r => new HttpResponse(r, new HttpHeader(), "{\"id\":\"fresh\"}"));
+
+            Subject.Get(SuppressedRequest(), true, TimeSpan.FromHours(1)).Headers.ContainsKey(CachedHttpResponseService.StaleResponseHeader).Should().BeFalse();
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
         public void should_return_expired_entry_when_live_call_throws_for_upstream_error()
         {
             GivenExpiredCacheEntry();

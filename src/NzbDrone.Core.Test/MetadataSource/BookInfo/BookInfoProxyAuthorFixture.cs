@@ -9,6 +9,7 @@ using NzbDrone.Core.Http;
 using NzbDrone.Core.MetadataSource;
 using NzbDrone.Core.MetadataSource.BookInfo;
 using NzbDrone.Core.Test.Framework;
+using NzbDrone.Test.Common;
 
 namespace NzbDrone.Core.Test.MetadataSource.Goodreads
 {
@@ -37,6 +38,23 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
 
             Mocker.GetMock<ICachedHttpResponseService>()
                 .Verify(s => s.Get(It.Is<HttpRequest>(r => r.Url.FullUri == "http://metadata.test/author/5"), useCache, It.IsAny<TimeSpan>()), Times.Once());
+        }
+
+        [Test]
+        public void should_refuse_an_author_answered_from_the_cache_during_an_outage()
+        {
+            Mocker.GetMock<ICachedHttpResponseService>()
+                .Setup(s => s.Get(It.IsAny<HttpRequest>(), It.IsAny<bool>(), It.IsAny<TimeSpan>()))
+                .Returns((HttpRequest request, bool useCache, TimeSpan ttl) =>
+                {
+                    var headers = new HttpHeader();
+                    headers.Add(CachedHttpResponseService.StaleResponseHeader, "2026-09-01T00:00:00Z");
+                    return new HttpResponse(request, headers, AuthorResponse);
+                });
+
+            Assert.Throws<BookInfoException>(() => Subject.GetAuthorInfo("5"));
+
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [TestCase("https://www.goodreads.com", "Goodreads")]

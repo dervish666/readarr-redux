@@ -648,6 +648,13 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                     return _cachedHttpClient.Get(httpRequest, useCache, TimeSpan.FromMinutes(30));
                 });
 
+                // An old snapshot would roll a refresh back, dropping fileless editions added since and switching
+                // the monitored one, so an outage stays an outage here
+                if (httpResponse.Headers.ContainsKey(CachedHttpResponseService.StaleResponseHeader))
+                {
+                    throw new BookInfoException("Metadata source unavailable for author {0}, not using the copy cached at {1}", foreignAuthorId, httpResponse.Headers[CachedHttpResponseService.StaleResponseHeader]);
+                }
+
                 if (httpResponse.HasHttpError)
                 {
                     if (httpResponse.StatusCode == HttpStatusCode.NotFound)

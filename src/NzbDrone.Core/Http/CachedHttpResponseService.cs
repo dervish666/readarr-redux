@@ -14,6 +14,10 @@ namespace NzbDrone.Core.Http
 
     public class CachedHttpResponseService : ICachedHttpResponseService
     {
+        // Marks a response served from the cache because the live call failed. Fine to search with, but a refresh
+        // must not mistake it for current metadata.
+        public const string StaleResponseHeader = "X-Readarr-Stale-Response";
+
         private readonly ICachedHttpResponseRepository _repo;
         private readonly IHttpClient _httpClient;
         private readonly Logger _logger;
@@ -104,7 +108,10 @@ namespace NzbDrone.Core.Http
         {
             _logger.Warn("{0} from [GET] {1}, using the response cached at {2:u}", reason, request.Url, cached.LastRefresh);
 
-            return new HttpResponse(request, new HttpHeader(), cached.Value, (HttpStatusCode)cached.StatusCode);
+            var headers = new HttpHeader();
+            headers.Add(StaleResponseHeader, cached.LastRefresh.ToString("u"));
+
+            return new HttpResponse(request, headers, cached.Value, (HttpStatusCode)cached.StatusCode);
         }
 
         public HttpResponse<T> Get<T>(HttpRequest request, bool useCache, TimeSpan ttl)
