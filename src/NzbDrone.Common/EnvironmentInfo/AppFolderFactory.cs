@@ -17,9 +17,7 @@ namespace NzbDrone.Common.EnvironmentInfo
     public class AppFolderFactory : IAppFolderFactory
     {
         private readonly IAppFolderInfo _appFolderInfo;
-        private readonly IStartupContext _startupContext;
         private readonly IDiskProvider _diskProvider;
-        private readonly IDiskTransferService _diskTransferService;
         private readonly Logger _logger;
 
         public AppFolderFactory(IAppFolderInfo appFolderInfo,
@@ -28,9 +26,7 @@ namespace NzbDrone.Common.EnvironmentInfo
                                 IDiskTransferService diskTransferService)
         {
             _appFolderInfo = appFolderInfo;
-            _startupContext = startupContext;
             _diskProvider = diskProvider;
-            _diskTransferService = diskTransferService;
             _logger = NzbDroneLogger.GetLogger(this);
         }
 
@@ -38,7 +34,6 @@ namespace NzbDrone.Common.EnvironmentInfo
         {
             try
             {
-                MigrateAppDataFolder();
                 _diskProvider.EnsureFolder(_appFolderInfo.AppDataFolder);
             }
             catch (UnauthorizedAccessException)
@@ -68,36 +63,6 @@ namespace NzbDrone.Common.EnvironmentInfo
             catch (Exception ex)
             {
                 _logger.Warn(ex, "Coudn't set app folder permission");
-            }
-        }
-
-        private void MigrateAppDataFolder()
-        {
-            // .NET 8 and later put ApplicationData on macOS in ~/Library/Application Support instead of
-            // ~/.config, so move an existing install across once. A -data override names its own folder.
-            if (!OsInfo.IsOsx || _startupContext.Args.ContainsKey(StartupContext.APPDATA))
-            {
-                return;
-            }
-
-            try
-            {
-                var userAppDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile, Environment.SpecialFolderOption.DoNotVerify), ".config", "Readarr");
-
-                if (_diskProvider.FolderExists(userAppDataFolder) &&
-                    !userAppDataFolder.PathEquals(_appFolderInfo.AppDataFolder) &&
-                    !_diskProvider.FileExists(_appFolderInfo.GetConfigPath()))
-                {
-                    _logger.Info("Moving the data folder from {0} to {1}", userAppDataFolder, _appFolderInfo.AppDataFolder);
-
-                    _diskTransferService.MirrorFolder(userAppDataFolder, _appFolderInfo.AppDataFolder);
-                    _diskProvider.DeleteFolder(userAppDataFolder, true);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.Debug(ex, ex.Message);
-                throw new ReadarrStartupException(ex, "Unable to migrate configuration folder to {0}. Migrate manually", _appFolderInfo.AppDataFolder);
             }
         }
 

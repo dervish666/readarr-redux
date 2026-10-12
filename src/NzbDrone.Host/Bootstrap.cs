@@ -54,6 +54,8 @@ namespace NzbDrone.Host
 
                 var startupContext = new StartupContext(args);
 
+                OsxAppDataMigration.Migrate(startupContext, new AppFolderInfo(startupContext));
+
                 LongPathSupport.Enable();
                 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
