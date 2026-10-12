@@ -50,6 +50,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
         private readonly IHistoryService _historyService;
         private readonly IEventAggregator _eventAggregator;
         private readonly IManageCommandQueue _commandQueueManager;
+        private readonly IDeleteMediaFiles _mediaFileDeletionService;
         private readonly Logger _logger;
 
         public ImportApprovedBooks(IUpgradeMediaFiles bookFileUpgrader,
@@ -66,6 +67,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                                    IHistoryService historyService,
                                    IEventAggregator eventAggregator,
                                    IManageCommandQueue commandQueueManager,
+                                   IDeleteMediaFiles mediaFileDeletionService,
                                    Logger logger)
         {
             _bookFileUpgrader = bookFileUpgrader;
@@ -82,6 +84,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             _historyService = historyService;
             _eventAggregator = eventAggregator;
             _commandQueueManager = commandQueueManager;
+            _mediaFileDeletionService = mediaFileDeletionService;
             _logger = logger;
         }
 
@@ -212,6 +215,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             }
 
             var importedPaths = new HashSet<string>(PathEqualityComparer.Instance);
+            var downloadedFiles = new List<(LocalBook Track, BookFile File)>();
 
             foreach (var importDecision in qualifiedImports)
             {
@@ -345,6 +349,11 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     allImportedTrackFiles.Add(bookFile);
                     allOldTrackFiles.AddRange(oldFiles);
 
+                    if (!localTrack.ExistingFile)
+                    {
+                        downloadedFiles.Add((localTrack, bookFile));
+                    }
+
                     // create all the import events here, but we can't publish until the trackfiles have been
                     // inserted and ids created
                     trackImportedEvents.Add(new TrackImportedEvent(localTrack, bookFile, oldFiles, !localTrack.ExistingFile, downloadClientItem));
@@ -441,6 +450,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 _bookFileUpgrader.RemoveSetAsideFiles(bookSetAsideFiles.Value);
             }
 
+            RemoveEarlierCopies(downloadedFiles, downloadClientItem);
+
             // now that trackfiles have been inserted and ids generated, publish the import events
             foreach (var trackImportedEvent in trackImportedEvents)
             {
@@ -495,6 +506,121 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             }
 
             return importResults;
+        }
+
+        // A download imported for the wrong book and then again for the right one leaves the same file on both books, at
+        // two paths: Everville's on Hellraiser #5, Heart of the Comet's on Contacting Aliens. An import only replaces
+        // its own book's files, so take the earlier copy off the other book now, if it is provably still that file.
+        private void RemoveEarlierCopies(List<(LocalBook Track, BookFile File)> downloadedFiles, DownloadClientItem downloadClientItem)
+        {
+            if (!downloadedFiles.Any() || downloadClientItem == null || downloadClientItem.DownloadId.IsNullOrWhiteSpace() || downloadClientItem.OutputPath.IsEmpty)
+            {
+                return;
+            }
+
+            try
+            {
+                var earlierImports = _historyService.FindByDownloadId(downloadClientItem.DownloadId)
+                    .Where(h => h.EventType == EntityHistoryEventType.BookFileImported)
+                    .ToList();
+
+                if (!earlierImports.Any())
+                {
+                    return;
+                }
+
+                foreach (var (track, file) in downloadedFiles)
+                {
+                    RemoveEarlierCopies(track, file, PathInDownload(downloadClientItem.OutputPath.FullPath, track.Path), earlierImports);
+                }
+            }
+            catch (Exception e)
+            {
+                // The new files are in, so this only leaves a stray copy behind
+                _logger.Warn(e, "Couldn't look for earlier imports of {0} for other books", downloadClientItem.Title);
+            }
+        }
+
+        private void RemoveEarlierCopies(LocalBook track, BookFile file, List<string> pathInDownload, List<EntityHistory> earlierImports)
+        {
+            if (pathInDownload == null)
+            {
+                return;
+            }
+
+            // The same file of the download, with the size it had then. The path to the download can change between
+            // imports (another client, another mount), its path within the download can't.
+            var copyIds = earlierImports
+                .Where(h => h.BookId != track.Book.Id &&
+                            EndsWith(Segments(h.Data.GetValueOrDefault("droppedPath")), pathInDownload) &&
+                            h.Data.GetValueOrDefault("size") == track.Size.ToString())
+                .Select(h => int.TryParse(h.Data.GetValueOrDefault("fileId"), out var id) ? id : 0)
+                .Where(id => id > 0 && id != file.Id)
+                .Distinct()
+                .ToList();
+
+            if (!copyIds.Any())
+            {
+                return;
+            }
+
+            foreach (var copy in _mediaFileService.Get(copyIds))
+            {
+                // Put right by hand since, or gone from disk, which a rescan deals with. A rescan also rewrites the row
+                // of a file that changed, so only the download's own size, recorded when it was imported, shows the
+                // copy is still that file: one replaced since, or retagged to another size, stays. Calibre can only
+                // delete a whole book, which may hold other formats.
+                if (copy.Edition?.Value?.BookId == track.Book.Id ||
+                    copy.Path.PathEquals(file.Path) ||
+                    copy.CalibreId != 0 ||
+                    !_diskProvider.FileExists(copy.Path) ||
+                    _diskProvider.GetFileSize(copy.Path) != track.Size ||
+                    copy.Size != track.Size ||
+                    Math.Abs((_diskProvider.FileGetLastWrite(copy.Path) - copy.Modified.ToUniversalTime()).TotalSeconds) > 1)
+                {
+                    _logger.Debug("Keeping {0}, an earlier import of {1}: it can't be shown to be the same file on another book", copy.Path, track.Path);
+                    continue;
+                }
+
+                _logger.Warn("{0} was imported from the same download for another book, removing it now that {1} has the file", copy.Path, track.Book);
+
+                var author = copy.Author?.Value;
+
+                if (author != null)
+                {
+                    _mediaFileDeletionService.DeleteTrackFile(author, copy);
+                }
+                else
+                {
+                    _mediaFileDeletionService.DeleteTrackFile(copy);
+                }
+            }
+        }
+
+        // The file's path from the download's own folder down, or null when it isn't in the download
+        private static List<string> PathInDownload(string outputPath, string path)
+        {
+            if (path.PathEquals(outputPath))
+            {
+                return new List<string> { Path.GetFileName(path) };
+            }
+
+            if (!outputPath.IsParentPath(path))
+            {
+                return null;
+            }
+
+            return Segments(outputPath).TakeLast(1).Concat(Segments(outputPath.GetRelativePath(path))).ToList();
+        }
+
+        private static List<string> Segments(string path)
+        {
+            return (path ?? string.Empty).Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+        }
+
+        private static bool EndsWith(List<string> path, List<string> end)
+        {
+            return path.Count >= end.Count && path.Skip(path.Count - end.Count).SequenceEqual(end);
         }
 
         // Writing tags changes a file after the rescan read it, and the rescan stores what it read over the new row. With
