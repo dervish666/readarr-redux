@@ -103,6 +103,14 @@ namespace NzbDrone.Core.Qualities
                 AllLookup[quality.Id] = quality;
             }
 
+            Audio = new HashSet<Quality>
+            {
+                UnknownAudio,
+                MP3,
+                M4B,
+                FLAC
+            };
+
             DefaultQualityDefinitions = new HashSet<QualityDefinition>
             {
                 new QualityDefinition(Quality.Unknown)      { Weight = 1, MinSize = 0, MaxSize = 350, GroupWeight = 1 },
@@ -110,18 +118,30 @@ namespace NzbDrone.Core.Qualities
                 new QualityDefinition(Quality.MOBI)         { Weight = 10, MinSize = 0, MaxSize = 350, GroupWeight = 10 },
                 new QualityDefinition(Quality.EPUB)         { Weight = 11, MinSize = 0, MaxSize = 350, GroupWeight = 11 },
                 new QualityDefinition(Quality.AZW3)         { Weight = 12, MinSize = 0, MaxSize = 350, GroupWeight = 12 },
-                new QualityDefinition(Quality.UnknownAudio) { Weight = 50, MinSize = 0, MaxSize = 350, GroupWeight = 50 },
-                new QualityDefinition(Quality.MP3)      { Weight = 100, MinSize = 0, MaxSize = 350, GroupWeight = 100 },
-                new QualityDefinition(Quality.M4B)          { Weight = 105, MinSize = 0, MaxSize = 350, GroupWeight = 105 },
-                new QualityDefinition(Quality.FLAC)         { Weight = 110, MinSize = 0, MaxSize = null, GroupWeight = 110 },
+                new QualityDefinition(Quality.UnknownAudio) { Weight = 50, MinSize = DefaultAudioMinSize, MaxSize = null, GroupWeight = 50 },
+                new QualityDefinition(Quality.MP3)          { Weight = 100, MinSize = DefaultAudioMinSize, MaxSize = null, GroupWeight = 100 },
+                new QualityDefinition(Quality.M4B)          { Weight = 105, MinSize = DefaultAudioMinSize, MaxSize = null, GroupWeight = 105 },
+                new QualityDefinition(Quality.FLAC)         { Weight = 110, MinSize = DefaultAudioMinSize, MaxSize = null, GroupWeight = 110 },
             };
         }
+
+        // Quality definition sizes are kilobits (x 128 bytes, see Fluent.Kilobits), so this is 10 MiB.
+        // For audio qualities MinSize is the smallest total release AcceptableSizeSpecification accepts,
+        // which keeps single chapters and partial uploads out. MaxSize is not enforced.
+        public const double DefaultAudioMinSize = 10 * 1024 * 1024 / 128;
 
         public static readonly List<Quality> All;
 
         public static readonly Quality[] AllLookup;
 
+        public static readonly HashSet<Quality> Audio;
+
         public static readonly HashSet<QualityDefinition> DefaultQualityDefinitions;
+
+        public static bool IsAudio(Quality quality)
+        {
+            return quality != null && Audio.Contains(quality);
+        }
 
         public static Quality FindById(int id)
         {
