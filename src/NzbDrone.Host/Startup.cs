@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -88,6 +89,11 @@ namespace NzbDrone.Host
                 STJson.ApplySerializerSettings(options.JsonSerializerOptions);
             })
             .AddControllersAsServices();
+
+            // Since ASP.NET Core 7, an API controller parameter whose type the container can resolve binds
+            // from services instead of the body. AutoAddServices registers every class, resources included,
+            // so POST and PUT bodies arrived as empty resources. Keep net6's body binding.
+            services.Configure<ApiBehaviorOptions>(options => options.DisableImplicitFromServicesParameters = true);
 
             services.AddSwaggerGen(c =>
             {
