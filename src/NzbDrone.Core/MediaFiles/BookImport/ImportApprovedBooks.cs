@@ -330,6 +330,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                             // The old row for this path is already gone, so a failed retag must not stop the file being added back
                             _logger.Warn(e, "Couldn't write tags to {0}, keeping its existing tags", bookFile.Path);
                         }
+
+                        KeepSizeAndModified(bookFile, localTrack);
                     }
 
                     filesToAdd.Add(bookFile);
@@ -493,6 +495,27 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             }
 
             return importResults;
+        }
+
+        // Writing tags changes a file after the rescan read it, and the rescan stores what it read over the new row. With
+        // the size and time from before the retag the next scan sees the file as changed, and imports and retags it
+        // again: the same books went round on every scan. Both get the file as it is now.
+        private void KeepSizeAndModified(BookFile bookFile, LocalBook localTrack)
+        {
+            try
+            {
+                if (!_diskProvider.FileExists(bookFile.Path))
+                {
+                    return;
+                }
+
+                bookFile.Size = localTrack.Size = _diskProvider.GetFileSize(bookFile.Path);
+                bookFile.Modified = localTrack.Modified = _diskProvider.FileGetLastWrite(bookFile.Path);
+            }
+            catch (Exception e)
+            {
+                _logger.Warn(e, "Couldn't read {0} after writing its tags, the next scan may import it again", bookFile.Path);
+            }
         }
 
         // An audiobook's part numbers come from its files' track tags, and only one file per part number imports.

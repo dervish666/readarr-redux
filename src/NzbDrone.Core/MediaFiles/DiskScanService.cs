@@ -166,10 +166,13 @@ namespace NzbDrone.Core.MediaFiles
             _logger.Debug("Import decisions complete [{0}]", decisionsStopwatch.Elapsed);
 
             var importStopwatch = Stopwatch.StartNew();
+            var importedPaths = new HashSet<string>(PathEqualityComparer.Instance);
 
             try
             {
-                _importApprovedTracks.Import(decisions, false);
+                importedPaths.UnionWith(_importApprovedTracks.Import(decisions, false)
+                    .Where(r => r.Result == ImportResultType.Imported)
+                    .Select(r => r.ImportDecision.Item.Path));
             }
             catch (Exception e)
             {
@@ -204,8 +207,10 @@ namespace NzbDrone.Core.MediaFiles
 
             _logger.Debug($"Inserted {newFiles.Count} new unmatched trackfiles");
 
-            // finally update info on size/modified for existing files
+            // finally update info on size/modified for existing files. Not for the files just imported: the import
+            // wrote their rows after retagging them, and what the scan read before that is out of date.
             var updatedFiles = knownFiles
+                .Where(x => !importedPaths.Contains(x.Path))
                 .Join(decisions,
                       x => x.Path,
                       x => x.Item.Path,

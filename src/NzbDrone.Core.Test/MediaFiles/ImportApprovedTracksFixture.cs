@@ -1140,5 +1140,31 @@ namespace NzbDrone.Core.Test.MediaFiles
             Mocker.GetMock<IMediaFileService>()
                 .Verify(v => v.AddMany(It.Is<List<BookFile>>(l => l.Count == 1 && l[0].EditionId == own.Item.Edition.Id)), Times.Once());
         }
+
+        [Test]
+        public void should_keep_the_size_and_time_an_existing_file_has_after_its_retag()
+        {
+            // Read by the rescan at 16:19:49, then retagged by the import at 17:29:32
+            var track = _approvedDecisions.First();
+            track.Item.ExistingFile = true;
+            track.Item.Path = Path.Combine(track.Item.Author.Path, "Foundation and Earth", "Isaac Asimov - Foundation and Earth.mp3");
+            track.Item.Size = 106171307;
+            track.Item.Modified = new DateTime(2026, 10, 12, 16, 19, 49, DateTimeKind.Utc);
+
+            var retagged = new DateTime(2026, 10, 12, 17, 29, 32, DateTimeKind.Utc);
+
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FileExists(track.Item.Path)).Returns(true);
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.GetFileSize(track.Item.Path)).Returns(106171319);
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FileGetLastWrite(track.Item.Path)).Returns(retagged);
+
+            Subject.Import(new List<ImportDecision<LocalBook>> { track }, false);
+
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(v => v.AddMany(It.Is<List<BookFile>>(l => l.Single().Modified == retagged && l.Single().Size == 106171319)), Times.Once());
+
+            // The rescan stores what it read over the row, so what it read has to be the file as it is now
+            track.Item.Modified.Should().Be(retagged);
+            track.Item.Size.Should().Be(106171319);
+        }
     }
 }
