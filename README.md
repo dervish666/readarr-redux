@@ -1,13 +1,13 @@
 # Readarr Redux
 
-An unofficial, community-maintained continuation of [Readarr](https://github.com/Readarr/Readarr), the ebook and audiobook manager for Usenet and BitTorrent users. The Servarr team retired upstream Readarr in June 2025, after its metadata became unusable and nobody had the time to rebuild it. This fork runs against a metadata source you choose and fixes the bugs that made Readarr lose books.
+An unofficial continuation of [Readarr](https://github.com/Readarr/Readarr), the ebook and audiobook manager for Usenet and BitTorrent users. The Servarr team retired upstream Readarr in June 2025, after its metadata became unusable and nobody had the time to rebuild it. This fork runs against a metadata source you choose and fixes the bugs that made Readarr lose books.
 
 Readarr Redux is not affiliated with or supported by the Servarr team. Please don't ask for help with it in the Readarr or Servarr Discord, or file its bugs on their trackers.
 
 ## Status
 
 - One person ([@dervish666](https://github.com/dervish666)) maintains it for his own library. Issues and pull requests are welcome; replies are best effort.
-- The supported install is the Docker image for Linux amd64 and arm64. Building from source works on macOS and Windows, but CI doesn't test those.
+- The supported install is the Docker image for Linux amd64 and arm64. You can build from source on macOS or Windows, but CI only builds and tests Linux.
 - Claude Code wrote most of the changes since the fork, and every fork commit carries a `Claude-Session` trailer.
 - The app still calls itself Readarr, and its data folders, database names and assembly names are unchanged, so an existing install can move over (see below).
 
