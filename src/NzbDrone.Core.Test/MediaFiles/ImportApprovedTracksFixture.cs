@@ -10,6 +10,7 @@ using NzbDrone.Common.Disk;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download;
+using NzbDrone.Core.History;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.BookImport;
 using NzbDrone.Core.MediaFiles.Events;
@@ -1139,6 +1140,196 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             Mocker.GetMock<IMediaFileService>()
                 .Verify(v => v.AddMany(It.Is<List<BookFile>>(l => l.Count == 1 && l[0].EditionId == own.Item.Edition.Id)), Times.Once());
+        }
+
+        [Test]
+        public void should_keep_the_size_and_time_an_existing_file_has_after_its_retag()
+        {
+            // Read by the rescan at 16:19:49, then retagged by the import at 17:29:32
+            var track = _approvedDecisions.First();
+            track.Item.ExistingFile = true;
+            track.Item.Path = Path.Combine(track.Item.Author.Path, "Foundation and Earth", "Isaac Asimov - Foundation and Earth.mp3");
+            track.Item.Size = 106171307;
+            track.Item.Modified = new DateTime(2026, 10, 12, 16, 19, 49, DateTimeKind.Utc);
+
+            var retagged = new DateTime(2026, 10, 12, 17, 29, 32, DateTimeKind.Utc);
+
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FileExists(track.Item.Path)).Returns(true);
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.GetFileSize(track.Item.Path)).Returns(106171319);
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FileGetLastWrite(track.Item.Path)).Returns(retagged);
+
+            Subject.Import(new List<ImportDecision<LocalBook>> { track }, false);
+
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(v => v.AddMany(It.Is<List<BookFile>>(l => l.Single().Modified == retagged && l.Single().Size == 106171319)), Times.Once());
+
+            // The rescan stores what it read over the row, so what it read has to be the file as it is now
+            track.Item.Modified.Should().Be(retagged);
+            track.Item.Size.Should().Be(106171319);
+        }
+
+        // The library copy an earlier import of the same download left on another book, unchanged since its row was written
+        private BookFile GivenEarlierImportForAnotherBook(string downloadId, string downloadFolder, int bookId, int fileId, string droppedPath, long droppedSize, string path, long size, DateTime modified)
+        {
+            var author = _approvedDecisions.First().Item.Author;
+            var edition = new Edition { Id = bookId, BookId = bookId };
+            var copy = new BookFile { Id = fileId, EditionId = bookId, Edition = edition, Author = author, Path = path, Size = size, Modified = modified };
+
+            var earlier = new EntityHistory
+            {
+                EventType = EntityHistoryEventType.BookFileImported,
+                BookId = bookId,
+                DownloadId = downloadId,
+                Data = new Dictionary<string, string>
+                {
+                    { "fileId", fileId.ToString() },
+                    { "droppedPath", droppedPath },
+                    { "size", droppedSize.ToString() }
+                }
+            };
+
+            _downloadClientItem.DownloadId = downloadId;
+            _downloadClientItem.OutputPath = new OsPath(downloadFolder);
+
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(downloadId))
+                .Returns(new List<EntityHistory> { earlier });
+
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(s => s.Get(It.Is<IEnumerable<int>>(ids => ids.Contains(fileId))))
+                .Returns(new List<BookFile> { copy });
+
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FileExists(path)).Returns(true);
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.GetFileSize(path)).Returns(size);
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FileGetLastWrite(path)).Returns(modified);
+
+            return copy;
+        }
+
+        private ImportDecision<LocalBook> GivenDownloadedFile(string path, long size)
+        {
+            var track = _approvedDecisions.First();
+            track.Item.Path = path;
+            track.Item.Size = size;
+
+            return track;
+        }
+
+        // Everville's download went onto Hellraiser #5 on 2026-10-08, and was imported again for Everville
+        private BookFile GivenEverville(out ImportDecision<LocalBook> track, long copySize = 979149097)
+        {
+            var folder = @"C:\downloads\torrents\audiobooks\Everville - Clive Barke".AsOsAgnostic();
+            var dropped = Path.Combine(folder, "EvervilleTheSecondBookoftheArtUnabridged.m4b");
+            track = GivenDownloadedFile(dropped, 979149097);
+
+            var copyPath = Path.Combine(track.Item.Author.Path, "Cliver Barker's Hellraiser #5 Limited Retailer Incentive Sketch Variant Cover", "Clive Barker - Cliver Barker's Hellraiser #5 Limited Retailer Incentive Sketch Variant Cover.m4b");
+
+            return GivenEarlierImportForAnotherBook("2FA89468B42F5EA26A4394A48B95CB61DB86B5C9", folder, 98049, 248781, dropped, 979149097, copyPath, copySize, new DateTime(2026, 10, 8, 12, 0, 5, DateTimeKind.Utc));
+        }
+
+        [Test]
+        public void should_remove_the_copy_an_earlier_import_of_the_same_download_left_on_another_book()
+        {
+            var copy = GivenEverville(out var track);
+
+            Subject.Import(new List<ImportDecision<LocalBook>> { track }, false, _downloadClientItem);
+
+            Mocker.GetMock<IDeleteMediaFiles>()
+                .Verify(v => v.DeleteTrackFile(track.Item.Author, copy), Times.Once());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_keep_the_earlier_copy_when_it_was_replaced_and_rescanned_since()
+        {
+            // A rescan wrote the replacement's size and time over the row, so only the download's size gives it away
+            GivenEverville(out var track, 1012345678);
+
+            Subject.Import(new List<ImportDecision<LocalBook>> { track }, false, _downloadClientItem);
+
+            Mocker.GetMock<IDeleteMediaFiles>()
+                .Verify(v => v.DeleteTrackFile(It.IsAny<Author>(), It.IsAny<BookFile>()), Times.Never());
+        }
+
+        [Test]
+        public void should_remove_the_earlier_copy_when_the_download_has_moved_since()
+        {
+            // Heart of the Comet's download went onto Contacting Aliens in July, from where the client then kept downloads
+            var folder = @"C:\downloads\torrents\audiobooks\Gregory Benford and David Brin - Heart of the Comet".AsOsAgnostic();
+            var track = GivenDownloadedFile(Path.Combine(folder, "Gregory Benford, David Brin - Heart of the Comet.mp3"), 308427702);
+
+            var dropped = @"C:\qbitdownloads\Gregory Benford and David Brin - Heart of the Comet\Gregory Benford, David Brin - Heart of the Comet.mp3".AsOsAgnostic();
+            var copyPath = Path.Combine(track.Item.Author.Path, "Contacting Aliens An Illustrated Guide to David Brin's Uplift Universe", "David Brin - Contacting Aliens An Illustrated Guide to David Brin's Uplift Universe.mp3");
+            var copy = GivenEarlierImportForAnotherBook("3C7D20EB2EE3AE8B927953D6E306086645D9FA7E", folder, 86140, 197183, dropped, 308427702, copyPath, 308427702, new DateTime(2026, 10, 7, 21, 44, 2, DateTimeKind.Utc));
+
+            Subject.Import(new List<ImportDecision<LocalBook>> { track }, false, _downloadClientItem);
+
+            Mocker.GetMock<IDeleteMediaFiles>()
+                .Verify(v => v.DeleteTrackFile(track.Item.Author, copy), Times.Once());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_keep_the_earlier_copy_when_it_has_been_replaced_since()
+        {
+            // Same length, but written after its row
+            var copy = GivenEverville(out var track);
+
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(s => s.FileGetLastWrite(copy.Path))
+                .Returns(new DateTime(2026, 10, 11, 9, 30, 0, DateTimeKind.Utc));
+
+            Subject.Import(new List<ImportDecision<LocalBook>> { track }, false, _downloadClientItem);
+
+            Mocker.GetMock<IDeleteMediaFiles>()
+                .Verify(v => v.DeleteTrackFile(It.IsAny<Author>(), It.IsAny<BookFile>()), Times.Never());
+        }
+
+        [Test]
+        public void should_keep_the_earlier_copy_in_a_calibre_library()
+        {
+            // Calibre deletes the whole book, with any other formats it holds
+            var copy = GivenEverville(out var track);
+            copy.CalibreId = 4127;
+
+            Subject.Import(new List<ImportDecision<LocalBook>> { track }, false, _downloadClientItem);
+
+            Mocker.GetMock<IDeleteMediaFiles>()
+                .Verify(v => v.DeleteTrackFile(It.IsAny<Author>(), It.IsAny<BookFile>()), Times.Never());
+        }
+
+        [Test]
+        public void should_keep_another_books_file_with_the_same_name_from_another_folder_of_the_download()
+        {
+            // A pack whose books each number their discs and parts from 01
+            var pack = @"C:\downloads\usenet\complete\audiobooks\Isaac Asimov - Foundation Trilogy".AsOsAgnostic();
+            var track = GivenDownloadedFile(Path.Combine(pack, "Second Foundation", "CD1", "01.mp3"), 20221701);
+
+            var copyPath = Path.Combine(track.Item.Author.Path, "Foundation and Empire", "Isaac Asimov - Foundation and Empire (1).mp3");
+            GivenEarlierImportForAnotherBook("SABnzbd_nzo_trilogy", pack, 84479, 280701, Path.Combine(pack, "Foundation and Empire", "CD1", "01.mp3"), 20221701, copyPath, 20221701, new DateTime(2026, 10, 12, 11, 44, 42, DateTimeKind.Utc));
+
+            Subject.Import(new List<ImportDecision<LocalBook>> { track }, false, _downloadClientItem);
+
+            Mocker.GetMock<IDeleteMediaFiles>()
+                .Verify(v => v.DeleteTrackFile(It.IsAny<Author>(), It.IsAny<BookFile>()), Times.Never());
+        }
+
+        [Test]
+        public void should_keep_another_books_file_from_the_same_download_when_it_is_a_different_file()
+        {
+            // Foundation and Earth's part came from the same download as this part of Foundation's Edge
+            var folder = @"C:\downloads\usenet\complete\audiobooks\Isaac Asimov - Forward The Foundation (1993) MP3".AsOsAgnostic();
+            var track = GivenDownloadedFile(Path.Combine(folder, "Foundation's Edge 01-17.mp3"), 20221701);
+
+            var copyPath = Path.Combine(track.Item.Author.Path, "Foundation and Earth", "Isaac Asimov - Foundation and Earth (3).mp3");
+            GivenEarlierImportForAnotherBook("SABnzbd_nzo_forward", folder, 76492, 280874, Path.Combine(folder, "Foundation And Earth 03-26.mp3"), 20221701, copyPath, 20221701, new DateTime(2026, 10, 12, 11, 44, 42, DateTimeKind.Utc));
+
+            Subject.Import(new List<ImportDecision<LocalBook>> { track }, false, _downloadClientItem);
+
+            Mocker.GetMock<IDeleteMediaFiles>()
+                .Verify(v => v.DeleteTrackFile(It.IsAny<Author>(), It.IsAny<BookFile>()), Times.Never());
         }
     }
 }

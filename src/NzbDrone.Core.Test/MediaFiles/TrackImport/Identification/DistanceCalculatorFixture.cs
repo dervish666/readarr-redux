@@ -1,7 +1,9 @@
 using System.Collections.Generic;
 using FluentAssertions;
 using NUnit.Framework;
+using NzbDrone.Core.Books;
 using NzbDrone.Core.MediaFiles.BookImport.Identification;
+using NzbDrone.Core.Parser.Model;
 using NzbDrone.Test.Common;
 
 namespace NzbDrone.Core.Test.MediaFiles.BookImport.Identification
@@ -90,6 +92,55 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport.Identification
             authors.Should().HaveCount(2);
             authors.Should().Contain("First Last");
             authors.Should().Contain("Second Third, Fourth Fifth");
+        }
+
+        private static Edition GivenEdition(string title, string isbn = null)
+        {
+            var book = new Book
+            {
+                ForeignBookId = "1",
+                Title = title,
+                AuthorMetadata = new AuthorMetadata { Name = "C.S. Lewis" },
+                SeriesLinks = new List<SeriesBookLink>()
+            };
+
+            return new Edition { Title = title, Isbn13 = isbn, Book = book };
+        }
+
+        private static List<LocalBook> GivenFiles(string bookTitle, string isbn = null)
+        {
+            return new List<LocalBook>
+            {
+                new LocalBook
+                {
+                    Path = "/books/C.S. Lewis/book.epub",
+                    FileTrackInfo = new ParsedTrackInfo { BookTitle = bookTitle, Isbn = isbn, Authors = new List<string> { "C.S. Lewis" } }
+                }
+            };
+        }
+
+        [Test]
+        public void should_not_match_titles_whose_bracketed_numbers_differ()
+        {
+            var match = DistanceCalculator.GetTitleMatch(GivenFiles("The Chronicles of Narnia (Book 5)"), GivenEdition("The Chronicles of Narnia (Book 6)"));
+
+            match.Distance.Should().BeGreaterThan(0.2);
+        }
+
+        [Test]
+        public void should_match_a_title_without_its_series_marker()
+        {
+            var match = DistanceCalculator.GetTitleMatch(GivenFiles("The Lion, the Witch and the Wardrobe"), GivenEdition("The Lion, the Witch and the Wardrobe (Chronicles of Narnia, #1)"));
+
+            match.Distance.Should().Be(0);
+        }
+
+        [Test]
+        public void should_count_an_isbn_10_tag_as_the_editions_isbn_13()
+        {
+            var distance = DistanceCalculator.BookDistance(GivenFiles("The Screwtape Letters", "1589973240"), GivenEdition("The Screwtape Letters", "9781589973244"));
+
+            distance.Penalties["isbn"].Should().Equal(0.0);
         }
     }
 }

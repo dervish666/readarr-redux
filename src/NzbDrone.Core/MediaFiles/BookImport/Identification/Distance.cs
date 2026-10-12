@@ -131,6 +131,11 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
 
         private double StringScore(string value, string target)
         {
+            return StringDistance(value, target);
+        }
+
+        public static double StringDistance(string value, string target)
+        {
             // Adds a penaltly based on the distance between value and target
             var cleanValue = Clean(value);
             var cleanTarget = Clean(target);

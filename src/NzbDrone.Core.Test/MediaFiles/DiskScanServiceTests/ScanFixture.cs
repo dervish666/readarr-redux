@@ -64,6 +64,10 @@ namespace NzbDrone.Core.Test.MediaFiles.DiskScanServiceTests
             Mocker.GetMock<IMediaFileService>()
                 .Setup(v => v.FilterUnchangedFiles(It.IsAny<List<IFileInfo>>(), It.IsAny<FilterFilesType>()))
                 .Returns((List<IFileInfo> files, FilterFilesType filter) => files);
+
+            Mocker.GetMock<IImportApprovedBooks>()
+                .Setup(s => s.Import(It.IsAny<List<ImportDecision<LocalBook>>>(), It.IsAny<bool>(), It.IsAny<DownloadClientItem>(), It.IsAny<ImportMode>()))
+                .Returns(new List<ImportResult>());
         }
 
         private void GivenRootFolder(params string[] subfolders)
@@ -548,6 +552,41 @@ namespace NzbDrone.Core.Test.MediaFiles.DiskScanServiceTests
             Mocker.GetMock<IMediaFileService>()
                 .Verify(x => x.Update(It.Is<List<BookFile>>(l => l.Count == 2)),
                         Times.Once());
+        }
+
+        [Test]
+        public void should_not_put_back_the_time_a_file_had_before_the_import_retagged_it()
+        {
+            GivenAuthorFolder();
+
+            var path = Path.Combine(_author.Path, "Foundation and Earth", "Isaac Asimov - Foundation and Earth.mp3");
+            var read = new DateTime(2026, 10, 12, 16, 19, 49, DateTimeKind.Utc);
+
+            GivenFiles(new[] { path }, read);
+
+            // The row the import wrote after retagging the file at 17:29:32
+            GivenKnownFiles(new[] { path }, new DateTime(2026, 10, 12, 17, 29, 32, DateTimeKind.Utc));
+
+            var decision = new ImportDecision<LocalBook>(new LocalBook
+            {
+                Author = _author,
+                Path = path,
+                Modified = read,
+                FileTrackInfo = new ParsedTrackInfo()
+            });
+
+            Mocker.GetMock<IMakeImportDecision>()
+                .Setup(x => x.GetImportDecisions(It.IsAny<List<IFileInfo>>(), It.IsAny<IdentificationOverrides>(), It.IsAny<ImportDecisionMakerInfo>(), It.IsAny<ImportDecisionMakerConfig>()))
+                .Returns(new List<ImportDecision<LocalBook>> { decision });
+
+            Mocker.GetMock<IImportApprovedBooks>()
+                .Setup(s => s.Import(It.IsAny<List<ImportDecision<LocalBook>>>(), It.IsAny<bool>(), It.IsAny<DownloadClientItem>(), It.IsAny<ImportMode>()))
+                .Returns(new List<ImportResult> { new ImportResult(decision) });
+
+            Subject.Scan(new List<string> { _author.Path });
+
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(x => x.Update(It.Is<List<BookFile>>(l => l.Any())), Times.Never());
         }
 
         [Test]
