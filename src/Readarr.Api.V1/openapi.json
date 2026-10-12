@@ -1,11 +1,11 @@
 {
-  "openapi": "3.0.1",
+  "openapi": "3.0.4",
   "info": {
     "title": "Readarr",
     "description": "Readarr API docs",
     "license": {
       "name": "GPL-3.0",
-      "url": "https://github.com/Readarr/Readarr/blob/develop/LICENSE.md"
+      "url": "https://github.com/dervish666/readarr-redux/blob/develop/LICENSE.md"
     },
     "version": "1.0.0"
   },
@@ -4503,7 +4503,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "pattern": "[-.a-zA-Z0-9]+?\\.txt",
+              "pattern": "^[-.a-zA-Z0-9]+?\\.txt$",
               "type": "string"
             }
           }
@@ -4651,7 +4651,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "pattern": "(.+)\\.(jpg|png|gif)",
+              "pattern": "^[^/\\\\]+\\.(jpg|png|gif)$",
               "type": "string"
             }
           }
@@ -4683,7 +4683,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "pattern": "(.+)\\.(jpg|png|gif)",
+              "pattern": "^[^/\\\\]+\\.(jpg|png|gif)$",
               "type": "string"
             }
           }
@@ -5387,6 +5387,169 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MetadataProviderConfigResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/config/metadatasource/{id}": {
+      "put": {
+        "tags": [
+          "MetadataSourceConfig"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MetadataSourceConfigResource"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MetadataSourceConfigResource"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/MetadataSourceConfigResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetadataSourceConfigResource"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetadataSourceConfigResource"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetadataSourceConfigResource"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "MetadataSourceConfig"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetadataSourceConfigResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/config/metadatasource/test": {
+      "post": {
+        "tags": [
+          "MetadataSourceConfig"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MetadataSourceConfigResource"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MetadataSourceConfigResource"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/MetadataSourceConfigResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetadataSourceProbeResource"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetadataSourceProbeResource"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetadataSourceProbeResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/config/metadatasource": {
+      "get": {
+        "tags": [
+          "MetadataSourceConfig"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetadataSourceConfigResource"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetadataSourceConfigResource"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetadataSourceConfigResource"
                 }
               }
             }
@@ -8319,7 +8482,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "pattern": "[-.a-zA-Z0-9]+?\\.txt",
+              "pattern": "^[-.a-zA-Z0-9]+?\\.txt$",
               "type": "string"
             }
           }
@@ -9922,10 +10085,6 @@
             "type": "integer",
             "format": "int32"
           },
-          "metadataSource": {
-            "type": "string",
-            "nullable": true
-          },
           "consoleLogLevel": {
             "type": "string",
             "nullable": true
@@ -10379,9 +10538,7 @@
             "type": "string",
             "nullable": true
           },
-          "value": {
-            "nullable": true
-          },
+          "value": { },
           "type": {
             "type": "string",
             "nullable": true
@@ -11705,6 +11862,68 @@
           }
         },
         "additionalProperties": false
+      },
+      "MetadataSourceConfigResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "metadataSource": {
+            "type": "string",
+            "nullable": true
+          },
+          "probe": {
+            "$ref": "#/components/schemas/MetadataSourceProbeResource"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MetadataSourceProbeResource": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "$ref": "#/components/schemas/MetadataSourceProbeStatus"
+          },
+          "statusCode": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "time": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isOk": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MetadataSourceProbeStatus": {
+        "enum": [
+          "ok",
+          "notConfigured",
+          "invalidUrl",
+          "unreachable",
+          "authFailure",
+          "serverError",
+          "rateLimited",
+          "redirect",
+          "responseTooLarge",
+          "notFound",
+          "unexpectedResponse"
+        ],
+        "type": "string"
       },
       "MonitorTypes": {
         "enum": [
@@ -13776,6 +13995,230 @@
     },
     {
       "apikey": [ ]
+    }
+  ],
+  "tags": [
+    {
+      "name": "ApiInfo"
+    },
+    {
+      "name": "Authentication"
+    },
+    {
+      "name": "StaticResource"
+    },
+    {
+      "name": "Author"
+    },
+    {
+      "name": "AuthorEditor"
+    },
+    {
+      "name": "AuthorLookup"
+    },
+    {
+      "name": "Backup"
+    },
+    {
+      "name": "Blocklist"
+    },
+    {
+      "name": "Book"
+    },
+    {
+      "name": "BookEditor"
+    },
+    {
+      "name": "BookFile"
+    },
+    {
+      "name": "BookLookup"
+    },
+    {
+      "name": "Bookshelf"
+    },
+    {
+      "name": "Calendar"
+    },
+    {
+      "name": "CalendarFeed"
+    },
+    {
+      "name": "Command"
+    },
+    {
+      "name": "CustomFilter"
+    },
+    {
+      "name": "CustomFormat"
+    },
+    {
+      "name": "Cutoff"
+    },
+    {
+      "name": "DelayProfile"
+    },
+    {
+      "name": "DevelopmentConfig"
+    },
+    {
+      "name": "DiskSpace"
+    },
+    {
+      "name": "DownloadClient"
+    },
+    {
+      "name": "DownloadClientConfig"
+    },
+    {
+      "name": "Edition"
+    },
+    {
+      "name": "FileSystem"
+    },
+    {
+      "name": "Health"
+    },
+    {
+      "name": "History"
+    },
+    {
+      "name": "HostConfig"
+    },
+    {
+      "name": "ImportList"
+    },
+    {
+      "name": "ImportListExclusion"
+    },
+    {
+      "name": "Indexer"
+    },
+    {
+      "name": "IndexerConfig"
+    },
+    {
+      "name": "IndexerFlag"
+    },
+    {
+      "name": "Language"
+    },
+    {
+      "name": "Localization"
+    },
+    {
+      "name": "Log"
+    },
+    {
+      "name": "LogFile"
+    },
+    {
+      "name": "ManualImport"
+    },
+    {
+      "name": "MediaCover"
+    },
+    {
+      "name": "MediaManagementConfig"
+    },
+    {
+      "name": "Metadata"
+    },
+    {
+      "name": "MetadataProfile"
+    },
+    {
+      "name": "MetadataProfileSchema"
+    },
+    {
+      "name": "MetadataProviderConfig"
+    },
+    {
+      "name": "MetadataSourceConfig"
+    },
+    {
+      "name": "Missing"
+    },
+    {
+      "name": "NamingConfig"
+    },
+    {
+      "name": "Notification"
+    },
+    {
+      "name": "Parse"
+    },
+    {
+      "name": "Ping"
+    },
+    {
+      "name": "QualityDefinition"
+    },
+    {
+      "name": "QualityProfile"
+    },
+    {
+      "name": "QualityProfileSchema"
+    },
+    {
+      "name": "Queue"
+    },
+    {
+      "name": "QueueAction"
+    },
+    {
+      "name": "QueueDetails"
+    },
+    {
+      "name": "QueueStatus"
+    },
+    {
+      "name": "Release"
+    },
+    {
+      "name": "ReleaseProfile"
+    },
+    {
+      "name": "ReleasePush"
+    },
+    {
+      "name": "RemotePathMapping"
+    },
+    {
+      "name": "RenameBook"
+    },
+    {
+      "name": "RetagBook"
+    },
+    {
+      "name": "RootFolder"
+    },
+    {
+      "name": "Search"
+    },
+    {
+      "name": "Series"
+    },
+    {
+      "name": "System"
+    },
+    {
+      "name": "Tag"
+    },
+    {
+      "name": "TagDetails"
+    },
+    {
+      "name": "Task"
+    },
+    {
+      "name": "UiConfig"
+    },
+    {
+      "name": "Update"
+    },
+    {
+      "name": "UpdateLogFile"
     }
   ]
 }
