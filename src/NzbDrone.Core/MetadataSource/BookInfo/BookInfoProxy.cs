@@ -130,7 +130,8 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
             catch (BookInfoException e)
             {
-                _logger.Warn(e, "Unexpected error getting book info: {foreignBookId}", foreignBookId);
+                // Every caller logs what it does about the failure, so a Warn here only doubled it
+                _logger.Debug(e, "Unexpected error getting book info: {foreignBookId}", foreignBookId);
                 throw;
             }
         }

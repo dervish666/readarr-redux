@@ -294,6 +294,28 @@ namespace NzbDrone.Core.Test.MusicTests
         }
 
         [Test]
+        public void should_sum_up_the_books_a_refresh_keeps_in_one_warn()
+        {
+            var newAuthorInfo = _author.JsonClone();
+            newAuthorInfo.Metadata = _author.Metadata.Value.JsonClone();
+            newAuthorInfo.Books = _remoteBooks;
+
+            GivenNewAuthorInfo(newAuthorInfo);
+            GivenBooksForRefresh(_books);
+            AllowAuthorUpdate();
+
+            Mocker.GetMock<IRefreshBookService>()
+                .Setup(s => s.RefreshBookInfo(It.IsAny<List<Book>>(), It.IsAny<List<Book>>(), It.IsAny<Author>(), It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<DateTime?>()))
+                .Callback((List<Book> books, List<Book> remote, Author data, bool force, bool tags, DateTime? lastUpdate) =>
+                    books.ForEach(b => KeptBooks.NotFound(b, TestLogger)))
+                .Returns(false);
+
+            Subject.Execute(new RefreshAuthorCommand(_author.Id));
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
         public void should_log_error_but_not_delete_if_author_not_found_and_author_has_no_files()
         {
             Mocker.GetMock<IAuthorService>()
@@ -307,7 +329,7 @@ namespace NzbDrone.Core.Test.MusicTests
             Mocker.GetMock<IAuthorService>()
                 .Verify(v => v.DeleteAuthor(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never());
 
-            ExceptionVerification.ExpectedErrors(2);
+            ExceptionVerification.ExpectedErrors(1);
         }
 
         [Test]
@@ -324,7 +346,7 @@ namespace NzbDrone.Core.Test.MusicTests
             Mocker.GetMock<IAuthorService>()
                 .Verify(v => v.DeleteAuthor(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never());
 
-            ExceptionVerification.ExpectedErrors(2);
+            ExceptionVerification.ExpectedErrors(1);
         }
 
         [Test]

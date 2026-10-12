@@ -72,7 +72,6 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
 
             Mocker.GetMock<IHttpClient>().Verify(s => s.Get(It.IsAny<HttpRequest>()), Times.Exactly(5));
             _sleeps.Should().Equal(Enumerable.Repeat(TimeSpan.FromSeconds(30), 4));
-            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]
@@ -83,7 +82,6 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
             Assert.Throws<BookInfoException>(() => Subject.GetBookInfo("1"));
 
             _sleeps.Should().BeEmpty();
-            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]
@@ -103,7 +101,6 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
             MetadataRetryBudget.Exhausted.Should().BeFalse();
             _sleeps.Should().Equal(TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
             Mocker.GetMock<IHttpClient>().Verify(s => s.Get(It.IsAny<HttpRequest>()), Times.Exactly(3));
-            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]
@@ -156,7 +153,6 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
             Assert.Throws<BookInfoException>(() => Subject.GetBookInfo("1"));
 
             Mocker.GetMock<IHttpClient>().Verify(s => s.Get(It.IsAny<HttpRequest>()), Times.Exactly(3));
-            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]
@@ -170,7 +166,6 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
 
             ex.Message.Should().Contain("500 error");
             Mocker.GetMock<IHttpClient>().Verify(s => s.Get(It.IsAny<HttpRequest>()), Times.Once());
-            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]

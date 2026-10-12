@@ -91,7 +91,7 @@ namespace NzbDrone.Core.Books
             }
             catch (BookNotFoundException)
             {
-                _logger.Error($"Could not find book with id {book.ForeignBookId}");
+                _logger.Debug("Could not find book with id {0}", book.ForeignBookId);
             }
 
             return null;
@@ -142,9 +142,12 @@ namespace NzbDrone.Core.Books
         {
             var result = new RemoteData();
 
-            // Books with files or added by hand are never deleted, so leave them as they were
+            // Books with files or added by hand are never deleted, so leave them as they were. Usually Goodreads merged
+            // the work into one already in the library, and moving the files across is for a person to do.
             if (!ShouldDelete(local))
             {
+                KeptBooks.NotFound(local, _logger);
+                result.Keep = true;
                 return result;
             }
 
@@ -482,7 +485,7 @@ namespace NzbDrone.Core.Books
                     {
                         // The source fails on this work every time, which says nothing about whether it is struggling.
                         // Counting it let three bad works stop the rest of an author's missing books refreshing for good.
-                        _logger.Error(e, "Couldn't refresh info for book {0}", book);
+                        KeptBooks.Failed(book, e, _logger);
                     }
                     catch (Exception e)
                     {
