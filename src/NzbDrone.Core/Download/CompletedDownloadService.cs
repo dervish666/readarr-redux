@@ -207,7 +207,7 @@ namespace NzbDrone.Core.Download
                 var importedAuthorId = importResults.Where(x => x.Result == ImportResultType.Imported)
                     .Select(c => c.ImportDecision.Item.Author.Id)
                     .MostCommon();
-                _eventAggregator.PublishEvent(new DownloadCompletedEvent(trackedDownload, trackedDownload.RemoteBook?.Author.Id ?? importedAuthorId));
+                _eventAggregator.PublishEvent(new DownloadCompletedEvent(trackedDownload, trackedDownload.RemoteBook?.Author?.Id ?? importedAuthorId));
                 return true;
             }
 
@@ -239,7 +239,7 @@ namespace NzbDrone.Core.Download
                 {
                     _logger.ForDebugEvent()
                            .Message("No books were just imported, but all books were previously imported, possible issue with download history.")
-                           .Property("AuthorId", trackedDownload.RemoteBook.Author.Id)
+                           .Property("AuthorId", trackedDownload.RemoteBook?.Author?.Id)
                            .Property("DownloadId", trackedDownload.DownloadItem.DownloadId)
                            .Property("Title", trackedDownload.DownloadItem.Title)
                            .Property("Path", trackedDownload.DownloadItem.OutputPath.ToString())
@@ -252,7 +252,7 @@ namespace NzbDrone.Core.Download
                 var importedAuthorId = historyItems.Where(x => x.EventType == EntityHistoryEventType.BookFileImported)
                     .Select(x => x.AuthorId)
                     .MostCommon();
-                _eventAggregator.PublishEvent(new DownloadCompletedEvent(trackedDownload, trackedDownload.RemoteBook?.Author.Id ?? importedAuthorId));
+                _eventAggregator.PublishEvent(new DownloadCompletedEvent(trackedDownload, trackedDownload.RemoteBook?.Author?.Id ?? importedAuthorId));
 
                 return true;
             }

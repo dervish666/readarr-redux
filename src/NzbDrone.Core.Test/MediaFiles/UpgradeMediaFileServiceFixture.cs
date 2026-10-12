@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -310,6 +311,23 @@ namespace NzbDrone.Core.Test.MediaFiles
             disk.Should().Contain(original, "new");
             disk.Should().Contain(backup, "old");
             kept.Should().HaveCount(1);
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_keep_the_upgrade_when_writing_its_tags_fails()
+        {
+            GivenSingleTrackWithSingleTrackFile();
+
+            Mocker.GetMock<IMetadataTagService>()
+                .Setup(s => s.WriteTags(It.IsAny<BookFile>(), It.IsAny<bool>(), It.IsAny<bool>()))
+                .Throws(new InvalidOperationException("Nullable object must have a value."));
+
+            var result = Subject.UpgradeBookFile(_trackFile, _localTrack);
+
+            result.OldFiles.Should().HaveCount(1);
+            result.SetAsideFiles.Should().HaveCount(1);
 
             ExceptionVerification.ExpectedWarns(1);
         }

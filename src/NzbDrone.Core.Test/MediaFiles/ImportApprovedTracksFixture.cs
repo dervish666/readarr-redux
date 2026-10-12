@@ -1018,5 +1018,29 @@ namespace NzbDrone.Core.Test.MediaFiles
             Mocker.GetMock<IMediaFileService>()
                 .Verify(v => v.Delete(It.IsAny<BookFile>(), DeleteMediaFileReason.ManualOverride), Times.Once());
         }
+
+        [Test]
+        public void should_keep_an_existing_file_mapped_when_writing_its_tags_fails()
+        {
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(s => s.GetFileWithPath(It.IsAny<string>()))
+                .Returns(Builder<BookFile>.CreateNew().Build());
+
+            Mocker.GetMock<IMetadataTagService>()
+                .Setup(s => s.WriteTags(It.IsAny<BookFile>(), It.IsAny<bool>(), It.IsAny<bool>()))
+                .Throws(new InvalidOperationException("Nullable object must have a value."));
+
+            var track = _approvedDecisions.First();
+            track.Item.ExistingFile = true;
+
+            var results = Subject.Import(new List<ImportDecision<LocalBook>> { track }, false);
+
+            results.Should().ContainSingle(r => r.Result == ImportResultType.Imported);
+
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(v => v.AddMany(It.Is<List<BookFile>>(l => l.Count == 1 && l[0].Path == track.Item.Path)), Times.Once());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
     }
 }

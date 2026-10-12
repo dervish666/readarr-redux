@@ -145,6 +145,19 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void should_identify_normally_when_the_download_has_no_known_author()
+        {
+            GivenExistingFolder(_downloadFolder);
+            GivenValidQueueItem();
+
+            _trackedDownload.RemoteBook = null;
+
+            Subject.Execute(new DownloadedBooksScanCommand() { Path = _downloadFolder, DownloadClientId = "sab1" });
+
+            Mocker.GetMock<IDownloadedBooksImportService>().Verify(c => c.ProcessPath(_downloadFolder, ImportMode.Auto, null, _trackedDownload.DownloadItem, It.IsAny<Book>()), Times.Once());
+        }
+
+        [Test]
         public void should_process_folder_without_downloadclientitem_if_not_available()
         {
             GivenExistingFolder(_downloadFolder);

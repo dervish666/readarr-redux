@@ -485,9 +485,9 @@ namespace NzbDrone.Core.MediaFiles
                     OriginalReleaseDate.Value.Month == 1 &&
                     OriginalReleaseDate.Value.Day == 1)
                 {
-                    if (OriginalReleaseDate.Value.Year != other.OriginalReleaseDate.Value.Year)
+                    if (OriginalReleaseDate.Value.Year != other.OriginalReleaseDate?.Year)
                     {
-                        output.Add("Original Year", Tuple.Create(OriginalReleaseDate.Value.Year.ToString(), other.OriginalReleaseDate.Value.Year.ToString()));
+                        output.Add("Original Year", Tuple.Create(OriginalReleaseDate.Value.Year.ToString(), other.OriginalReleaseDate?.Year.ToString()));
                     }
                 }
                 else

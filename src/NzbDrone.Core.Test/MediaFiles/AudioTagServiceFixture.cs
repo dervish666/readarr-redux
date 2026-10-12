@@ -405,5 +405,34 @@ namespace NzbDrone.Core.Test.MediaFiles.AudioTagServiceFixture
 
             Assert.DoesNotThrow(() => Subject.GetTrackMetadata(bookFile));
         }
+
+        private static AudioTag GivenTagsWithOriginalDate(DateTime? originalReleaseDate)
+        {
+            return new AudioTag
+            {
+                Performers = new[] { "Author" },
+                BookAuthors = new[] { "Author" },
+                Genres = new string[0],
+                OriginalReleaseDate = originalReleaseDate
+            };
+        }
+
+        [Test]
+        public void diff_should_not_fail_when_the_new_tags_drop_a_new_years_day_original_date()
+        {
+            var diff = GivenTagsWithOriginalDate(new DateTime(1986, 1, 1)).Diff(GivenTagsWithOriginalDate(null));
+
+            diff.Should().ContainKey("Original Year");
+            diff["Original Year"].Should().Be(Tuple.Create("1986", (string)null));
+        }
+
+        [Test]
+        public void diff_should_not_fail_when_the_new_tags_add_a_new_years_day_original_date()
+        {
+            var diff = GivenTagsWithOriginalDate(null).Diff(GivenTagsWithOriginalDate(new DateTime(1986, 1, 1)));
+
+            diff.Should().ContainKey("Original Release Date");
+            diff["Original Release Date"].Should().Be(Tuple.Create((string)null, "1986-01-01"));
+        }
     }
 }

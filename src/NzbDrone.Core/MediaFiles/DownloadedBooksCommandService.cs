@@ -68,7 +68,7 @@ namespace NzbDrone.Core.MediaFiles
                         return new List<ImportResult> { new ImportResult(new ImportDecision<LocalBook>(new LocalBook { Path = message.Path }, new Rejection(e.Message)), e.Message) };
                     }
 
-                    var importResults = _downloadedTracksImportService.ProcessPath(message.Path, message.ImportMode, trackedDownload.RemoteBook.Author, trackedDownload.DownloadItem, grabbedBook);
+                    var importResults = _downloadedTracksImportService.ProcessPath(message.Path, message.ImportMode, trackedDownload.RemoteBook?.Author, trackedDownload.DownloadItem, grabbedBook);
 
                     _completedDownloadService.VerifyImport(trackedDownload, importResults);
 
