@@ -389,6 +389,101 @@ namespace NzbDrone.Core.Test.MusicTests
             ExceptionVerification.ExpectedWarns(10);
         }
 
+        // The real proxy over mocked HTTP, answering every work lookup with a 500 and this body
+        private void GivenWorksAnswerServerError(string body)
+        {
+            Mocker.GetMock<IMetadataRequestBuilder>()
+                .Setup(s => s.GetRequestBuilder())
+                .Returns(new HttpRequestBuilder("http://rreading-glasses.local/{route}").CreateFactory());
+
+            Mocker.GetMock<IHttpClient>()
+                .Setup(s => s.Get(It.IsAny<HttpRequest>()))
+                .Returns((HttpRequest request) => new HttpResponse(request, new HttpHeader(), body, HttpStatusCode.InternalServerError));
+
+            Mocker.SetConstant<IProvideBookInfo>(Mocker.Resolve<BookInfoProxy>());
+        }
+
+        private void VerifyWorkLookups(int times)
+        {
+            Mocker.GetMock<IHttpClient>()
+                .Verify(v => v.Get(It.Is<HttpRequest>(r => r.Url.FullUri.Contains("/work/"))), Times.Exactly(times));
+        }
+
+        [Test]
+        public void should_stop_looking_up_missing_books_when_the_source_fails_every_work()
+        {
+            var books = GivenBooksMissingFromAuthorList(10);
+
+            // An outage, not a rejection of particular works
+            GivenWorksAnswerServerError("Internal Server Error");
+
+            Subject.RefreshBookInfo(books, new List<Book>(), _author, true, false, null);
+
+            VerifyWorkLookups(3);
+
+            ExceptionVerification.ExpectedErrors(3);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_keep_looking_up_missing_books_past_works_the_source_rejects_as_invalid()
+        {
+            var books = GivenBooksMissingFromAuthorList(10);
+
+            GivenWorksAnswerServerError("getting book: input:2:3: UGALGKBP Book is invalid");
+
+            Subject.RefreshBookInfo(books, new List<Book>(), _author, true, false, null);
+
+            VerifyWorkLookups(10);
+
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.DeleteBook(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never());
+
+            ExceptionVerification.ExpectedWarns(10);
+        }
+
+        [Test]
+        public void should_count_rejected_works_towards_the_bound_past_twenty_in_one_refresh()
+        {
+            // So many rejections may be the source after all
+            var books = GivenBooksMissingFromAuthorList(30);
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Setup(s => s.GetBookInfo(It.IsAny<string>()))
+                .Throws(new WorkErrorException("1", "500 getting book: input:2:3: UGALGKBP Book is invalid"));
+
+            Subject.RefreshBookInfo(books, new List<Book>(), _author, true, false, null);
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Verify(v => v.GetBookInfo(It.IsAny<string>()), Times.Exactly(23));
+
+            ExceptionVerification.ExpectedErrors(3);
+            ExceptionVerification.ExpectedWarns(21);
+        }
+
+        [Test]
+        public void should_stop_looking_up_missing_books_once_lookups_have_spent_the_command_budget()
+        {
+            var books = GivenBooksMissingFromAuthorList(10);
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Setup(s => s.GetBookInfo(It.IsAny<string>()))
+                .Throws(new WorkErrorException("1", "500 getting book: input:2:3: UGALGKBP Book is invalid"));
+
+            // Slow answers cost time just as retry sleeps do, and any lookup at all overruns an empty budget
+            using (MetadataRetryBudget.Start(TimeSpan.Zero))
+            {
+                Subject.RefreshBookInfo(books, new List<Book>(), _author, true, false, null);
+
+                MetadataRetryBudget.Exhausted.Should().BeTrue();
+            }
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Verify(v => v.GetBookInfo(It.IsAny<string>()), Times.Once());
+
+            ExceptionVerification.ExpectedWarns(2);
+        }
+
         [Test]
         public void should_log_one_warn_for_all_the_books_a_run_keeps()
         {

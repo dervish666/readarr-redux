@@ -160,11 +160,24 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
         {
             GivenWorkResponses(HttpStatusCode.InternalServerError, HttpStatusCode.OK);
 
-            // rreading-glasses answers 500 "Book is invalid" for some works every time, so it marks the work, not
-            // the source. Rate limits and gateway errors above still throw the plain BookInfoException.
+            // A plain 500 may be the source failing on everything, so it stays an ordinary failure
+            var ex = Assert.Throws<BookInfoException>(() => Subject.GetBookInfo("1"));
+
+            ex.Message.Should().Contain("500");
+            Mocker.GetMock<IHttpClient>().Verify(s => s.Get(It.IsAny<HttpRequest>()), Times.Once());
+        }
+
+        [Test]
+        public void should_mark_a_work_the_source_rejects_as_invalid()
+        {
+            // rreading-glasses passes on Goodreads' rejection of some works, the same ones every time
+            Mocker.GetMock<IHttpClient>()
+                .Setup(s => s.Get(It.IsAny<HttpRequest>()))
+                .Returns<HttpRequest>(r => new HttpResponse(r, new HttpHeader(), "getting book: input:2:3: UGALGKBP Book is invalid\n", HttpStatusCode.InternalServerError));
+
             var ex = Assert.Throws<WorkErrorException>(() => Subject.GetBookInfo("1"));
 
-            ex.Message.Should().Contain("500 error");
+            ex.Message.Should().Contain("Book is invalid");
             Mocker.GetMock<IHttpClient>().Verify(s => s.Get(It.IsAny<HttpRequest>()), Times.Once());
         }
 
