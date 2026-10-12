@@ -794,9 +794,13 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                     {
                         throw new BadRequestException(foreignBookId);
                     }
+                    else if (httpResponse.StatusCode == HttpStatusCode.InternalServerError)
+                    {
+                        throw new WorkErrorException(foreignBookId, $"{(int)httpResponse.StatusCode} {FirstLine(httpResponse.Content)}");
+                    }
                     else
                     {
-                        throw new BookInfoException("Unexpected response fetching book data");
+                        throw new BookInfoException("Unexpected response fetching book data: {0}", (int)httpResponse.StatusCode);
                     }
                 }
 
@@ -835,6 +839,13 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             var edition = HttpUtility.ParseQueryString(location.Query)["edition"];
 
             return (segments.Length > 1 ? segments[^2] : null, segments[^1], edition);
+        }
+
+        private static string FirstLine(string content)
+        {
+            var line = (content ?? string.Empty).Trim().Split('\n')[0].Trim();
+
+            return line.Length > 120 ? line.Substring(0, 120) + "..." : line;
         }
 
         private HttpResponse ExecuteWithRetry(Func<HttpResponse> send)

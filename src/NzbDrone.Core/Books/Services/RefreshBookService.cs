@@ -14,6 +14,7 @@ using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.MetadataSource;
+using NzbDrone.Core.MetadataSource.BookInfo;
 
 namespace NzbDrone.Core.Books
 {
@@ -476,6 +477,12 @@ namespace NzbDrone.Core.Books
                     try
                     {
                         updated |= RefreshBookInfo(book, remoteBooks, remoteData, forceUpdateFileTags);
+                    }
+                    catch (WorkErrorException e)
+                    {
+                        // The source fails on this work every time, which says nothing about whether it is struggling.
+                        // Counting it let three bad works stop the rest of an author's missing books refreshing for good.
+                        _logger.Error(e, "Couldn't refresh info for book {0}", book);
                     }
                     catch (Exception e)
                     {

@@ -164,8 +164,11 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
         {
             GivenWorkResponses(HttpStatusCode.InternalServerError, HttpStatusCode.OK);
 
-            Assert.Throws<BookInfoException>(() => Subject.GetBookInfo("1"));
+            // rreading-glasses answers 500 "Book is invalid" for some works every time, so it marks the work, not
+            // the source. Rate limits and gateway errors above still throw the plain BookInfoException.
+            var ex = Assert.Throws<WorkErrorException>(() => Subject.GetBookInfo("1"));
 
+            ex.Message.Should().Contain("500 error");
             Mocker.GetMock<IHttpClient>().Verify(s => s.Get(It.IsAny<HttpRequest>()), Times.Once());
             ExceptionVerification.ExpectedWarns(1);
         }

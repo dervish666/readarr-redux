@@ -369,6 +369,28 @@ namespace NzbDrone.Core.Test.MusicTests
         }
 
         [Test]
+        public void should_keep_looking_up_missing_books_past_works_the_source_always_fails_on()
+        {
+            // Three works rreading-glasses answers 500 "Book is invalid" for left Stephen King's other 119 missing
+            // books unrefreshed on every run
+            var books = GivenBooksMissingFromAuthorList(10);
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Setup(s => s.GetBookInfo(It.IsAny<string>()))
+                .Throws(new WorkErrorException("1", "500 getting book: input:2:3: UGALGKBP Book is invalid"));
+
+            Subject.RefreshBookInfo(books, new List<Book>(), _author, true, false, null);
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Verify(v => v.GetBookInfo(It.IsAny<string>()), Times.Exactly(10));
+
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.DeleteBook(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never());
+
+            ExceptionVerification.ExpectedErrors(10);
+        }
+
+        [Test]
         public void should_stop_looking_up_missing_books_after_repeated_rate_limits()
         {
             var books = GivenBooksMissingFromAuthorList(10);
