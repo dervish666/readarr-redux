@@ -1,10 +1,13 @@
 using NLog;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Core.IndexerSearch.Definitions;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Qualities;
 
 namespace NzbDrone.Core.DecisionEngine.Specifications
 {
+    // Rejects audiobook releases smaller than their quality's MinSize, which catches single chapters and
+    // partial uploads. MinSize is a total release size here, not a per-second rate. MaxSize is ignored.
     public class AcceptableSizeSpecification : IDecisionEngineSpecification
     {
         private readonly IQualityDefinitionService _qualityDefinitionService;
@@ -21,53 +24,39 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
 
         public Decision IsSatisfiedBy(RemoteBook subject, SearchCriteriaBase searchCriteria)
         {
-            _logger.Debug("size restriction not implemented");
-            return Decision.Accept();
-
-            /*
-            _logger.Debug("Beginning size check for: {0}", subject);
-
             var quality = subject.ParsedBookInfo.Quality.Quality;
 
-            if (subject.Release.Size == 0)
+            // Ebooks are often well under a megabyte, so only audio releases get a minimum
+            if (!Quality.IsAudio(quality))
+            {
+                _logger.Debug("{0} is not an audio quality, skipping size check", quality);
+                return Decision.Accept();
+            }
+
+            if (subject.Release.Size <= 0)
             {
                 _logger.Debug("Release has unknown size, skipping size check");
                 return Decision.Accept();
             }
 
-            var qualityDefinition = _qualityDefinitionService.Get(quality);
+            var minSize = _qualityDefinitionService.Get(quality).MinSize;
 
-            if (qualityDefinition.MinSize.HasValue)
+            if (!minSize.HasValue || minSize.Value <= 0)
             {
-                var minSize = qualityDefinition.MinSize.Value.Kilobits();
-
-                //If the parsed size is smaller than minSize we don't want it
-                if (subject.Release.Size < minSize)
-                {
-                    _logger.Debug("Item: {0}, Size: {1} is smaller than minimum allowed size ({2} bytes), rejecting.", subject, subject.Release.Size, minSize);
-                    return Decision.Reject("{0} is smaller than minimum allowed {1}", subject.Release.Size.SizeSuffix(), minSize.SizeSuffix());
-                }
+                _logger.Debug("No minimum size for {0}, skipping size check", quality);
+                return Decision.Accept();
             }
 
-            if (!qualityDefinition.MaxSize.HasValue || qualityDefinition.MaxSize.Value == 0)
-            {
-                _logger.Debug("Max size is unlimited, skipping size check");
-            }
-            else
-            {
-                var maxSize = qualityDefinition.MaxSize.Value.Kilobits();
+            var minBytes = minSize.Value.Kilobits();
 
-                //If the parsed size is greater than maxSize we don't want it
-                if (subject.Release.Size > maxSize)
-                {
-                    _logger.Debug("Item: {0}, Size: {1} is greater than maximum allowed size ({2} bytes), rejecting.", subject, subject.Release.Size, maxSize);
-                    return Decision.Reject("{0} is larger than maximum allowed {1}", subject.Release.Size.SizeSuffix(), maxSize.SizeSuffix());
-                }
+            if (subject.Release.Size < minBytes)
+            {
+                _logger.Debug("Item: {0}, Size: {1} is smaller than minimum allowed size ({2} bytes), rejecting.", subject, subject.Release.Size, minBytes);
+                return Decision.Reject("Release is {0}, smaller than the minimum size for {1} ({2})", subject.Release.Size.SizeSuffix(), quality.Name, minBytes.SizeSuffix());
             }
 
-            _logger.Debug("Item: {0}, meets size constraints", subject);
+            _logger.Debug("Item: {0}, meets minimum size of {1}", subject, minBytes.SizeSuffix());
             return Decision.Accept();
-            */
         }
     }
 }

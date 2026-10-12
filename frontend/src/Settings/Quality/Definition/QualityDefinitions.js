@@ -14,7 +14,6 @@ class QualityDefinitions extends Component {
   render() {
     const {
       items,
-      advancedSettings,
       ...otherProps
     } = this.props;
 
@@ -32,15 +31,8 @@ class QualityDefinitions extends Component {
               {translate('Title')}
             </div>
             <div className={styles.sizeLimit}>
-              {translate('SizeLimit')}
+              {translate('MinimumReleaseSize')}
             </div>
-            {
-              advancedSettings ?
-                <div className={styles.kilobitsPerSecond}>
-                  Kilobits Per Second
-                </div> :
-                null
-            }
           </div>
 
           <div className={styles.definitions}>
@@ -50,7 +42,6 @@ class QualityDefinitions extends Component {
                   <QualityDefinitionConnector
                     key={item.id}
                     {...item}
-                    advancedSettings={advancedSettings}
                   />
                 );
               })
@@ -59,7 +50,7 @@ class QualityDefinitions extends Component {
 
           <div className={styles.sizeLimitHelpTextContainer}>
             <div className={styles.sizeLimitHelpText}>
-              Limits are automatically adjusted for the book duration.
+              {translate('MinimumReleaseSizeHelpText')}
             </div>
           </div>
         </PageSectionContent>
@@ -72,8 +63,7 @@ QualityDefinitions.propTypes = {
   isFetching: PropTypes.bool.isRequired,
   error: PropTypes.object,
   defaultProfile: PropTypes.object,
-  items: PropTypes.arrayOf(PropTypes.object).isRequired,
-  advancedSettings: PropTypes.bool.isRequired
+  items: PropTypes.arrayOf(PropTypes.object).isRequired
 };
 
 export default QualityDefinitions;

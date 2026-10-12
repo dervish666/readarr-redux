@@ -12,10 +12,6 @@
   flex: 0 1 500px;
 }
 
-.kilobitsPerSecond {
-  flex: 0 0 250px;
-}
-
 .sizeLimitHelpTextContainer {
   display: flex;
   justify-content: flex-end;

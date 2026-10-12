@@ -3,7 +3,6 @@
 interface CssExports {
   'definitions': string;
   'header': string;
-  'kilobitsPerSecond': string;
   'quality': string;
   'sizeLimit': string;
   'sizeLimitHelpText': string;
