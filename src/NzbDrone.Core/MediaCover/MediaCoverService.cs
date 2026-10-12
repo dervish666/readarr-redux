@@ -193,7 +193,17 @@ namespace NzbDrone.Core.MediaCover
 
         public void EnsureBookCovers(Book book)
         {
-            foreach (var cover in book.Editions.Value.Single(x => x.Monitored).Images.Where(e => e.CoverType == MediaCoverTypes.Cover))
+            // A book can be left with no monitored edition, or none at all, when the metadata source lists one
+            // edition under two works. Throwing here stopped the covers of every book after it.
+            var edition = book.Editions.Value.FirstOrDefault(x => x.Monitored);
+
+            if (edition == null)
+            {
+                _logger.Debug("No monitored edition for {0}, skipping its cover", book);
+                return;
+            }
+
+            foreach (var cover in edition.Images.Where(e => e.CoverType == MediaCoverTypes.Cover))
             {
                 if (cover.CoverType == MediaCoverTypes.Unknown)
                 {

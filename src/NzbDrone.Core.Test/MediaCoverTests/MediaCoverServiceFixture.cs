@@ -13,6 +13,7 @@ using NzbDrone.Common.Http;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Books.Events;
 using NzbDrone.Core.MediaCover;
+using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Test.Framework;
 
 namespace NzbDrone.Core.Test.MediaCoverTests
@@ -237,6 +238,46 @@ namespace NzbDrone.Core.Test.MediaCoverTests
 
             Mocker.GetMock<IImageResizer>()
                   .Verify(v => v.Resize(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>()), Times.Exactly(2));
+        }
+
+        [TestCase(0)]
+        [TestCase(1)]
+        public void should_skip_books_without_a_monitored_edition_and_carry_on(int unmonitoredEditions)
+        {
+            // rreading-glasses can list one edition under two works, and the refresh then leaves one book with no
+            // monitored edition, or no editions at all
+            var editions = Enumerable.Range(1, unmonitoredEditions)
+                .Select(i => Builder<Edition>.CreateNew()
+                    .With(v => v.Monitored = false)
+                    .With(v => v.Images = new List<MediaCover.MediaCover> { new MediaCover.MediaCover(MediaCoverTypes.Cover, "http://dummy.com/other.jpg") })
+                    .Build())
+                .ToList();
+
+            var orphan = Builder<Book>.CreateNew()
+                .With(v => v.Id = 3)
+                .With(v => v.Editions = editions)
+                .Build();
+
+            _edition.Images = new List<MediaCover.MediaCover> { new MediaCover.MediaCover(MediaCoverTypes.Cover, "http://dummy.com/cover.jpg") };
+
+            Mocker.GetMock<ICoverExistsSpecification>()
+                  .Setup(v => v.AlreadyExists(It.IsAny<DateTime?>(), It.IsAny<long?>(), It.IsAny<string>()))
+                  .Returns(false);
+
+            Mocker.GetMock<IBookService>()
+                  .Setup(v => v.GetBooksByAuthor(It.IsAny<int>()))
+                  .Returns(new List<Book> { orphan, _book });
+
+            Subject.HandleAsync(new AuthorRefreshCompleteEvent(_author));
+
+            Mocker.GetMock<IHttpClient>()
+                  .Verify(v => v.DownloadFile("http://dummy.com/cover.jpg", It.IsAny<string>(), It.IsAny<string>()), Times.Once());
+
+            Mocker.GetMock<IHttpClient>()
+                  .Verify(v => v.DownloadFile("http://dummy.com/other.jpg", It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+
+            Mocker.GetMock<IEventAggregator>()
+                  .Verify(v => v.PublishEvent(It.IsAny<MediaCoversUpdatedEvent>()), Times.Once());
         }
 
         [Test]
