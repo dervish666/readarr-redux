@@ -217,6 +217,7 @@ namespace NzbDrone.Core.MediaFiles
                 // there is nothing left to tidy
                 if (!_diskProvider.FolderExists(author.Path))
                 {
+                    _logger.Debug("Not tidying up after {0}: author folder {1} is already gone or inaccessible", message.BookFile.Path, author.Path);
                     return;
                 }
 
@@ -224,7 +225,11 @@ namespace NzbDrone.Core.MediaFiles
                 {
                     _diskProvider.DeleteFolder(author.Path, true);
                 }
-                else if (_diskProvider.FolderExists(bookFolder) && _diskProvider.GetFiles(bookFolder, true).Empty())
+                else if (!_diskProvider.FolderExists(bookFolder))
+                {
+                    _logger.Debug("Not tidying up after {0}: book folder {1} is already gone or inaccessible", message.BookFile.Path, bookFolder);
+                }
+                else if (_diskProvider.GetFiles(bookFolder, true).Empty())
                 {
                     _diskProvider.RemoveEmptySubfolders(bookFolder);
                 }
