@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 env:
-  DOTNET_VERSION: '6.0.428'
+  DOTNET_VERSION: '10.0.401'
   NODE_VERSION: '20'
   # Read by src/Directory.Build.props. RuntimeInfo treats a Revision above 10000 as a development build,
   # which run_number stays below for a long while.
@@ -66,13 +66,13 @@ jobs:
         run: echo "{\"sdk\":{\"version\":\"$DOTNET_VERSION\"}}" > global.json
 
       - name: Build
-        run: ./build.sh --backend -r ${{ matrix.rid }} -f net6.0
+        run: ./build.sh --backend -r ${{ matrix.rid }} -f net10.0
 
       # The arm64 test assemblies cannot run on an x64 runner
       - name: Unit tests
         if: matrix.rid == 'linux-x64'
         run: |
-          tests=_tests/net6.0/linux-x64/publish
+          tests=_tests/net10.0/linux-x64/publish
           find "$tests" -name Readarr.Test.Dummy -exec chmod a+x {} \;
           TEST_DIR="$tests" "$tests/test.sh" Linux Unit Test
 
@@ -92,9 +92,9 @@ jobs:
         env:
           RID: ${{ matrix.rid }}
         run: |
-          ./build.sh --packages -r "$RID" -f net6.0
+          ./build.sh --packages -r "$RID" -f net10.0
           name="Readarr.${BUILD_SOURCEBRANCHNAME//\//-}.${READARRVERSION}.linux-core-${RID#linux-}.tar.gz"
-          tar -czf "$name" -C "_artifacts/$RID/net6.0" Readarr
+          tar -czf "$name" -C "_artifacts/$RID/net10.0" Readarr
           sha256sum "$name" > "$name.sha256"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

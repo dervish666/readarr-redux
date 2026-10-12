@@ -54,6 +54,8 @@ namespace NzbDrone.Host
 
                 var startupContext = new StartupContext(args);
 
+                OsxAppDataMigration.Migrate(startupContext, new AppFolderInfo(startupContext));
+
                 LongPathSupport.Enable();
                 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
@@ -269,7 +271,12 @@ namespace NzbDrone.Host
 
             try
             {
-                certificate = new X509Certificate2(cert, password, X509KeyStorageFlags.DefaultKeySet);
+                certificate = X509CertificateLoader.LoadPkcs12FromFile(cert, password, X509KeyStorageFlags.DefaultKeySet);
+            }
+            catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+            {
+                throw new ReadarrStartupException(ex,
+                    $"The SSL certificate file {cert} does not exist");
             }
             catch (CryptographicException ex)
             {

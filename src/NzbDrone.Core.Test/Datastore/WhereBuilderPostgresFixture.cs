@@ -164,6 +164,15 @@ namespace NzbDrone.Core.Test.Datastore
         }
 
         [Test]
+        public void postgres_where_in_array()
+        {
+            var ids = new[] { 1, 2, 3 };
+            _subject = Where(x => ids.Contains(x.Id));
+
+            _subject.ToString().Should().Be($"(\"Authors\".\"Id\" = ANY (('{{1, 2, 3}}')))");
+        }
+
+        [Test]
         public void postgres_where_in_list_2()
         {
             var list = new List<int> { 1, 2, 3 };

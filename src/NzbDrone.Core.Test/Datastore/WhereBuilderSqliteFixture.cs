@@ -166,6 +166,17 @@ namespace NzbDrone.Core.Test.Datastore
         }
 
         [Test]
+        public void where_in_array()
+        {
+            var ids = new[] { 1, 2, 3 };
+            _subject = Where(x => ids.Contains(x.Id));
+
+            _subject.ToString().Should().Be($"(\"Authors\".\"Id\" IN (1, 2, 3))");
+
+            _subject.Parameters.ParameterNames.Should().BeEmpty();
+        }
+
+        [Test]
         public void where_in_list_2()
         {
             var list = new List<int> { 1, 2, 3 };
