@@ -515,6 +515,25 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             _trackedDownload.State.Should().Be(TrackedDownloadState.ImportFailed);
         }
 
+        [Test]
+        public void should_mark_as_imported_when_the_download_has_no_known_author()
+        {
+            _trackedDownload.RemoteBook.Author = null;
+
+            Mocker.GetMock<IDownloadedBooksImportService>()
+                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>(), It.IsAny<Book>()))
+                  .Returns(new List<ImportResult>
+                           {
+                               new ImportResult(
+                                   new ImportDecision<LocalBook>(
+                                       new LocalBook { Path = @"C:\TestPath\Droned.S01E01.mkv".AsOsAgnostic(), Author = _author }))
+                           });
+
+            Subject.Import(_trackedDownload);
+
+            AssertImported();
+        }
+
         private void AssertImported()
         {
             Mocker.GetMock<IDownloadedBooksImportService>()
