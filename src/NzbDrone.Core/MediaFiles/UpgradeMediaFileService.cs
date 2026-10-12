@@ -169,7 +169,15 @@ namespace NzbDrone.Core.MediaFiles
 
             if (!isCalibre)
             {
-                _metadataTagService.WriteTags(bookFile, true);
+                try
+                {
+                    _metadataTagService.WriteTags(bookFile, true);
+                }
+                catch (Exception e)
+                {
+                    // The file has moved and the old rows are gone, so a failed retag must not fail the import
+                    _logger.Warn(e, "Couldn't write tags to {0}, keeping its existing tags", bookFile.Path);
+                }
             }
 
             return moveFileResult;

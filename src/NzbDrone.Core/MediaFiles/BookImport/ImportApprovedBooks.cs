@@ -315,7 +315,15 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                             }
                         }
 
-                        _metadataTagService.WriteTags(bookFile, false);
+                        try
+                        {
+                            _metadataTagService.WriteTags(bookFile, false);
+                        }
+                        catch (Exception e)
+                        {
+                            // The old row for this path is already gone, so a failed retag must not stop the file being added back
+                            _logger.Warn(e, "Couldn't write tags to {0}, keeping its existing tags", bookFile.Path);
+                        }
                     }
 
                     filesToAdd.Add(bookFile);
