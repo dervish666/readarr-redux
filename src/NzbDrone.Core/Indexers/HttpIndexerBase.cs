@@ -240,6 +240,13 @@ namespace NzbDrone.Core.Indexers
                 _indexerStatusService.RecordFailure(Definition.Id);
                 _logger.Warn(ex, "Unable to connect to indexer, possibly due to a timeout. {0}", url);
             }
+            catch (HttpRequestException ex)
+            {
+                // Refused or reset before any answer, as a local indexer is while it restarts. The dispatcher only
+                // turns timeouts and broken bodies into WebException, so this used to land in the catch-all below.
+                _indexerStatusService.RecordFailure(Definition.Id);
+                _logger.Warn("Unable to connect to {0} at [{1}]. {2}", this, url, ex.GetBaseException().Message);
+            }
             catch (IndexerException ex)
             {
                 _indexerStatusService.RecordFailure(Definition.Id);
