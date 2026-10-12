@@ -3,9 +3,12 @@ using FizzWare.NBuilder;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.Disk;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Books;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.MediaFiles;
+using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.RootFolders;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Test.Common;
@@ -146,6 +149,54 @@ namespace NzbDrone.Core.Test.MediaFiles.MediaFileDeletionService
             ExceptionVerification.ExpectedErrors(1);
             Mocker.GetMock<IRecycleBinProvider>().Verify(v => v.DeleteFile(_trackFile.Path, "Author Name"), Times.Once());
             Mocker.GetMock<IMediaFileService>().Verify(v => v.Delete(_trackFile, DeleteMediaFileReason.Manual), Times.Never());
+        }
+
+        [Test]
+        public void should_not_throw_tidying_up_after_a_file_whose_folder_is_already_gone()
+        {
+            // A rescan drops files that are missing from disk, often because their folder was renamed or removed
+            _trackFile.Path = Path.Combine(_author.Path, "Book Title", "Book Title.m4b");
+            _trackFile.Author = _author;
+            var bookFolder = _trackFile.Path.GetParentPath();
+
+            Mocker.GetMock<IConfigService>()
+                  .SetupGet(s => s.DeleteEmptyFolders)
+                  .Returns(true);
+
+            GivenAuthorFolderExists();
+
+            Mocker.GetMock<IDiskProvider>()
+                  .Setup(s => s.GetFiles(_author.Path, true))
+                  .Returns(new[] { Path.Combine(_author.Path, "Other Book", "Other Book.m4b") });
+
+            Mocker.GetMock<IDiskProvider>()
+                  .Setup(s => s.GetFiles(bookFolder, true))
+                  .Throws(new DirectoryNotFoundException());
+
+            Subject.Handle(new BookFileDeletedEvent(_trackFile, DeleteMediaFileReason.MissingFromDisk));
+
+            Mocker.GetMock<IDiskProvider>().Verify(v => v.RemoveEmptySubfolders(It.IsAny<string>()), Times.Never());
+            Mocker.GetMock<IDiskProvider>().Verify(v => v.DeleteFolder(It.IsAny<string>(), It.IsAny<bool>()), Times.Never());
+        }
+
+        [Test]
+        public void should_not_throw_tidying_up_after_a_file_whose_author_folder_is_already_gone()
+        {
+            _trackFile.Path = Path.Combine(_author.Path, "Book Title", "Book Title.m4b");
+            _trackFile.Author = _author;
+
+            Mocker.GetMock<IConfigService>()
+                  .SetupGet(s => s.DeleteEmptyFolders)
+                  .Returns(true);
+
+            Mocker.GetMock<IDiskProvider>()
+                  .Setup(s => s.GetFiles(It.IsAny<string>(), true))
+                  .Throws(new DirectoryNotFoundException());
+
+            Subject.Handle(new BookFileDeletedEvent(_trackFile, DeleteMediaFileReason.MissingFromDisk));
+
+            Mocker.GetMock<IDiskProvider>().Verify(v => v.RemoveEmptySubfolders(It.IsAny<string>()), Times.Never());
+            Mocker.GetMock<IDiskProvider>().Verify(v => v.DeleteFolder(It.IsAny<string>(), It.IsAny<bool>()), Times.Never());
         }
     }
 }

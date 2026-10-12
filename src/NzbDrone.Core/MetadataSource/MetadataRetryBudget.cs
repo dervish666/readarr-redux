@@ -39,6 +39,27 @@ namespace NzbDrone.Core.MetadataSource
             return true;
         }
 
+        // Time already spent on requests counts too, so slow answers can't hold a command any longer than sleeping
+        // through retries could
+        public static void Charge(TimeSpan elapsed)
+        {
+            var budget = Current.Value;
+
+            if (budget == null)
+            {
+                return;
+            }
+
+            if (elapsed >= budget.Remaining)
+            {
+                budget.Remaining = TimeSpan.Zero;
+                budget.Exhausted = true;
+                return;
+            }
+
+            budget.Remaining -= elapsed;
+        }
+
         private sealed class Budget
         {
             public TimeSpan Remaining { get; set; }

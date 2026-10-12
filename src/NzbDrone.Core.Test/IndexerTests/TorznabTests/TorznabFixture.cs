@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -13,6 +14,7 @@ using NzbDrone.Core.Indexers.Torznab;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Core.Validation;
+using NzbDrone.Test.Common;
 
 namespace NzbDrone.Core.Test.IndexerTests.TorznabTests
 {
@@ -71,6 +73,24 @@ namespace NzbDrone.Core.Test.IndexerTests.TorznabTests
             releaseInfo.InfoHash.Should().Be("63e07ff523710ca268567dad344ce1e0e6b7e8a3");
             releaseInfo.Seeders.Should().Be(7);
             releaseInfo.Peers.Should().Be(7);
+        }
+
+        [Test]
+        public async Task should_warn_and_back_off_when_the_indexer_resets_the_connection()
+        {
+            // What a local bitmagnet answers while it restarts
+            Mocker.GetMock<IHttpClient>()
+                .Setup(o => o.ExecuteAsync(It.IsAny<HttpRequest>()))
+                .Throws(new HttpRequestException("An error occurred while sending the request.", new IOException("Connection reset by peer")));
+
+            var releases = await Subject.FetchRecent();
+
+            releases.Should().BeEmpty();
+
+            Mocker.GetMock<IIndexerStatusService>()
+                .Verify(v => v.RecordFailure(It.IsAny<int>(), It.IsAny<TimeSpan>()), Times.Once());
+
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]

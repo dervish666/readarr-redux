@@ -130,7 +130,8 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
             catch (BookInfoException e)
             {
-                _logger.Warn(e, "Unexpected error getting book info: {foreignBookId}", foreignBookId);
+                // Every caller logs what it does about the failure, so a Warn here only doubled it
+                _logger.Debug(e, "Unexpected error getting book info: {foreignBookId}", foreignBookId);
                 throw;
             }
         }
@@ -794,9 +795,13 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                     {
                         throw new BadRequestException(foreignBookId);
                     }
+                    else if (IsInvalidWork(httpResponse))
+                    {
+                        throw new WorkErrorException(foreignBookId, $"{(int)httpResponse.StatusCode} {FirstLine(httpResponse.Content)}");
+                    }
                     else
                     {
-                        throw new BookInfoException("Unexpected response fetching book data");
+                        throw new BookInfoException("Unexpected response fetching book data: {0}", (int)httpResponse.StatusCode);
                     }
                 }
 
@@ -835,6 +840,22 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             var edition = HttpUtility.ParseQueryString(location.Query)["edition"];
 
             return (segments.Length > 1 ? segments[^2] : null, segments[^1], edition);
+        }
+
+        // rreading-glasses passes on Goodreads' rejection of a work as a 500 reading "getting book: input:2:3: <request
+        // id> Book is invalid", and the same works get it every time. Any other 500 may be the source failing on
+        // everything, so it stays an ordinary failure.
+        private static bool IsInvalidWork(HttpResponse response)
+        {
+            return response.StatusCode == HttpStatusCode.InternalServerError &&
+                   (response.Content?.Contains("Book is invalid", StringComparison.Ordinal) ?? false);
+        }
+
+        private static string FirstLine(string content)
+        {
+            var line = (content ?? string.Empty).Trim().Split('\n')[0].Trim();
+
+            return line.Length > 120 ? line.Substring(0, 120) + "..." : line;
         }
 
         private HttpResponse ExecuteWithRetry(Func<HttpResponse> send)

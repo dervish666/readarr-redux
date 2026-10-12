@@ -316,7 +316,6 @@ namespace NzbDrone.Core.Test.MusicTests
             Mocker.GetMock<IBookService>()
                 .Verify(v => v.DeleteBook(_book.Id, false, false), Times.Once());
 
-            ExceptionVerification.ExpectedErrors(1);
             ExceptionVerification.ExpectedWarns(1);
         }
 
@@ -369,6 +368,161 @@ namespace NzbDrone.Core.Test.MusicTests
         }
 
         [Test]
+        public void should_keep_looking_up_missing_books_past_works_the_source_always_fails_on()
+        {
+            // Three works rreading-glasses answers 500 "Book is invalid" for left 119 of one author's other missing
+            // books unrefreshed on every run
+            var books = GivenBooksMissingFromAuthorList(10);
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Setup(s => s.GetBookInfo(It.IsAny<string>()))
+                .Throws(new WorkErrorException("1", "500 getting book: input:2:3: UGALGKBP Book is invalid"));
+
+            Subject.RefreshBookInfo(books, new List<Book>(), _author, true, false, null);
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Verify(v => v.GetBookInfo(It.IsAny<string>()), Times.Exactly(10));
+
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.DeleteBook(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never());
+
+            ExceptionVerification.ExpectedWarns(10);
+        }
+
+        // The real proxy over mocked HTTP, answering every work lookup with a 500 and this body
+        private void GivenWorksAnswerServerError(string body)
+        {
+            Mocker.GetMock<IMetadataRequestBuilder>()
+                .Setup(s => s.GetRequestBuilder())
+                .Returns(new HttpRequestBuilder("http://rreading-glasses.local/{route}").CreateFactory());
+
+            Mocker.GetMock<IHttpClient>()
+                .Setup(s => s.Get(It.IsAny<HttpRequest>()))
+                .Returns((HttpRequest request) => new HttpResponse(request, new HttpHeader(), body, HttpStatusCode.InternalServerError));
+
+            Mocker.SetConstant<IProvideBookInfo>(Mocker.Resolve<BookInfoProxy>());
+        }
+
+        private void VerifyWorkLookups(int times)
+        {
+            Mocker.GetMock<IHttpClient>()
+                .Verify(v => v.Get(It.Is<HttpRequest>(r => r.Url.FullUri.Contains("/work/"))), Times.Exactly(times));
+        }
+
+        [Test]
+        public void should_stop_looking_up_missing_books_when_the_source_fails_every_work()
+        {
+            var books = GivenBooksMissingFromAuthorList(10);
+
+            // An outage, not a rejection of particular works
+            GivenWorksAnswerServerError("Internal Server Error");
+
+            Subject.RefreshBookInfo(books, new List<Book>(), _author, true, false, null);
+
+            VerifyWorkLookups(3);
+
+            ExceptionVerification.ExpectedErrors(3);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_keep_looking_up_missing_books_past_works_the_source_rejects_as_invalid()
+        {
+            var books = GivenBooksMissingFromAuthorList(10);
+
+            GivenWorksAnswerServerError("getting book: input:2:3: UGALGKBP Book is invalid");
+
+            Subject.RefreshBookInfo(books, new List<Book>(), _author, true, false, null);
+
+            VerifyWorkLookups(10);
+
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.DeleteBook(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never());
+
+            ExceptionVerification.ExpectedWarns(10);
+        }
+
+        [Test]
+        public void should_count_rejected_works_towards_the_bound_past_twenty_in_one_refresh()
+        {
+            // So many rejections may be the source after all
+            var books = GivenBooksMissingFromAuthorList(30);
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Setup(s => s.GetBookInfo(It.IsAny<string>()))
+                .Throws(new WorkErrorException("1", "500 getting book: input:2:3: UGALGKBP Book is invalid"));
+
+            Subject.RefreshBookInfo(books, new List<Book>(), _author, true, false, null);
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Verify(v => v.GetBookInfo(It.IsAny<string>()), Times.Exactly(23));
+
+            ExceptionVerification.ExpectedErrors(3);
+            ExceptionVerification.ExpectedWarns(21);
+        }
+
+        [Test]
+        public void should_stop_looking_up_missing_books_once_lookups_have_spent_the_command_budget()
+        {
+            var books = GivenBooksMissingFromAuthorList(10);
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Setup(s => s.GetBookInfo(It.IsAny<string>()))
+                .Throws(new WorkErrorException("1", "500 getting book: input:2:3: UGALGKBP Book is invalid"));
+
+            // Slow answers cost time just as retry sleeps do, and any lookup at all overruns an empty budget
+            using (MetadataRetryBudget.Start(TimeSpan.Zero))
+            {
+                Subject.RefreshBookInfo(books, new List<Book>(), _author, true, false, null);
+
+                MetadataRetryBudget.Exhausted.Should().BeTrue();
+            }
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Verify(v => v.GetBookInfo(It.IsAny<string>()), Times.Once());
+
+            ExceptionVerification.ExpectedWarns(2);
+        }
+
+        [Test]
+        public void should_log_one_warn_for_all_the_books_a_run_keeps()
+        {
+            // Works Goodreads merged away on books with files, and works rreading-glasses answers 500 for. Each
+            // logged one or two errors with a stack on every refresh, about 80 books a night in a large library.
+            var gone = GivenBooksMissingFromAuthorList(3);
+            var failing = GivenBooksMissingFromAuthorList(3);
+            failing.ForEach(b => b.ForeignBookId = $"failing{b.Id}");
+
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(s => s.GetFilesByBook(It.IsAny<int>()))
+                .Returns(Builder<BookFile>.CreateListOfSize(1).BuildList());
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Setup(s => s.GetBookInfo(It.Is<string>(id => id.StartsWith("missing"))))
+                .Throws(new BookNotFoundException("missing"));
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Setup(s => s.GetBookInfo(It.Is<string>(id => id.StartsWith("failing"))))
+                .Throws(new WorkErrorException("failing", "500 getting book: input:2:3: UGALGKBP Book is invalid"));
+
+            using (KeptBooks.Start(TestLogger))
+            {
+                Subject.RefreshBookInfo(gone.Concat(failing).ToList(), new List<Book>(), _author, true, false, null);
+
+                ExceptionVerification.ExpectedErrors(0);
+                ExceptionVerification.ExpectedWarns(0);
+            }
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Verify(v => v.GetBookInfo(It.IsAny<string>()), Times.Exactly(6));
+
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.DeleteBook(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
         public void should_stop_looking_up_missing_books_after_repeated_rate_limits()
         {
             var books = GivenBooksMissingFromAuthorList(10);
@@ -400,7 +554,7 @@ namespace NzbDrone.Core.Test.MusicTests
                 .Verify(v => v.DeleteBook(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never());
 
             ExceptionVerification.ExpectedErrors(3);
-            ExceptionVerification.ExpectedWarns(4);
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         // The real proxy against rreading-glasses over mocked HTTP. The book's work 404s, as a work Goodreads merged
@@ -511,7 +665,6 @@ namespace NzbDrone.Core.Test.MusicTests
             Mocker.GetMock<IEditionService>()
                 .Verify(v => v.SetMonitored(It.IsAny<Edition>()), Times.Never());
 
-            ExceptionVerification.ExpectedErrors(1);
             ExceptionVerification.ExpectedWarns(1);
         }
 
@@ -541,7 +694,6 @@ namespace NzbDrone.Core.Test.MusicTests
             Mocker.GetMock<IEditionService>()
                 .Verify(v => v.SetMonitored(It.Is<Edition>(e => e.ForeignEditionId == "11" && e.BookId == 2)), Times.Once());
 
-            ExceptionVerification.ExpectedErrors(1);
             ExceptionVerification.ExpectedWarns(1);
         }
 
@@ -564,7 +716,6 @@ namespace NzbDrone.Core.Test.MusicTests
             _book.ForeignBookId.Should().Be("1");
             _book.TitleSlug.Should().Be("1");
 
-            ExceptionVerification.ExpectedErrors(1);
             ExceptionVerification.ExpectedWarns(1);
         }
 
@@ -588,8 +739,6 @@ namespace NzbDrone.Core.Test.MusicTests
             _book.ForeignBookId.Should().Be("2");
             _book.TitleSlug.Should().Be("2");
             _book.Monitored.Should().BeTrue();
-
-            ExceptionVerification.ExpectedErrors(1);
         }
 
         [Test]
@@ -616,7 +765,6 @@ namespace NzbDrone.Core.Test.MusicTests
             _book.ForeignBookId.Should().Be("1");
             _book.TitleSlug.Should().Be("1");
 
-            ExceptionVerification.ExpectedErrors(1);
             ExceptionVerification.ExpectedWarns(1);
         }
 
@@ -631,7 +779,6 @@ namespace NzbDrone.Core.Test.MusicTests
             VerifyEditionLookups(1);
             VerifyBookDeleted(Times.Once());
 
-            ExceptionVerification.ExpectedErrors(1);
             ExceptionVerification.ExpectedWarns(1);
         }
 
@@ -646,7 +793,6 @@ namespace NzbDrone.Core.Test.MusicTests
             VerifyEditionLookups(0);
             VerifyBookDeleted(Times.Once());
 
-            ExceptionVerification.ExpectedErrors(1);
             ExceptionVerification.ExpectedWarns(1);
         }
 
@@ -664,7 +810,7 @@ namespace NzbDrone.Core.Test.MusicTests
             Mocker.GetMock<IBookService>()
                 .Verify(v => v.UpdateMany(It.IsAny<List<Book>>()), Times.Never());
 
-            ExceptionVerification.ExpectedErrors(2);
+            ExceptionVerification.ExpectedErrors(1);
         }
 
         [Test]
@@ -685,7 +831,7 @@ namespace NzbDrone.Core.Test.MusicTests
             Mocker.GetMock<IBookService>()
                 .Verify(v => v.DeleteBook(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never());
 
-            ExceptionVerification.ExpectedErrors(6);
+            ExceptionVerification.ExpectedErrors(3);
             ExceptionVerification.ExpectedWarns(1);
         }
 
@@ -704,7 +850,7 @@ namespace NzbDrone.Core.Test.MusicTests
             VerifyEditionLookups(0);
             VerifyBookDeleted(Times.Never());
 
-            ExceptionVerification.ExpectedErrors(2);
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]
@@ -723,7 +869,6 @@ namespace NzbDrone.Core.Test.MusicTests
             Mocker.GetMock<IBookService>()
                 .Verify(v => v.DeleteBook(It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<bool>()), Times.Never());
 
-            ExceptionVerification.ExpectedErrors(1);
             ExceptionVerification.ExpectedWarns(1);
         }
 

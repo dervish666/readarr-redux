@@ -213,9 +213,21 @@ namespace NzbDrone.Core.MediaFiles
                 var author = message.BookFile.Author.Value;
                 var bookFolder = message.BookFile.Path.GetParentPath();
 
+                // A rescan drops files missing from disk, often because their folder was renamed or removed, and
+                // there is nothing left to tidy
+                if (!_diskProvider.FolderExists(author.Path))
+                {
+                    _logger.Debug("Not tidying up after {0}: author folder {1} is already gone or inaccessible", message.BookFile.Path, author.Path);
+                    return;
+                }
+
                 if (_diskProvider.GetFiles(author.Path, true).Empty())
                 {
                     _diskProvider.DeleteFolder(author.Path, true);
+                }
+                else if (!_diskProvider.FolderExists(bookFolder))
+                {
+                    _logger.Debug("Not tidying up after {0}: book folder {1} is already gone or inaccessible", message.BookFile.Path, bookFolder);
                 }
                 else if (_diskProvider.GetFiles(bookFolder, true).Empty())
                 {

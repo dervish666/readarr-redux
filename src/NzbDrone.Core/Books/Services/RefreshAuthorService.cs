@@ -93,7 +93,8 @@ namespace NzbDrone.Core.Books
             }
             catch (AuthorNotFoundException)
             {
-                _logger.Error($"Could not find author with id {foreignId}");
+                // The base class logs the outcome, keeping the author
+                _logger.Debug("Could not find author with id {0}", foreignId);
             }
 
             return null;
@@ -361,6 +362,7 @@ namespace NzbDrone.Core.Books
             var authors = _authorService.GetAuthors(authorIds);
 
             using (MetadataRetryBudget.Start(RetryBudget))
+            using (KeptBooks.Start(_logger))
             {
                 foreach (var author in authors)
                 {
@@ -426,6 +428,7 @@ namespace NzbDrone.Core.Books
                 var skipped = 0;
 
                 using (MetadataRetryBudget.Start(RetryBudget))
+                using (KeptBooks.Start(_logger))
                 {
                     foreach (var author in authors)
                     {

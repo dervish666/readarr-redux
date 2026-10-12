@@ -14,6 +14,7 @@ using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.MetadataSource;
+using NzbDrone.Core.MetadataSource.BookInfo;
 
 namespace NzbDrone.Core.Books
 {
@@ -29,6 +30,7 @@ namespace NzbDrone.Core.Books
         IExecute<BulkRefreshBookCommand>
     {
         private const int MaxFailedLookupsPerRefresh = 3;
+        private const int MaxRejectedWorksPerRefresh = 20;
 
         private readonly IBookService _bookService;
         private readonly IAuthorService _authorService;
@@ -90,7 +92,7 @@ namespace NzbDrone.Core.Books
             }
             catch (BookNotFoundException)
             {
-                _logger.Error($"Could not find book with id {book.ForeignBookId}");
+                _logger.Debug("Could not find book with id {0}", book.ForeignBookId);
             }
 
             return null;
@@ -141,9 +143,12 @@ namespace NzbDrone.Core.Books
         {
             var result = new RemoteData();
 
-            // Books with files or added by hand are never deleted, so leave them as they were
+            // Books with files or added by hand are never deleted, so leave them as they were. Usually Goodreads merged
+            // the work into one already in the library, and moving the files across is for a person to do.
             if (!ShouldDelete(local))
             {
+                KeptBooks.NotFound(local, _logger);
+                result.Keep = true;
                 return result;
             }
 
@@ -456,6 +461,7 @@ namespace NzbDrone.Core.Books
             var updated = false;
             var remoteIds = remoteBooks.Select(x => x.ForeignBookId).ToHashSet();
             var failedLookups = 0;
+            var rejectedWorks = 0;
             var skippedLookups = 0;
 
             foreach (var book in books)
@@ -464,14 +470,17 @@ namespace NzbDrone.Core.Books
                 {
                     // A book missing from the author's works list costs a lookup of its own, each retrying through
                     // rate limits. Once a few of those have failed the metadata source is struggling, so keep the
-                    // rest as they are rather than queue more lookups behind it.
+                    // rest as they are rather than queue more lookups behind it. Lookups also stop once the command
+                    // has spent its time on the metadata source.
                     var needsLookup = !remoteIds.Contains(book.ForeignBookId);
 
-                    if (needsLookup && failedLookups >= MaxFailedLookupsPerRefresh)
+                    if (needsLookup && (failedLookups >= MaxFailedLookupsPerRefresh || MetadataRetryBudget.Exhausted))
                     {
                         skippedLookups++;
                         continue;
                     }
+
+                    var stopwatch = Stopwatch.StartNew();
 
                     try
                     {
@@ -479,12 +488,29 @@ namespace NzbDrone.Core.Books
                     }
                     catch (Exception e)
                     {
-                        // Keep the book and carry on, so one failed lookup doesn't stop the whole author refreshing
-                        _logger.Error(e, "Couldn't refresh info for book {0}", book);
+                        // A work the source rejects every time says nothing about whether it is struggling, and
+                        // counting it let three bad works stop the rest of an author's missing books refreshing for
+                        // good. Past MaxRejectedWorksPerRefresh it counts again, in case it is the source after all.
+                        if (e is WorkErrorException && ++rejectedWorks <= MaxRejectedWorksPerRefresh)
+                        {
+                            KeptBooks.Failed(book, e, _logger);
+                        }
+                        else
+                        {
+                            // Keep the book and carry on, so one failed lookup doesn't stop the whole author refreshing
+                            _logger.Error(e, "Couldn't refresh info for book {0}", book);
 
+                            if (needsLookup)
+                            {
+                                failedLookups++;
+                            }
+                        }
+                    }
+                    finally
+                    {
                         if (needsLookup)
                         {
-                            failedLookups++;
+                            MetadataRetryBudget.Charge(stopwatch.Elapsed);
                         }
                     }
                 }
@@ -494,11 +520,17 @@ namespace NzbDrone.Core.Books
                 }
             }
 
-            if (skippedLookups > 0)
+            if (skippedLookups > 0 && failedLookups >= MaxFailedLookupsPerRefresh)
             {
                 _logger.Warn("Stopped looking up books missing from {0}'s works list after {1} failed lookups. Kept {2} more as they are until the next refresh.",
                     remoteData,
                     failedLookups,
+                    skippedLookups);
+            }
+            else if (skippedLookups > 0)
+            {
+                _logger.Warn("Stopped looking up books missing from {0}'s works list, as this command has spent its time on the metadata source. Kept {1} more as they are until the next refresh.",
+                    remoteData,
                     skippedLookups);
             }
 

@@ -7,7 +7,6 @@ using NzbDrone.Core.Http;
 using NzbDrone.Core.MetadataSource;
 using NzbDrone.Core.MetadataSource.BookInfo;
 using NzbDrone.Core.Test.Framework;
-using NzbDrone.Test.Common;
 
 namespace NzbDrone.Core.Test.MetadataSource.Goodreads
 {
@@ -41,8 +40,6 @@ namespace NzbDrone.Core.Test.MetadataSource.Goodreads
                     new HttpResponse(request, new HttpHeader(), "{\"ForeignId\":123,\"Name\":\"Some Author\",\"Works\":[],\"Series\":[]}"));
 
             Assert.Throws<BookInfoException>(() => Subject.GetBookInfo("1"));
-
-            ExceptionVerification.ExpectedWarns(1);
         }
     }
 }
