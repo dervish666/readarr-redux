@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net;
 using NLog;
 using NzbDrone.Common.Disk;
@@ -190,14 +191,48 @@ namespace NzbDrone.Core.MediaFiles
 
         public void HandleAsync(BookDeletedEvent message)
         {
-            if (message.DeleteFiles)
+            if (!message.DeleteFiles)
             {
-                var files = _mediaFileService.GetFilesByBook(message.Book.Id);
-                foreach (var file in files)
+                return;
+            }
+
+            // The book and its editions are already gone, so the files can't be looked up through them any more.
+            // BookService read them before the delete.
+            var files = message.Book.BookFiles?.Value ?? new List<BookFile>();
+            var deleted = new List<BookFile>();
+            var kept = new List<BookFile>();
+
+            foreach (var file in files)
+            {
+                try
                 {
-                    DeleteFile(file);
+                    // A rescan may have taken the file up for another book since, under a new row. It is that book's now.
+                    var current = _mediaFileService.GetFileWithPath(file.Path);
+
+                    if (current != null && current.Id != file.Id)
+                    {
+                        _logger.Info("Not deleting {0}, it has been imported again since", file.Path);
+                        continue;
+                    }
+
+                    // Calibre deletes a book by its id, so its file needn't be reachable from here
+                    if (file.CalibreId != 0 || _diskProvider.FileExists(file.Path))
+                    {
+                        _logger.Info("Deleting book file: {0}", file.Path);
+                        DeleteFile(file);
+                    }
+
+                    deleted.Add(file);
+                }
+                catch (Exception e)
+                {
+                    _logger.Warn(e, "Couldn't delete {0}, keeping it as an unmapped file", file.Path);
+                    kept.Add(file);
                 }
             }
+
+            // Each row outlives its file, so a rescan meanwhile sees a known file rather than taking it up again
+            _mediaFileService.RemoveFilesOfDeletedBook(deleted, kept);
         }
 
         [EventHandleOrder(EventHandleOrder.Last)]
@@ -210,8 +245,15 @@ namespace NzbDrone.Core.MediaFiles
 
             if (_configService.DeleteEmptyFolders)
             {
-                var author = message.BookFile.Author.Value;
+                var author = message.BookFile.Author?.Value;
                 var bookFolder = message.BookFile.Path.GetParentPath();
+
+                // A row left behind by a deleted book points at an edition that is gone, so there is no author to tidy
+                if (author == null)
+                {
+                    _logger.Debug("Not tidying up after {0}: its book is gone", message.BookFile.Path);
+                    return;
+                }
 
                 // A rescan drops files missing from disk, often because their folder was renamed or removed, and
                 // there is nothing left to tidy

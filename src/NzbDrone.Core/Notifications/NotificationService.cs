@@ -278,13 +278,22 @@ namespace NzbDrone.Core.Notifications
 
         public void Handle(BookFileDeletedEvent message)
         {
+            var deletedBook = message.BookFile.Edition?.Value?.Book?.Value;
+
+            // A row left behind by a deleted book points at an edition that is gone, so there is no book to report
+            if (deletedBook == null || message.BookFile.Author?.Value == null)
+            {
+                _logger.Debug("Not sending OnBookFileDelete notifications for {0}, its book is gone", message.BookFile.Path);
+                return;
+            }
+
             var deleteMessage = new BookFileDeleteMessage();
 
-            var book = new List<Book> { message.BookFile.Edition.Value.Book };
+            var book = new List<Book> { deletedBook };
 
             deleteMessage.Message = GetMessage(message.BookFile.Author, book, message.BookFile.Quality);
             deleteMessage.BookFile = message.BookFile;
-            deleteMessage.Book = message.BookFile.Edition.Value.Book;
+            deleteMessage.Book = deletedBook;
             deleteMessage.Reason = message.Reason;
 
             foreach (var notification in _notificationFactory.OnBookFileDeleteEnabled())

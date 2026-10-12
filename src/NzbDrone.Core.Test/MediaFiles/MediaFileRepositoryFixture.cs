@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using FizzWare.NBuilder;
 using FluentAssertions;
 using NUnit.Framework;
@@ -163,16 +162,6 @@ namespace NzbDrone.Core.Test.MediaFiles
                 file.Author.IsLoaded.Should().BeFalse();
                 file.Author.Value.Should().BeNull();
             }
-        }
-
-        [Ignore("Doesn't make sense now we link to edition")]
-        [Test]
-        public void delete_files_by_book_should_work_if_join_fails()
-        {
-            Db.Delete(_book);
-            Subject.DeleteFilesByBook(_book.Id);
-
-            Db.All<BookFile>().Where(x => x.EditionId == _book.Id).Should().HaveCount(0);
         }
     }
 }

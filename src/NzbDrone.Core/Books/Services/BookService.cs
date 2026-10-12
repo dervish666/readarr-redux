@@ -5,6 +5,7 @@ using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Books.Events;
 using NzbDrone.Core.Datastore;
+using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Parser;
 
@@ -47,16 +48,19 @@ namespace NzbDrone.Core.Books
     {
         private readonly IBookRepository _bookRepository;
         private readonly IEditionService _editionService;
+        private readonly IMediaFileService _mediaFileService;
         private readonly IEventAggregator _eventAggregator;
         private readonly Logger _logger;
 
         public BookService(IBookRepository bookRepository,
                            IEditionService editionService,
+                           IMediaFileService mediaFileService,
                            IEventAggregator eventAggregator,
                            Logger logger)
         {
             _bookRepository = bookRepository;
             _editionService = editionService;
+            _mediaFileService = mediaFileService;
             _eventAggregator = eventAggregator;
             _logger = logger;
         }
@@ -85,6 +89,7 @@ namespace NzbDrone.Core.Books
         {
             var book = _bookRepository.Get(bookId);
             book.Author.LazyLoad();
+            LoadFilesBeforeDelete(book);
             _bookRepository.Delete(bookId);
             _eventAggregator.PublishEvent(new BookDeletedEvent(book, deleteFiles, addImportListExclusion));
         }
@@ -264,6 +269,7 @@ namespace NzbDrone.Core.Books
 
         public void DeleteMany(List<Book> books)
         {
+            books.ForEach(LoadFilesBeforeDelete);
             _bookRepository.DeleteMany(books);
 
             foreach (var book in books)
@@ -307,6 +313,13 @@ namespace NzbDrone.Core.Books
         public void UpdateLastSearchTime(List<Book> books)
         {
             _bookRepository.SetFields(books, b => b.LastSearchTime);
+        }
+
+        // A book's files are found through its editions, and the book and its editions are deleted before the
+        // asynchronous BookDeletedEvent handlers that recycle or unlink those files run. Read them while they still resolve.
+        private void LoadFilesBeforeDelete(Book book)
+        {
+            book.BookFiles = _mediaFileService.GetFilesByBook(book.Id);
         }
 
         public void Handle(AuthorDeletedEvent message)
