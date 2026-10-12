@@ -17,7 +17,6 @@ namespace NzbDrone.Common.EnvironmentInfo
     {
         private const string CONFIG_FILE = "config.xml";
         private const string PID_FILE = "readarr.pid";
-        private const string MOVE_PROBE = ".readarr-move-probe";
 
         private static readonly Logger Logger = NzbDroneLogger.GetLogger(typeof(OsxAppDataMigration));
 
@@ -58,7 +57,11 @@ namespace NzbDrone.Common.EnvironmentInfo
 
             if (runningPid.HasValue)
             {
-                throw new ReadarrStartupException("Readarr (process {0}) is still running from {1}. Stop it, then start again to move its data to {2}", runningPid.Value, oldFolder, newFolder);
+                throw new ReadarrStartupException("Readarr (process {0}) is still running from {1}. Stop it, then start again to move its data to {2}. If that process isn't Readarr, delete {3}",
+                    runningPid.Value,
+                    oldFolder,
+                    newFolder,
+                    Path.Combine(oldFolder, PID_FILE));
             }
 
             Logger.Info("Moving the data folder from {0} to {1}", oldFolder, newFolder);
@@ -68,35 +71,14 @@ namespace NzbDrone.Common.EnvironmentInfo
                 Directory.CreateDirectory(newFolder);
                 EnsureSameFileSystem(oldFolder, newFolder);
 
-                // Each entry moves by rename, so a database never arrives half copied. config.xml goes last:
+                // Everything moves by rename, so a database never arrives half copied. config.xml goes last:
                 // the check above treats it as the end of the move, so an interrupted move resumes next start.
-                var entries = Directory.EnumerateFileSystemEntries(oldFolder)
-                    .OrderBy(e => Path.GetFileName(e) == CONFIG_FILE)
-                    .ToList();
-
-                foreach (var source in entries)
+                foreach (var source in Directory.EnumerateFileSystemEntries(oldFolder).Where(e => Path.GetFileName(e) != CONFIG_FILE).ToList())
                 {
-                    var target = Path.Combine(newFolder, Path.GetFileName(source));
-
-                    if (File.Exists(target) || Directory.Exists(target))
-                    {
-                        throw new IOException($"{target} already exists");
-                    }
-
-                    if (Directory.Exists(source))
-                    {
-                        Directory.Move(source, target);
-                    }
-                    else
-                    {
-                        if (Path.GetFileName(source) == CONFIG_FILE)
-                        {
-                            RewriteMovedPaths(source, oldFolder, newFolder);
-                        }
-
-                        File.Move(source, target);
-                    }
+                    MoveEntry(source, Path.Combine(newFolder, Path.GetFileName(source)), true);
                 }
+
+                MoveConfig(oldFolder, newFolder);
 
                 Directory.Delete(oldFolder);
             }
@@ -106,18 +88,105 @@ namespace NzbDrone.Common.EnvironmentInfo
             }
         }
 
+        private static void MoveEntry(string source, string target, bool topLevel)
+        {
+            if (Directory.Exists(source))
+            {
+                if (!Directory.Exists(target) && !File.Exists(target))
+                {
+                    Directory.Move(source, target);
+                    return;
+                }
+
+                // The log file target has already written this start's lines to logs/ in the new folder
+                // by the time Bootstrap runs, so folders that exist on both sides are merged
+                if (!Directory.Exists(target))
+                {
+                    throw new IOException($"{target} already exists");
+                }
+
+                foreach (var child in Directory.EnumerateFileSystemEntries(source).ToList())
+                {
+                    MoveEntry(child, Path.Combine(target, Path.GetFileName(child)), false);
+                }
+
+                Directory.Delete(source);
+                return;
+            }
+
+            if (File.Exists(target) || Directory.Exists(target))
+            {
+                // A clash at the top level is data (readarr.db and friends): stop rather than pick one
+                if (topLevel)
+                {
+                    throw new IOException($"{target} already exists");
+                }
+
+                // Inside a merged folder (old logs next to this start's), keep both
+                target = Path.Combine(Path.GetDirectoryName(target), $"{Path.GetFileNameWithoutExtension(target)}.migrated{Path.GetExtension(target)}");
+
+                if (File.Exists(target) || Directory.Exists(target))
+                {
+                    throw new IOException($"{target} already exists");
+                }
+            }
+
+            File.Move(source, target);
+        }
+
+        // Settings such as SslCertPath can point inside the data folder; follow them to the new location.
+        // The rewritten copy is written beside the target and renamed into place, so the old config.xml is
+        // never half written.
+        private static void MoveConfig(string oldFolder, string newFolder)
+        {
+            var source = Path.Combine(oldFolder, CONFIG_FILE);
+            var target = Path.Combine(newFolder, CONFIG_FILE);
+
+            if (!File.Exists(source))
+            {
+                return;
+            }
+
+            var oldPrefix = oldFolder.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            var document = XDocument.Load(source);
+            var changed = false;
+
+            foreach (var element in document.Root?.Elements() ?? Enumerable.Empty<XElement>())
+            {
+                // macOS volumes are case-insensitive by default
+                if (!element.HasElements && element.Value.StartsWith(oldPrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    element.Value = Path.Combine(newFolder, element.Value.Substring(oldPrefix.Length));
+                    changed = true;
+                }
+            }
+
+            if (!changed)
+            {
+                File.Move(source, target);
+                return;
+            }
+
+            var temp = target + ".migrating";
+
+            using (var stream = new FileStream(temp, FileMode.Create, FileAccess.Write))
+            {
+                document.Save(stream);
+                stream.Flush(true);
+            }
+
+            File.Move(temp, target);
+            File.Delete(source);
+        }
+
         // Directory.Move can't cross file systems, and finding that out halfway would leave the data split
         private static void EnsureSameFileSystem(string oldFolder, string newFolder)
         {
-            var probe = Path.Combine(oldFolder, MOVE_PROBE);
-            var movedProbe = Path.Combine(newFolder, MOVE_PROBE);
+            var name = $".readarr-move-probe-{Guid.NewGuid():N}";
+            var probe = Path.Combine(oldFolder, name);
+            var movedProbe = Path.Combine(newFolder, name);
 
             Directory.CreateDirectory(probe);
-
-            if (Directory.Exists(movedProbe))
-            {
-                Directory.Delete(movedProbe, true);
-            }
 
             try
             {
@@ -130,28 +199,6 @@ namespace NzbDrone.Common.EnvironmentInfo
             }
 
             Directory.Delete(movedProbe);
-        }
-
-        // Settings such as SslCertPath can point inside the data folder; follow them to the new location
-        private static void RewriteMovedPaths(string configFile, string oldFolder, string newFolder)
-        {
-            var oldPrefix = oldFolder.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-            var document = XDocument.Load(configFile);
-            var changed = false;
-
-            foreach (var element in document.Root?.Elements() ?? Enumerable.Empty<XElement>())
-            {
-                if (!element.HasElements && element.Value.StartsWith(oldPrefix, StringComparison.Ordinal))
-                {
-                    element.Value = Path.Combine(newFolder, element.Value.Substring(oldPrefix.Length));
-                    changed = true;
-                }
-            }
-
-            if (changed)
-            {
-                document.Save(configFile);
-            }
         }
 
         private static int? GetRunningPid(string folder)

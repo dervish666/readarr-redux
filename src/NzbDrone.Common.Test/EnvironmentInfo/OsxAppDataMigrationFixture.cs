@@ -40,6 +40,20 @@ namespace NzbDrone.Common.Test.EnvironmentInfo
         }
 
         [Test]
+        public void should_merge_logs_this_start_already_wrote()
+        {
+            Directory.CreateDirectory(Path.Combine(_newFolder, "logs"));
+            File.WriteAllText(Path.Combine(_newFolder, "logs", "readarr.txt"), "new log");
+
+            OsxAppDataMigration.Migrate(_oldFolder, _newFolder);
+
+            Directory.Exists(_oldFolder).Should().BeFalse();
+            File.ReadAllText(Path.Combine(_newFolder, "logs", "readarr.txt")).Should().Be("new log");
+            File.ReadAllText(Path.Combine(_newFolder, "logs", "readarr.migrated.txt")).Should().Be("log");
+            File.Exists(Path.Combine(_newFolder, "config.xml")).Should().BeTrue();
+        }
+
+        [Test]
         public void should_not_leave_the_file_system_probe_behind()
         {
             OsxAppDataMigration.Migrate(_oldFolder, _newFolder);
