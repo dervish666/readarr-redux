@@ -5,6 +5,7 @@ using Diacritical;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Net.Http.Headers;
 using NzbDrone.Core.Authentication;
 using NzbDrone.Core.Configuration;
 
@@ -51,6 +52,12 @@ namespace Readarr.Http.Authentication
                     options.SlidingExpiration = true;
                     options.ReturnUrlParameter = "returnUrl";
                     options.Events.OnValidatePrincipal = ValidateSession;
+
+                    // ASP.NET Core 10 answers a challenge on an [ApiController] endpoint with a bare 401, and
+                    // StaticResourceController serves the UI, so a signed-out browser got a blank page instead
+                    // of the login form. Keep the earlier behaviour: redirect pages, 401 plus Location for XHR.
+                    options.Events.OnRedirectToLogin = context => RedirectToLoginOrStatus(context, 401);
+                    options.Events.OnRedirectToAccessDenied = context => RedirectToLoginOrStatus(context, 403);
                 });
 
             return services.AddAuthentication()
@@ -68,6 +75,22 @@ namespace Readarr.Http.Authentication
                     options.HeaderName = "X-Api-Key";
                     options.QueryName = "access_token";
                 });
+        }
+
+        private static Task RedirectToLoginOrStatus(RedirectContext<CookieAuthenticationOptions> context, int statusCode)
+        {
+            if (string.Equals(context.Request.Query[HeaderNames.XRequestedWith], "XMLHttpRequest", StringComparison.Ordinal) ||
+                string.Equals(context.Request.Headers.XRequestedWith, "XMLHttpRequest", StringComparison.Ordinal))
+            {
+                context.Response.Headers.Location = context.RedirectUri;
+                context.Response.StatusCode = statusCode;
+            }
+            else
+            {
+                context.Response.Redirect(context.RedirectUri);
+            }
+
+            return Task.CompletedTask;
         }
 
         // A login cookie only stays valid while its identifier matches the user's current one,
