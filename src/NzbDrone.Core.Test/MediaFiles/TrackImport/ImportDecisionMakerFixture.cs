@@ -418,9 +418,9 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport
             ExceptionVerification.ExpectedErrors(1);
         }
 
-        // The Hero of Ages on Tower: deleted from the UI while a rescan was reading the folder, then inserted as an
-        // unmapped file with no quality, which failed the whole RescanFolders task. It must still come back as a
-        // rejection, so an upgrade missing that part keeps its old files.
+        // The Hero of Ages, in a real library: deleted from the UI while a rescan was reading the folder, then
+        // inserted as an unmapped file with no quality, which failed the whole RescanFolders task. It must still
+        // come back as a rejection, so an upgrade missing that part keeps its old files.
         [Test]
         public void should_reject_a_file_removed_before_it_could_be_read_with_a_quality()
         {

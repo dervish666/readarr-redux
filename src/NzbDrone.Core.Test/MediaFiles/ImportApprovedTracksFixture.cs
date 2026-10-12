@@ -530,7 +530,7 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         // The Autumn Republic, a DrunkenSlug MP3 release of 56 files named "BMAR01-56 ..." to "BMAR56-56 ...".
-        // Every import on Tower put BMARnn on part nn-1 from BMAR02 on, so the tags run one behind the filenames
+        // Every real import put BMARnn on part nn-1 from BMAR02 on, so the tags run one behind the filenames
         // and BMAR01 claims a part another, larger, file also claims. It was skipped as already imported each time.
         private List<ImportDecision<LocalBook>> GivenTheAutumnRepublic(List<BookFile> saved)
         {
