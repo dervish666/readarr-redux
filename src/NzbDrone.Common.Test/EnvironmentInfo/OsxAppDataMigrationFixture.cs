@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using FluentAssertions;
@@ -36,6 +37,49 @@ namespace NzbDrone.Common.Test.EnvironmentInfo
             File.ReadAllText(Path.Combine(_newFolder, "config.xml")).Should().Be("<Config />");
             File.ReadAllText(Path.Combine(_newFolder, "readarr.db")).Should().Be("db");
             File.ReadAllText(Path.Combine(_newFolder, "logs", "readarr.txt")).Should().Be("log");
+        }
+
+        [Test]
+        public void should_not_leave_the_file_system_probe_behind()
+        {
+            OsxAppDataMigration.Migrate(_oldFolder, _newFolder);
+
+            Directory.GetFileSystemEntries(_newFolder).Should().HaveCount(3);
+        }
+
+        [Test]
+        public void should_point_settings_inside_the_old_folder_at_the_new_one()
+        {
+            var oldCert = Path.Combine(_oldFolder, "certs", "readarr.pfx");
+            Directory.CreateDirectory(Path.GetDirectoryName(oldCert));
+            File.WriteAllText(oldCert, "cert");
+            File.WriteAllText(Path.Combine(_oldFolder, "config.xml"), $"<Config><SslCertPath>{oldCert}</SslCertPath><UrlBase>/readarr</UrlBase></Config>");
+
+            OsxAppDataMigration.Migrate(_oldFolder, _newFolder);
+
+            var config = File.ReadAllText(Path.Combine(_newFolder, "config.xml"));
+            config.Should().Contain($"<SslCertPath>{Path.Combine(_newFolder, "certs", "readarr.pfx")}</SslCertPath>");
+            config.Should().Contain("<UrlBase>/readarr</UrlBase>");
+            File.Exists(Path.Combine(_newFolder, "certs", "readarr.pfx")).Should().BeTrue();
+        }
+
+        [Test]
+        public void should_find_the_legacy_folder_under_an_absolute_xdg_config_home()
+        {
+            var original = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
+
+            try
+            {
+                Environment.SetEnvironmentVariable("XDG_CONFIG_HOME", "/custom/config");
+                OsxAppDataMigration.GetLegacyAppDataFolder().Should().Be(Path.Combine("/custom/config", "Readarr"));
+
+                Environment.SetEnvironmentVariable("XDG_CONFIG_HOME", "relative/config");
+                OsxAppDataMigration.GetLegacyAppDataFolder().Should().EndWith(Path.Combine(".config", "Readarr"));
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("XDG_CONFIG_HOME", original);
+            }
         }
 
         [Test]

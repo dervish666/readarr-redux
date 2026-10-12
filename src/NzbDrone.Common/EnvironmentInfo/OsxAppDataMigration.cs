@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Xml.Linq;
 using NLog;
 using NzbDrone.Common.Exceptions;
 using NzbDrone.Common.Extensions;
@@ -16,6 +17,7 @@ namespace NzbDrone.Common.EnvironmentInfo
     {
         private const string CONFIG_FILE = "config.xml";
         private const string PID_FILE = "readarr.pid";
+        private const string MOVE_PROBE = ".readarr-move-probe";
 
         private static readonly Logger Logger = NzbDroneLogger.GetLogger(typeof(OsxAppDataMigration));
 
@@ -27,9 +29,20 @@ namespace NzbDrone.Common.EnvironmentInfo
                 return;
             }
 
-            var oldFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile, Environment.SpecialFolderOption.DoNotVerify), ".config", "Readarr");
+            Migrate(GetLegacyAppDataFolder(), appFolderInfo.AppDataFolder);
+        }
 
-            Migrate(oldFolder, appFolderInfo.AppDataFolder);
+        // .NET 6 on macOS followed the Unix rules: an absolute XDG_CONFIG_HOME, else ~/.config
+        public static string GetLegacyAppDataFolder()
+        {
+            var configHome = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
+
+            if (configHome.IsNullOrWhiteSpace() || !Path.IsPathRooted(configHome))
+            {
+                configHome = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile, Environment.SpecialFolderOption.DoNotVerify), ".config");
+            }
+
+            return Path.Combine(configHome, "Readarr");
         }
 
         public static void Migrate(string oldFolder, string newFolder)
@@ -53,6 +66,7 @@ namespace NzbDrone.Common.EnvironmentInfo
             try
             {
                 Directory.CreateDirectory(newFolder);
+                EnsureSameFileSystem(oldFolder, newFolder);
 
                 // Each entry moves by rename, so a database never arrives half copied. config.xml goes last:
                 // the check above treats it as the end of the move, so an interrupted move resumes next start.
@@ -75,6 +89,11 @@ namespace NzbDrone.Common.EnvironmentInfo
                     }
                     else
                     {
+                        if (Path.GetFileName(source) == CONFIG_FILE)
+                        {
+                            RewriteMovedPaths(source, oldFolder, newFolder);
+                        }
+
                         File.Move(source, target);
                     }
                 }
@@ -84,6 +103,54 @@ namespace NzbDrone.Common.EnvironmentInfo
             catch (Exception ex)
             {
                 throw new ReadarrStartupException(ex, "Unable to move the data folder from {0} to {1}. Move what is left of it manually", oldFolder, newFolder);
+            }
+        }
+
+        // Directory.Move can't cross file systems, and finding that out halfway would leave the data split
+        private static void EnsureSameFileSystem(string oldFolder, string newFolder)
+        {
+            var probe = Path.Combine(oldFolder, MOVE_PROBE);
+            var movedProbe = Path.Combine(newFolder, MOVE_PROBE);
+
+            Directory.CreateDirectory(probe);
+
+            if (Directory.Exists(movedProbe))
+            {
+                Directory.Delete(movedProbe, true);
+            }
+
+            try
+            {
+                Directory.Move(probe, movedProbe);
+            }
+            catch (IOException ex)
+            {
+                Directory.Delete(probe);
+                throw new IOException($"{oldFolder} and {newFolder} are on different file systems", ex);
+            }
+
+            Directory.Delete(movedProbe);
+        }
+
+        // Settings such as SslCertPath can point inside the data folder; follow them to the new location
+        private static void RewriteMovedPaths(string configFile, string oldFolder, string newFolder)
+        {
+            var oldPrefix = oldFolder.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            var document = XDocument.Load(configFile);
+            var changed = false;
+
+            foreach (var element in document.Root?.Elements() ?? Enumerable.Empty<XElement>())
+            {
+                if (!element.HasElements && element.Value.StartsWith(oldPrefix, StringComparison.Ordinal))
+                {
+                    element.Value = Path.Combine(newFolder, element.Value.Substring(oldPrefix.Length));
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                document.Save(configFile);
             }
         }
 
