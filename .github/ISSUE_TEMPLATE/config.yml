@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Support via Discord
-    url: https://readarr.com/discord
-    about: Chat with users and devs on support and setup related topics.
+  - name: Questions and setup help
+    url: https://github.com/dervish666/readarr-redux/discussions
+    about: Ask in GitHub Discussions. Please don't ask about this fork in the Readarr or Servarr Discord.
+  - name: Report a security vulnerability
+    url: https://github.com/dervish666/readarr-redux/security/advisories/new
+    about: Report it privately, not as a public issue.

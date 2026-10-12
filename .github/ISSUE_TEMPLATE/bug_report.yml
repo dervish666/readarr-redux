@@ -1,11 +1,15 @@
 name: Bug Report
-description: 'Report a new bug, if you are not 100% certain this is a bug please go to our Discord first'
-labels: ['Type: Bug', 'Status: Needs Triage']
+description: 'Report a bug in Readarr Redux. For setup questions, use Discussions.'
+labels: ['bug']
 body:
+- type: markdown
+  attributes:
+    value: |
+      Readarr Redux is an unofficial fork. Please don't report its bugs to the Readarr or Servarr teams.
 - type: checkboxes
   attributes:
     label: Is there an existing issue for this?
-    description: Please search to see if an open or closed issue already exists for the bug you encountered. If a bug exists and is closed note that it may only be fixed in an unstable branch. 
+    description: Please search to see if an open or closed issue already exists for the bug you encountered.
     options:
     - label: I have searched the existing open and closed issues
       required: true
@@ -32,43 +36,48 @@ body:
       4. See error...
   validations:
     required: false
+- type: input
+  attributes:
+    label: Readarr Redux version
+    description: The version from System > Status, or the image tag you run (for example `0.5.0.14` or `latest`).
+  validations:
+    required: true
+- type: dropdown
+  attributes:
+    label: Metadata source
+    description: What Settings > Metadata Source points at. Don't paste the URL if it contains a key or password.
+    options:
+      - Self-hosted rreading-glasses
+      - A public rreading-glasses instance
+      - Something else
+      - Not set
+  validations:
+    required: true
 - type: textarea
   attributes:
     label: Environment
     description: |
       examples:
-        - **OS**: Ubuntu 20.04
-        - **Readarr**: Readarr 0.1.0.432
-        - **Docker Install**: Yes
+        - **OS**: Ubuntu 24.04
+        - **Install**: Docker (ghcr.io/dervish666/readarr), or built from source
         - **Using Reverse Proxy**: No
-        - **Browser**: Firefox 90 (If UI related)
-        - **Database**: Sqlite 3.36.0
+        - **Browser**: Firefox 130 (if UI related)
+        - **Database**: SQLite or Postgres
     value: |
-        - OS: 
-        - Readarr:
-        - Docker Install:
+        - OS:
+        - Install:
         - Using Reverse Proxy:
         - Browser:
         - Database:
     render: markdown
   validations:
     required: true
-- type: dropdown
-  attributes:
-    label: What branch are you running?
-    options:
-      - Master
-      - Develop
-      - Nightly
-      - Other (This issue will be closed)
-  validations:
-    required: true
 - type: textarea
   attributes:
     label: Trace Logs?
     description: |
-      Trace Logs (https://wiki.servarr.com/readarr/troubleshooting#logging-and-log-files) 
-      ***Generally speaking, all bug reports must have trace logs provided.***
+      Trace logs (https://wiki.servarr.com/readarr/troubleshooting#logging-and-log-files, the upstream wiki still applies).
+      ***Generally speaking, all bug reports must have trace logs provided.*** Check them for API keys and URLs with credentials before you paste.
       Tip: You can attach images or log files by clicking this area to highlight it and then dragging files in.
       Additionally, any additional info? Screenshots? References? Anything that will give us more context about the issue you are encountering!
   validations:

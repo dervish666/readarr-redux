@@ -1093,6 +1093,7 @@
   "UnmappedFiles": "Unmapped Files",
   "Unmonitored": "Unmonitored",
   "UnmonitoredHelpText": "Include unmonitored books in the iCal feed",
+  "UnofficialForkNotice": "This is Readarr Redux, an unofficial fork of Readarr. It is not affiliated with or supported by the Servarr team, so please don't ask for help with it in the Readarr or Servarr Discord.",
   "UnselectAll": "Unselect All",
   "UpdateAll": "Update all",
   "UpdateAppDirectlyLoadError": "Unable to update {appName} directly,",

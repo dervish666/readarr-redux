@@ -11,7 +11,7 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
     <PackageReference Include="Microsoft.Extensions.Configuration" />
-    <PackageReference Include="Servarr.FluentMigrator.Runner" />
+    <PackageReference Include="ReadarrRedux.FluentMigrator.Runner" />
     <PackageReference Include="Servarr.FluentMigrator.Runner.SQLite" />
     <PackageReference Include="Servarr.FluentMigrator.Runner.Postgres" />
     <PackageReference Include="FluentValidation" />
@@ -27,16 +27,6 @@
     <PackageReference Include="Equ" />
     <PackageReference Include="MonoTorrent" />
     <PackageReference Include="PdfSharpCore" />
-  </ItemGroup>
-  <!--
-    Servarr.FluentMigrator.Runner drags in every database runner. Readarr only uses SQLite and Postgres, but
-    the SQL Server and SQL Server CE runners bring vulnerable packages (IdentityModel 6.8.0 through
-    Microsoft.Data.SqlClient 2.1.7, System.Drawing.Common 4.7.0 through System.Security.Permissions 4.7.0).
-    These pin patched versions. Drop them along with the vendored FluentMigrator.
-  -->
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Data.SqlClient" />
-    <PackageReference Include="System.Security.Permissions" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\NzbDrone.Common\Readarr.Common.csproj" />

@@ -11,7 +11,7 @@
     <PackageVersion Include="FluentAssertions" Version="5.10.3" />
     <PackageVersion Include="IPAddressRange" Version="6.1.0" />
     <PackageVersion Include="Polly" Version="8.5.2" />
-    <PackageVersion Include="Servarr.FluentMigrator.Runner" Version="3.3.2.9" />
+    <PackageVersion Include="ReadarrRedux.FluentMigrator.Runner" Version="3.3.2.9" />
     <PackageVersion Include="Servarr.FluentMigrator.Runner.SQLite" Version="3.3.2.9" />
     <PackageVersion Include="Servarr.FluentMigrator.Runner.Postgres" Version="3.3.2.9" />
     <PackageVersion Include="FluentValidation" Version="9.5.4" />
@@ -20,7 +20,6 @@
     <PackageVersion Include="LazyCache" Version="2.4.0" />
     <PackageVersion Include="Mailkit" Version="4.16.0" />
     <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.12" />
-    <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.7" />
     <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
@@ -57,7 +56,6 @@
     <PackageVersion Include="System.IO.FileSystem.AccessControl" Version="5.0.0" />
     <PackageVersion Include="System.Reflection.TypeExtensions" Version="4.7.0" />
     <PackageVersion Include="System.Resources.Extensions" Version="10.0.12" />
-    <PackageVersion Include="System.Security.Permissions" Version="10.0.12" />
     <PackageVersion Include="System.ServiceProcess.ServiceController" Version="10.0.12" />
     <PackageVersion Include="System.ValueTuple" Version="4.6.1" />
     <PackageVersion Include="TagLibSharp-Lidarr" Version="2.2.0.19" />

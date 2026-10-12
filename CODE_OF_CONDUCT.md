@@ -59,8 +59,11 @@ representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the community leaders responsible for enforcement at
-<development@readarr.com>.
+reported to the community leaders responsible for enforcement through this
+repository's private reporting form,
+<https://github.com/dervish666/readarr-redux/security/advisories/new>, which
+only the maintainers can see. Start the title with "Conduct report". You can
+also use GitHub's "Report content" option on the comment, issue or discussion.
 All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the

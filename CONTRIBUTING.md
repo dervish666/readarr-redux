@@ -1,13 +1,28 @@
-# How to Contribute
+# Contributing
 
-We're always looking for people to help make Readarr even better, there are a number of ways to contribute.
+Bug reports, fixes and pull requests are welcome. For questions and setup help, use [Discussions](https://github.com/dervish666/readarr-redux/discussions). Security problems go through private reporting, see [SECURITY.md](SECURITY.md).
 
-This file has been moved to the wiki for the latest details please see the [contributing wiki page](https://wiki.servarr.com/readarr/contributing).
+## Building and testing
 
-## Documentation
+You need the .NET 10 SDK, Node 20 and Yarn 1.
 
-Setup guides, [FAQ](https://wiki.servarr.com/readarr/faq), the more information we have on the [wiki](https://wiki.servarr.com/readarr) the better.
+```
+yarn install --frozen-lockfile
+yarn lint
+yarn build
+dotnet build src/Readarr.sln -p:Configuration=Debug -p:Platform=Posix
+TEST_DIR=_tests/net10.0 ./test.sh Linux Unit Test   # or Mac / Windows
+```
 
-## Development
+Always build the solution, not a single project. Warnings are errors, and StyleCop only loads for a solution build.
 
-See the [Wiki Page](https://wiki.servarr.com/readarr/contributing)
+## Pull requests
+
+- Unit tests must pass, and a fix should come with a test that fails without it.
+- Start the commit subject with `New:` or `Fixed:` when users will notice the change.
+- Say in the PR if it adds a database migration. Migrations must work on SQLite and Postgres.
+- Add new UI strings to `src/NzbDrone.Core/Localization/Core/en.json` only. Weblate isn't connected to this fork, so the other languages stay as they were.
+
+## Licence
+
+Readarr Redux is GPL-3.0. Your contribution is accepted under the same licence (inbound = outbound). There is no CLA.

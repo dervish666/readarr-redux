@@ -132,7 +132,7 @@ namespace NzbDrone.Core.Test.Http
             // What the dispatcher throws for a refused connection, an unknown host or no route to it
             Mocker.GetMock<IHttpClient>()
                 .Setup(s => s.Get(It.IsAny<HttpRequest>()))
-                .Throws(new HttpRequestException("No route to host (192.168.0.190:8790)"));
+                .Throws(new HttpRequestException("No route to host (metadata.local:8790)"));
 
             var response = Subject.Get(SuppressedRequest(), true, TimeSpan.FromHours(1));
 
