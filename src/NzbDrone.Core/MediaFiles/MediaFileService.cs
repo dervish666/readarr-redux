@@ -32,6 +32,7 @@ namespace NzbDrone.Core.MediaFiles
         List<BookFile> GetFileWithPath(List<string> path);
         BookFile GetFileWithPath(string path);
         void UpdateMediaInfo(List<BookFile> bookFiles);
+        void RemoveFilesOfDeletedBook(List<BookFile> deletedFromDisk, List<BookFile> keptOnDisk);
     }
 
     public class MediaFileService : IMediaFileService,
@@ -220,16 +221,32 @@ namespace NzbDrone.Core.MediaFiles
             Update(files);
         }
 
+        // The rows of a deleted book's files: those deleted from disk go, the rest stay on as unmapped files. No
+        // BookFileDeletedEvent, since BookDeletedEvent covers the book and the handlers can no longer resolve it.
+        public void RemoveFilesOfDeletedBook(List<BookFile> deletedFromDisk, List<BookFile> keptOnDisk)
+        {
+            _mediaFileRepository.DeleteMany(deletedFromDisk);
+
+            if (keptOnDisk.Any())
+            {
+                keptOnDisk.ForEach(x => x.EditionId = 0);
+                _mediaFileRepository.SetFields(keptOnDisk, f => f.EditionId);
+            }
+        }
+
         public void HandleAsync(BookDeletedEvent message)
         {
+            // MediaFileDeletionService deletes the files of a book deleted with its files, then removes their rows
             if (message.DeleteFiles)
             {
-                _mediaFileRepository.DeleteFilesByBook(message.Book.Id);
+                return;
             }
-            else
-            {
-                _mediaFileRepository.UnlinkFilesByBook(message.Book.Id);
-            }
+
+            // The book and its editions are already gone, so the files can't be looked up through them any more.
+            // BookService read them before the delete.
+            var files = message.Book.BookFiles?.Value ?? new List<BookFile>();
+
+            RemoveFilesOfDeletedBook(new List<BookFile>(), files);
         }
 
         public void HandleAsync(ModelEvent<RootFolder> message)

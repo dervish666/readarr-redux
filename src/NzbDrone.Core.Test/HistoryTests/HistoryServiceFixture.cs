@@ -70,5 +70,21 @@ namespace NzbDrone.Core.Test.HistoryTests
             Mocker.GetMock<IHistoryRepository>()
                 .Verify(v => v.Insert(It.Is<EntityHistory>(h => h.SourceTitle == Path.GetFileNameWithoutExtension(localTrack.Path))));
         }
+
+        [Test]
+        public void should_not_record_deleting_a_file_whose_book_is_gone()
+        {
+            // A row left behind by a deleted book still points at its edition, which no longer loads
+            var bookFile = Builder<BookFile>.CreateNew()
+                .With(f => f.EditionId = 5)
+                .With(f => f.Edition = (Edition)null)
+                .With(f => f.Author = (Author)null)
+                .Build();
+
+            Subject.Handle(new BookFileDeletedEvent(bookFile, DeleteMediaFileReason.Manual));
+
+            Mocker.GetMock<IHistoryRepository>()
+                .Verify(v => v.Insert(It.IsAny<EntityHistory>()), Times.Never());
+        }
     }
 }

@@ -1042,5 +1042,103 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             ExceptionVerification.ExpectedWarns(1);
         }
+
+        // A rescan lists a file in its own release, and again, with no part number, as an existing file of another
+        // release matched to the edition the file belongs to
+        private ImportDecision<LocalBook> GivenListedAgainAsExistingFile(ImportDecision<LocalBook> own, Book book, Edition edition)
+        {
+            own.Item.ExistingFile = true;
+
+            return new ImportDecision<LocalBook>(new LocalBook
+            {
+                Author = own.Item.Author,
+                Book = book,
+                Edition = edition,
+                Path = own.Item.Path,
+                Quality = own.Item.Quality,
+                Size = own.Item.Size,
+                ExistingFile = true,
+                AdditionalFile = true,
+                FileTrackInfo = new ParsedTrackInfo()
+            });
+        }
+
+        [Test]
+        public void should_import_a_file_once_when_another_release_lists_it_again_as_an_existing_file()
+        {
+            var own = _approvedDecisions.First();
+            var again = GivenListedAgainAsExistingFile(own, own.Item.Book, own.Item.Edition);
+
+            var results = Subject.Import(new List<ImportDecision<LocalBook>> { again, own }, false);
+
+            results.Should().ContainSingle(r => r.Result == ImportResultType.Imported)
+                .Which.ImportDecision.Should().BeSameAs(own);
+
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(v => v.AddMany(It.Is<List<BookFile>>(l => l.Count == 1 && l[0].Path == own.Item.Path && l[0].Part == 1)), Times.Once());
+        }
+
+        [Test]
+        public void should_import_every_part_when_another_release_lists_them_all_again_as_existing_files()
+        {
+            var own = _approvedDecisions.First();
+            own.Item.Path = Path.Combine(own.Item.Author.Path, "Book (1).mp3");
+
+            var ownSecond = new ImportDecision<LocalBook>(new LocalBook
+            {
+                Author = own.Item.Author,
+                Book = own.Item.Book,
+                Edition = own.Item.Edition,
+                Part = 2,
+                Path = Path.Combine(own.Item.Author.Path, "Book (2).mp3"),
+                Quality = own.Item.Quality,
+                FileTrackInfo = new ParsedTrackInfo()
+            });
+
+            var again = GivenListedAgainAsExistingFile(own, own.Item.Book, own.Item.Edition);
+            var againSecond = GivenListedAgainAsExistingFile(ownSecond, own.Item.Book, own.Item.Edition);
+
+            var results = Subject.Import(new List<ImportDecision<LocalBook>> { again, againSecond, own, ownSecond }, false);
+
+            results.Where(r => r.Result == ImportResultType.Imported).Select(r => r.ImportDecision)
+                .Should().HaveCount(2).And.Contain(new[] { own, ownSecond });
+
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(v => v.AddMany(It.Is<List<BookFile>>(l => l.Count == 2)), Times.Once());
+        }
+
+        [Test]
+        public void should_import_a_file_once_when_a_release_of_another_book_lists_it_again_as_an_existing_file()
+        {
+            var own = _approvedDecisions.First();
+
+            var otherBook = Builder<Book>.CreateNew()
+                .With(b => b.Id = 2)
+                .With(b => b.ForeignBookId = "other")
+                .With(b => b.Author = own.Item.Author)
+                .Build();
+
+            var otherEdition = Builder<Edition>.CreateNew()
+                .With(e => e.Id = 2)
+                .With(e => e.Book = otherBook)
+                .With(e => e.Monitored = true)
+                .Build();
+
+            otherBook.Editions = new List<Edition> { otherEdition };
+
+            Mocker.GetMock<IEditionService>()
+                .Setup(s => s.SetMonitored(otherEdition))
+                .Returns(new List<Edition> { otherEdition });
+
+            var again = GivenListedAgainAsExistingFile(own, otherBook, otherEdition);
+
+            var results = Subject.Import(new List<ImportDecision<LocalBook>> { again, own }, false);
+
+            results.Should().ContainSingle(r => r.Result == ImportResultType.Imported)
+                .Which.ImportDecision.Should().BeSameAs(own);
+
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(v => v.AddMany(It.Is<List<BookFile>>(l => l.Count == 1 && l[0].EditionId == own.Item.Edition.Id)), Times.Once());
+        }
     }
 }

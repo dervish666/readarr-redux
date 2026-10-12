@@ -109,6 +109,11 @@ namespace NzbDrone.Core.Extras.Files
             {
                 _logger.Debug("Removing track file from DB as part of cleanup routine, not deleting extra files from disk.");
             }
+            else if (bookFile.Author?.Value == null)
+            {
+                // A row left behind by a deleted book points at an edition that is gone, so its extras can't be found
+                _logger.Debug("Book of track file {0} is gone, not deleting extra files from disk.", bookFile);
+            }
             else
             {
                 var author = bookFile.Author.Value;

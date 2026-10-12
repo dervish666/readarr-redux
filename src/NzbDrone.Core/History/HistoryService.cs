@@ -290,14 +290,24 @@ namespace NzbDrone.Core.History
                 return;
             }
 
+            var author = message.BookFile.Author?.Value;
+            var edition = message.BookFile.Edition?.Value;
+
+            // A row left behind by a deleted book points at an edition that is gone, so there is no book to record it against
+            if (author == null || edition == null)
+            {
+                _logger.Debug("Removing book file {0} whose book is gone, not creating history event.", message.BookFile.Path);
+                return;
+            }
+
             var history = new EntityHistory
             {
                 EventType = EntityHistoryEventType.BookFileDeleted,
                 Date = DateTime.UtcNow,
                 Quality = message.BookFile.Quality,
                 SourceTitle = message.BookFile.Path,
-                AuthorId = message.BookFile.Author.Value.Id,
-                BookId = message.BookFile.Edition.Value.BookId
+                AuthorId = author.Id,
+                BookId = edition.BookId
             };
 
             history.Data.Add("Reason", message.Reason.ToString());

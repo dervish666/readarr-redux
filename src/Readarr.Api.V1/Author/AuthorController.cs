@@ -250,7 +250,15 @@ namespace Readarr.Api.V1.Author
                 return;
             }
 
-            BroadcastResourceChange(ModelAction.Updated, GetAuthorResource(message.BookFile.Author.Value));
+            // A row left behind by a deleted book points at an edition that is gone, so there is no author to update
+            var author = message.BookFile.Author?.Value;
+
+            if (author == null)
+            {
+                return;
+            }
+
+            BroadcastResourceChange(ModelAction.Updated, GetAuthorResource(author));
         }
 
         [NonAction]

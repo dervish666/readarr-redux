@@ -12,6 +12,7 @@ using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.DecisionEngine;
+using NzbDrone.Core.Download;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.BookImport;
 using NzbDrone.Core.Parser.Model;
@@ -423,6 +424,34 @@ namespace NzbDrone.Core.Test.MediaFiles.DiskScanServiceTests
             Mocker.GetMock<IMediaFileService>()
                 .Verify(x => x.AddMany(It.Is<List<BookFile>>(l => l.Select(t => t.Path).SequenceEqual(files))),
                         Times.Once());
+        }
+
+        [Test]
+        public void should_still_insert_new_unmatched_files_when_importing_the_matched_ones_fails()
+        {
+            GivenAuthorFolder();
+
+            var files = new List<string>
+            {
+                Path.Combine(_author.Path, "Season 1", "file1.mobi"),
+                Path.Combine(_author.Path, "Season 1", "s01e01.mobi")
+            };
+
+            GivenFiles(files);
+            GivenKnownFiles(new List<string>());
+            GivenRejections();
+
+            Mocker.GetMock<IImportApprovedBooks>()
+                .Setup(s => s.Import(It.IsAny<List<ImportDecision<LocalBook>>>(), It.IsAny<bool>(), It.IsAny<DownloadClientItem>(), It.IsAny<ImportMode>()))
+                .Throws(new InvalidOperationException("UNIQUE constraint failed: BookFiles.Path"));
+
+            Subject.Scan(new List<string> { _author.Path });
+
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(x => x.AddMany(It.Is<List<BookFile>>(l => l.Select(t => t.Path).SequenceEqual(files))),
+                        Times.Once());
+
+            ExceptionVerification.ExpectedErrors(1);
         }
 
         [Test]

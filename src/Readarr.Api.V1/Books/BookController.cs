@@ -247,7 +247,15 @@ namespace Readarr.Api.V1.Books
                 return;
             }
 
-            BroadcastResourceChange(ModelAction.Updated, MapToResource(message.BookFile.Edition.Value.Book.Value, true));
+            // A row left behind by a deleted book points at an edition that is gone, so there is no book to update
+            var book = message.BookFile.Edition?.Value?.Book?.Value;
+
+            if (book == null)
+            {
+                return;
+            }
+
+            BroadcastResourceChange(ModelAction.Updated, MapToResource(book, true));
         }
     }
 }

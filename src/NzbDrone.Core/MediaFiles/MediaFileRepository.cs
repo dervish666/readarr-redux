@@ -18,8 +18,6 @@ namespace NzbDrone.Core.MediaFiles
         List<BookFile> GetFilesWithBasePath(string path);
         List<BookFile> GetFileWithPath(List<string> paths);
         BookFile GetFileWithPath(string path);
-        void DeleteFilesByBook(int bookId);
-        void UnlinkFilesByBook(int bookId);
     }
 
     public class MediaFileRepository : BasicRepository<BookFile>, IMediaFileRepository
@@ -87,19 +85,6 @@ namespace NzbDrone.Core.MediaFiles
         {
             return _database.Query<BookFile>(new SqlBuilder(_database.DatabaseType).Select(typeof(BookFile))
                                               .Where<BookFile>(t => t.EditionId == 0)).ToList();
-        }
-
-        public void DeleteFilesByBook(int bookId)
-        {
-            var fileIds = GetFilesByBook(bookId).Select(x => x.Id).ToList();
-            Delete(x => fileIds.Contains(x.Id));
-        }
-
-        public void UnlinkFilesByBook(int bookId)
-        {
-            var files = GetFilesByBook(bookId);
-            files.ForEach(x => x.EditionId = 0);
-            SetFields(files, f => f.EditionId);
         }
 
         public List<BookFile> GetFilesWithBasePath(string path)

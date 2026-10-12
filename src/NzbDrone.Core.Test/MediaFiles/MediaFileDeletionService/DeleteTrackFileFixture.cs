@@ -198,5 +198,22 @@ namespace NzbDrone.Core.Test.MediaFiles.MediaFileDeletionService
             Mocker.GetMock<IDiskProvider>().Verify(v => v.RemoveEmptySubfolders(It.IsAny<string>()), Times.Never());
             Mocker.GetMock<IDiskProvider>().Verify(v => v.DeleteFolder(It.IsAny<string>(), It.IsAny<bool>()), Times.Never());
         }
+
+        [Test]
+        public void should_not_throw_tidying_up_after_a_file_whose_book_is_gone()
+        {
+            // A row left behind by a deleted book still points at its edition, so its author no longer loads
+            _trackFile.Path = Path.Combine(_author.Path, "Book Title", "Book Title.m4b");
+            _trackFile.Author = (Author)null;
+
+            Mocker.GetMock<IConfigService>()
+                  .SetupGet(s => s.DeleteEmptyFolders)
+                  .Returns(true);
+
+            Subject.Handle(new BookFileDeletedEvent(_trackFile, DeleteMediaFileReason.Manual));
+
+            Mocker.GetMock<IDiskProvider>().Verify(v => v.RemoveEmptySubfolders(It.IsAny<string>()), Times.Never());
+            Mocker.GetMock<IDiskProvider>().Verify(v => v.DeleteFolder(It.IsAny<string>(), It.IsAny<bool>()), Times.Never());
+        }
     }
 }

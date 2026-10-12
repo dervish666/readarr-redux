@@ -93,7 +93,20 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             var addedAuthors = new List<Author>();
             var addedBooks = new List<Book>();
 
-            var bookDecisions = decisions.Where(e => e.Item.Book != null && e.Approved)
+            // A rescan can list a file twice: in its own release, and again as an existing file of another release
+            // matched to the edition the file belongs to. That second listing has no part number. Both reaching the
+            // database fails the whole batch on BookFiles.Path, so import the file once, from its own listing (then
+            // the best), and keep the other listing out of choosing editions and numbering parts.
+            var listedAgain = decisions.Where(e => e.Approved && e.Item.Path != null)
+                .GroupBy(e => e.Item.Path, PathEqualityComparer.Instance)
+                .Where(g => g.Count() > 1)
+                .SelectMany(g => g.OrderBy(e => e.Item.AdditionalFile)
+                    .ThenByDescending(e => e.Item.Quality, new QualityModelComparer(g.First().Item.Author.QualityProfile))
+                    .ThenByDescending(e => e.Item.Size)
+                    .Skip(1))
+                .ToHashSet();
+
+            var bookDecisions = decisions.Where(e => e.Item.Book != null && e.Approved && !listedAgain.Contains(e))
                 .GroupBy(e => e.Item.Book.ForeignBookId).ToList();
 
             var iDecision = 1;
@@ -155,7 +168,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 _eventAggregator.PublishEvent(new BookEditedEvent(book, book));
             }
 
-            var qualifiedImports = decisions.Where(c => c.Approved)
+            var qualifiedImports = decisions.Where(c => c.Approved && !listedAgain.Contains(c))
                 .GroupBy(c => c.Item.Author.Id, (i, s) => s
                          .OrderByDescending(c => c.Item.Quality, new QualityModelComparer(s.First().Item.Author.QualityProfile))
                          .ThenByDescending(c => c.Item.Size))
@@ -170,8 +183,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             var setAsideFiles = new Dictionary<string, List<SetAsideBookFile>>();
 
             // A book whose new files didn't all import is incomplete, and keeps the files they were replacing.
-            // Rejected parts never reach the loop below, so start from them.
-            var incompleteBooks = decisions.Where(d => !d.Approved && d.Item?.Book != null)
+            // Rejected parts and second listings of a file never reach the loop below, so start from them.
+            var incompleteBooks = decisions.Where(d => (!d.Approved || listedAgain.Contains(d)) && d.Item?.Book != null)
                 .Select(d => d.Item.Book.ForeignBookId)
                 .ToHashSet();
 
@@ -214,18 +227,11 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     if (samePart != null)
                     {
                         // A second file claiming the part stays in the download folder, so say which one
-                        if (PathEqualityComparer.Instance.Equals(samePart.ImportDecision.Item.Path, localTrack.Path))
-                        {
-                            _logger.Debug("Skipping {0}, it is listed twice", localTrack.Path);
-                        }
-                        else
-                        {
-                            _logger.Warn("Skipped {0}: {1} came first for part {2} of {3}",
-                                localTrack.Path,
-                                Path.GetFileName(samePart.ImportDecision.Item.Path),
-                                localTrack.Part,
-                                localTrack.Book);
-                        }
+                        _logger.Warn("Skipped {0}: {1} came first for part {2} of {3}",
+                            localTrack.Path,
+                            Path.GetFileName(samePart.ImportDecision.Item.Path),
+                            localTrack.Part,
+                            localTrack.Book);
 
                         importResults.Add(new ImportResult(importDecision, "Book has already been imported"));
                         incompleteBooks.Add(localTrack.Book.ForeignBookId);
@@ -458,6 +464,13 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                         replaceExisting,
                         downloadClientItem));
                 }
+            }
+
+            // Added only now, so a second listing never counts as the file that came first for a part
+            foreach (var decision in listedAgain)
+            {
+                _logger.Debug("Skipped {0}, it is listed twice", decision.Item.Path);
+                importResults.Add(new ImportResult(decision, "Book has already been imported"));
             }
 
             //Adding all the rejected decisions

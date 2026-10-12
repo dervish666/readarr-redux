@@ -166,7 +166,17 @@ namespace NzbDrone.Core.MediaFiles
             _logger.Debug("Import decisions complete [{0}]", decisionsStopwatch.Elapsed);
 
             var importStopwatch = Stopwatch.StartNew();
-            _importApprovedTracks.Import(decisions, false);
+
+            try
+            {
+                _importApprovedTracks.Import(decisions, false);
+            }
+            catch (Exception e)
+            {
+                // One bad file fails the import's batch insert. The rest of the scan still has to run, and files the
+                // import didn't save go in below as unmapped files rather than being dropped.
+                _logger.Error(e, "Couldn't import the matched files in {0}, any it didn't save are added as unmapped files", folders.ConcatToString(", "));
+            }
 
             // decisions may have been filtered to just new files.  Anything new and approved will have been inserted.
             // Now we need to make sure anything new but not approved gets inserted
