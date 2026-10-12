@@ -105,34 +105,18 @@
     <RootNamespace Condition="'$(ReadarrProject)'=='true'">$(MSBuildProjectName.Replace('Readarr','NzbDrone'))</RootNamespace>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(TestProject)'!='true'">
-    <!-- Annotates .NET assemblies with repository information including SHA -->
-    <!-- Sentry uses this to link directly to GitHub at the exact version/file/line -->
-    <!-- This is built-in on .NET 8 and can be removed once the project is updated -->
-    <PackageReference Include="Microsoft.SourceLink.GitHub" />
-  </ItemGroup>
-
   <!--
-    MimeKit 4.16 (from MailKit) needs these at 8.0, newer than the copies inside the .NET 6 runtime.
-    Every project publishes self-contained into the same folder, so a project without the package would
-    overwrite the 8.0 assembly with the runtime's 6.0 one and the app would fail to start. Every project
-    carries them for that reason. Drop this when moving off net6.0.
-  -->
-  <ItemGroup Condition="'$(ReadarrProject)'=='true'">
-    <PackageReference Include="System.Formats.Asn1" />
-    <PackageReference Include="System.Text.Encoding.CodePages" />
-  </ItemGroup>
-
-  <!--
-    SixLabors.ImageSharp 3.1.12 advisories fixed only in 4.1.2, which needs net8.0. Readarr's one use is
-    ImageResizer: load a cover, Resize, save as JPEG/PNG/GIF/WebP/BMP. None of these paths reach it:
+    SixLabors.ImageSharp 3.1.12 advisories fixed only in 4.1.2. ImageSharp 4 refuses to build in Release
+    without a Six Labors license key (free community keys are issued on application at
+    licensing.sixlabors.com), so the move waits for one. Readarr's one use is ImageResizer: load a cover,
+    Resize, save as JPEG/PNG/GIF/WebP/BMP. None of these paths reach it:
     - GHSA-wmxv-xphr-5c9g (BigTIFF decode loop), GHSA-j9gm-c75j-xc9q (CCITT T4 encoder) and
       GHSA-jjfr-hcj7-qf5w (CCITT T6 encoder): ImageResizer builds its own Configuration with no TIFF
       codec, so a TIFF cover or a .tif destination is refused (ImageResizerFixture covers both).
     - GHSA-j3p4-wp97-rph4: needs HistogramEqualization() on a float TIFF; Readarr never calls it.
     - GHSA-gwg2-r3hj-4w44: on 3.x the ICC CLUT parser only runs from IccProfile.Entries, which Readarr
       never reads; decoded profiles are only byte-copied on clone and encode.
-    Remove these when moving to net8.0 and ImageSharp 4.1.2 or later.
+    Remove these with the move to ImageSharp 4.1.2 or later.
   -->
   <ItemGroup>
     <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-wmxv-xphr-5c9g" />
@@ -249,7 +233,7 @@
   <PropertyGroup Condition="'$(IsOSX)' == 'true' and
                             '$(RuntimeIdentifier)' == ''">
     <_UsingDefaultRuntimeIdentifier>true</_UsingDefaultRuntimeIdentifier>
-    <RuntimeIdentifier>osx-x64</RuntimeIdentifier>
+    <RuntimeIdentifier>osx-$(Architecture)</RuntimeIdentifier>
   </PropertyGroup>
 
 </Project>
