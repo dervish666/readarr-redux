@@ -205,7 +205,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
                 usedRemote = true;
             }
 
-            GetBestRelease(localBookRelease, candidateReleases, allLocalTracks, out var seenCandidate);
+            GetBestRelease(localBookRelease, candidateReleases, allLocalTracks, config.NewDownload, out var seenCandidate);
 
             if (!seenCandidate)
             {
@@ -233,7 +233,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
                     candidateReleases = candidateReleases.Where(x => x.Edition.Book.Value.Id > 0);
                 }
 
-                GetBestRelease(localBookRelease, candidateReleases, allLocalTracks, out _);
+                GetBestRelease(localBookRelease, candidateReleases, allLocalTracks, config.NewDownload, out _);
             }
 
             _logger.Debug($"Best release found in {watch.ElapsedMilliseconds}ms");
@@ -243,7 +243,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
             _logger.Debug($"IdentifyRelease done in {watch.ElapsedMilliseconds}ms");
         }
 
-        private void GetBestRelease(LocalEdition localBookRelease, IEnumerable<CandidateEdition> candidateReleases, List<LocalBook> extraTracksOnDisk, out bool seenCandidate)
+        // A rescan tries every candidate, even past an exact match, so it can see another book with the same title
+        private void GetBestRelease(LocalEdition localBookRelease, IEnumerable<CandidateEdition> candidateReleases, List<LocalBook> extraTracksOnDisk, bool stopAtExactMatch, out bool seenCandidate)
         {
             var watch = System.Diagnostics.Stopwatch.StartNew();
 
@@ -263,10 +264,15 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
 
                 var extraTrackPaths = candidateRelease.ExistingFiles.Select(x => x.Path).ToList();
                 var extraTracks = extraTracksOnDisk.Where(x => extraTrackPaths.Contains(x.Path)).ToList();
-                var allLocalTracks = localBookRelease.LocalBooks.Concat(extraTracks).DistinctBy(x => x.Path).ToList();
 
-                var distance = DistanceCalculator.BookDistance(allLocalTracks, release);
+                // Only the release's own files are measured. The candidate's files already on disk would outvote them,
+                // since the distance takes each tag from most of the files: one untracked file came out closest to
+                // whichever book had the most files of its own, so "Foundation and Earth.mp3" went to Foundation and
+                // Empire. Those files still join the release once it matches.
+                var distance = DistanceCalculator.BookDistance(localBookRelease.LocalBooks, release);
                 var currDistance = distance.NormalizedDistance();
+
+                localBookRelease.TitleMatches.Add(DistanceCalculator.GetTitleMatch(localBookRelease.LocalBooks, release));
 
                 rwatch.Stop();
                 _logger.Debug("Release {0} has distance {1} vs best distance {2} [{3}ms]",
@@ -280,7 +286,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
                     localBookRelease.Distance = distance;
                     localBookRelease.Edition = release;
                     localBookRelease.ExistingTracks = extraTracks;
-                    if (currDistance == 0.0)
+                    if (currDistance == 0.0 && stopAtExactMatch)
                     {
                         break;
                     }

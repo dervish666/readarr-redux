@@ -34,6 +34,9 @@ namespace NzbDrone.Core.Parser.Model
         public List<LocalBook> ExistingTracks { get; set; }
         public bool NewDownload { get; set; }
 
+        // The release's title against every candidate edition identification tried
+        public List<TitleMatch> TitleMatches { get; set; } = new List<TitleMatch>();
+
         public void PopulateMatch(bool keepAllEditions)
         {
             if (Edition != null)

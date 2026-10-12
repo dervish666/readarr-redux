@@ -22,6 +22,10 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
 
         private static readonly RegexReplace CleanTitleCruft = new RegexReplace(@"\((?:unabridged)\)", string.Empty, RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+        private static readonly Regex NumbersRegex = new Regex(@"\d+", RegexOptions.Compiled);
+
+        private static readonly Regex DiscMarkerRegex = new Regex(@"\b(?:dis[ck]|cd|part|pt)\.?\s*\d+", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
         private static readonly List<string> EbookFormats = new List<string> { "Kindle Edition", "Nook", "ebook" };
 
         private static readonly List<string> AudiobookFormats = new List<string> { "Audiobook", "Audio CD", "Audio Cassette", "Audible Audio", "CD-ROM", "MP3 CD" };
@@ -43,32 +47,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
             Logger.Trace("author: '{0}' vs '{1}'; {2}", authors.ConcatToString("' or '"), edition.Book.Value.AuthorMetadata.Value.Name, dist.NormalizedDistance());
 
             var title = localTracks.MostCommon(x => x.FileTrackInfo.BookTitle) ?? "";
-            var titleOptions = new List<string> { edition.Title };
-            if (titleOptions[0].Contains("#"))
-            {
-                titleOptions.Add(StripSeriesRegex.Replace(titleOptions[0]));
-            }
-
-            var (maintitle, _) = edition.Title.SplitBookTitle(edition.Book.Value.AuthorMetadata.Value.Name);
-            if (!titleOptions.Contains(maintitle))
-            {
-                titleOptions.Add(maintitle);
-            }
-
-            if (edition.Book.Value.SeriesLinks?.Value?.Any() ?? false)
-            {
-                foreach (var l in edition.Book.Value.SeriesLinks.Value)
-                {
-                    if (l.Series?.Value?.Title?.IsNotNullOrWhiteSpace() ?? false)
-                    {
-                        titleOptions.Add($"{l.Series.Value.Title} {l.Position} {edition.Title}");
-                        titleOptions.Add($"{l.Series.Value.Title} Book {l.Position} {edition.Title}");
-                        titleOptions.Add($"{edition.Title} {l.Series.Value.Title} {l.Position}");
-                        titleOptions.Add($"{edition.Title} {l.Series.Value.Title} Book {l.Position}");
-                    }
-                }
-            }
-
+            var titleOptions = TitleOptions(edition);
             var fileTitles = new[] { title, CleanTitleCruft.Replace(title) }.Distinct().ToList();
 
             dist.AddString("book", fileTitles, titleOptions);
@@ -77,7 +56,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
             var isbn = localTracks.MostCommon(x => x.FileTrackInfo.Isbn);
             if (isbn.IsNotNullOrWhiteSpace() && edition.Isbn13.IsNotNullOrWhiteSpace())
             {
-                dist.AddBool("isbn", isbn != edition.Isbn13);
+                // An ISBN-10 in the tags is the same book as the edition's ISBN-13
+                dist.AddBool("isbn", (Isbn13(isbn) ?? isbn) != (Isbn13(edition.Isbn13) ?? edition.Isbn13));
                 Logger.Trace("isbn: '{0}' vs '{1}'; {2}", isbn, edition.Isbn13, dist.NormalizedDistance());
             }
             else if (isbn.IsNullOrWhiteSpace() != edition.Isbn13.IsNullOrWhiteSpace())
@@ -157,6 +137,204 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
             }
 
             return dist;
+        }
+
+        // How closely the files' book title names this edition's book. Distance counts only the book's own titles,
+        // and only where both titles carry the same numbers ("Hellraiser #5" is not "Hellraiser #6"). LooseDistance
+        // also counts the part of a title before its colon: for "Everville: The Second Book of the Art" that is the
+        // title, but for "The Chronicles of Narnia: The Lion, the Witch and the Wardrobe" it is the series.
+        public static TitleMatch GetTitleMatch(List<LocalBook> localTracks, Edition edition)
+        {
+            var title = localTracks.MostCommon(x => x.FileTrackInfo.BookTitle) ?? "";
+            var fileTitles = new[] { title, CleanTitleCruft.Replace(title), WithoutBrackets(title) }
+                .Where(x => x.IsNotNullOrWhiteSpace())
+                .Distinct()
+                .ToList();
+
+            var ownTitles = OwnTitles(edition);
+
+            return new TitleMatch
+            {
+                ForeignBookId = edition.Book.Value.ForeignBookId,
+                Title = edition.Book.Value.Title,
+                Distance = Closest(fileTitles, ownTitles, true),
+                LooseDistance = Closest(fileTitles, ownTitles.Concat(TitleOptions(edition)).Distinct().ToList(), false),
+                SharesIdentifier = CompareIdentifiers(localTracks, edition).Any(x => x)
+            };
+        }
+
+        // The files carry an ISBN, ASIN or Goodreads id that is this edition's, and none that contradicts it
+        public static bool MatchesIdentifier(List<LocalBook> localTracks, Edition edition)
+        {
+            var checks = CompareIdentifiers(localTracks, edition);
+
+            return checks.Any() && checks.All(x => x);
+        }
+
+        // "The Chronicles of Narnia (Book 5)" and "(Book 6)" are close enough to be grouped as one release, and then
+        // the most common title alone would decide for all of them. Within one book a different number in the book tag
+        // is a disc, or a part when each file has its own and they count from 1.
+        public static bool NamesDifferentlyNumberedBooks(List<LocalBook> localTracks)
+        {
+            var numberings = localTracks
+                .Select(x => x.FileTrackInfo?.BookTitle)
+                .Where(x => x.IsNotNullOrWhiteSpace())
+                .Select(x => Numbers(DiscMarkerRegex.Replace(x, string.Empty)).ToList())
+                .ToList();
+
+            var distinct = numberings.Select(x => x.ConcatToString(" ")).Distinct().Count();
+
+            if (distinct <= 1)
+            {
+                return false;
+            }
+
+            if (distinct < numberings.Count)
+            {
+                return true;
+            }
+
+            var parts = numberings.Select(x => int.TryParse(x.LastOrDefault(), out var n) ? n : 0).OrderBy(x => x);
+
+            return !parts.SequenceEqual(Enumerable.Range(1, numberings.Count));
+        }
+
+        // Whether each identifier both the files and the edition have agrees
+        private static List<bool> CompareIdentifiers(List<LocalBook> localTracks, Edition edition)
+        {
+            var checks = new List<bool>();
+
+            var isbns = Values(localTracks, x => Isbn13(x.FileTrackInfo.Isbn));
+            var isbn = Isbn13(edition.Isbn13);
+            if (isbns.Any() && isbn != null)
+            {
+                checks.Add(isbns.Count == 1 && isbns[0] == isbn);
+            }
+
+            var asins = Values(localTracks, x => x.FileTrackInfo.Asin?.Trim().ToUpperInvariant());
+            var asin = edition.Asin?.Trim().ToUpperInvariant();
+            if (asins.Any() && asin.IsNotNullOrWhiteSpace())
+            {
+                checks.Add(asins.Count == 1 && asins[0] == asin);
+            }
+
+            var goodreads = Values(localTracks, x => x.FileTrackInfo.GoodreadsId?.Trim());
+            if (goodreads.Any())
+            {
+                checks.Add(goodreads.Count == 1 && (goodreads[0] == edition.ForeignEditionId || goodreads[0] == edition.Book.Value.ForeignBookId));
+            }
+
+            return checks;
+        }
+
+        private static List<string> TitleOptions(Edition edition)
+        {
+            var titleOptions = new List<string> { edition.Title };
+            if (titleOptions[0].Contains("#"))
+            {
+                titleOptions.Add(StripSeriesRegex.Replace(titleOptions[0]));
+            }
+
+            var (maintitle, _) = edition.Title.SplitBookTitle(edition.Book.Value.AuthorMetadata.Value.Name);
+            if (!titleOptions.Contains(maintitle))
+            {
+                titleOptions.Add(maintitle);
+            }
+
+            titleOptions.AddRange(SeriesTitles(edition));
+
+            return titleOptions;
+        }
+
+        // The edition title, without bracketed notes, a series marker or an author prefix, or with its series. And the
+        // book's title, which is what Readarr writes into a file's book tag.
+        private static List<string> OwnTitles(Edition edition)
+        {
+            var title = edition.Title;
+            var author = edition.Book.Value.AuthorMetadata.Value.Name;
+            var titles = new List<string> { title, WithoutBrackets(title), edition.Book.Value.Title };
+
+            if (title.Contains("#"))
+            {
+                titles.Add(StripSeriesRegex.Replace(title));
+            }
+
+            if (author.IsNotNullOrWhiteSpace() && title.StartsWith($"{author}:"))
+            {
+                titles.Add(title.Split(':', 2)[1].Trim());
+            }
+
+            titles.AddRange(SeriesTitles(edition));
+
+            return titles.Where(x => x.IsNotNullOrWhiteSpace()).Distinct().ToList();
+        }
+
+        private static IEnumerable<string> SeriesTitles(Edition edition)
+        {
+            if (!(edition.Book.Value.SeriesLinks?.Value?.Any() ?? false))
+            {
+                yield break;
+            }
+
+            foreach (var l in edition.Book.Value.SeriesLinks.Value)
+            {
+                if (l.Series?.Value?.Title?.IsNotNullOrWhiteSpace() ?? false)
+                {
+                    yield return $"{l.Series.Value.Title} {l.Position} {edition.Title}";
+                    yield return $"{l.Series.Value.Title} Book {l.Position} {edition.Title}";
+                    yield return $"{edition.Title} {l.Series.Value.Title} {l.Position}";
+                    yield return $"{edition.Title} {l.Series.Value.Title} Book {l.Position}";
+                }
+            }
+        }
+
+        private static double Closest(List<string> values, List<string> options, bool sameNumbers)
+        {
+            return values.SelectMany(v => options.Select(o => (Value: v, Option: o)))
+                .Where(x => !sameNumbers || Numbers(x.Value).SequenceEqual(Numbers(x.Option)))
+                .Select(x => Distance.StringDistance(x.Value, x.Option))
+                .DefaultIfEmpty(1.0)
+                .Min();
+        }
+
+        private static IEnumerable<string> Numbers(string title)
+        {
+            return NumbersRegex.Matches(title).Select(m => m.Value.TrimStart('0'));
+        }
+
+        // A title without its bracketed notes, unless they hold a number: "(Book 5)" is not "(Book 6)", and without
+        // either the two would match
+        private static string WithoutBrackets(string title)
+        {
+            var stripped = title.RemoveBracketsAndContents();
+
+            return Numbers(stripped).SequenceEqual(Numbers(title)) ? stripped : null;
+        }
+
+        private static List<string> Values(List<LocalBook> localTracks, Func<LocalBook, string> selector)
+        {
+            return localTracks.Select(selector).Where(x => x.IsNotNullOrWhiteSpace()).Distinct().ToList();
+        }
+
+        // As ISBN-13, so an ISBN-10 in a file's tags compares with the edition's
+        private static string Isbn13(string isbn)
+        {
+            var chars = new string((isbn ?? string.Empty).Where(c => char.IsDigit(c) || c == 'X' || c == 'x').ToArray()).ToUpperInvariant();
+
+            if (chars.Length == 13)
+            {
+                return chars;
+            }
+
+            if (chars.Length != 10)
+            {
+                return null;
+            }
+
+            var body = "978" + chars.Substring(0, 9);
+            var sum = body.Select((c, i) => (c - '0') * (i % 2 == 0 ? 1 : 3)).Sum();
+
+            return body + ((10 - (sum % 10)) % 10);
         }
 
         public static List<string> GetAuthorVariants(List<string> fileAuthors)
