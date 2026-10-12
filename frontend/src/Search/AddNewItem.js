@@ -135,7 +135,7 @@ class AddNewItem extends Component {
                 <Alert kind={kinds.WARNING}>{getErrorMessage(error)}</Alert>
 
                 <div>
-                  <Link to="https://wiki.servarr.com/readarr/troubleshooting#invalid-response-received-from-metadata-api">
+                  <Link to="https://github.com/dervish666/readarr-redux#you-need-a-metadata-source">
                     {translate('WhySearchesCouldBeFailing')}
                   </Link>
                 </div>

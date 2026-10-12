@@ -284,8 +284,8 @@ function Updates() {
               <div>
                 <InlineMarkdown
                   data={translate('InstallMajorVersionUpdateMessageLink', {
-                    domain: 'readarr.com',
-                    url: 'https://readarr.com/#downloads',
+                    domain: 'ghcr.io/dervish666/readarr',
+                    url: 'https://github.com/dervish666/readarr-redux/pkgs/container/readarr',
                   })}
                 />
               </div>

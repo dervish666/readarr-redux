@@ -8,6 +8,8 @@ Versions are `0.5.0.<CI run number>`. Only pushes to `develop` publish an image,
 
 - The vendored FluentMigrator no longer pulls in every database runner, so Microsoft SQL Server Compact, the Visual C++ 2008 runtime and `Microsoft.Data.SqlClient` are gone from the build and the image. Only SQLite and Postgres were ever used.
 - New README, NOTICE.md, SECURITY.md and CONTRIBUTING.md for the fork.
+- The header donate button and the Readarr donation tile are gone, since that money went to a retired project. The Sonarr, Radarr, Lidarr and Prowlarr tiles stay.
+- System > Status says this is an unofficial fork and links to its source, issues and discussions, with the upstream wiki and repository marked as upstream. The metadata search help, update and API licence links point at the fork.
 
 ## 0.5.0.14 (2026-10-12)
 
