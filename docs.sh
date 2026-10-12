@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-FRAMEWORK="net6.0"
+FRAMEWORK="net10.0"
 PLATFORM=$1
 
 if [ "$PLATFORM" = "Windows" ]; then
@@ -37,7 +37,7 @@ dotnet clean $slnFile -c Release
 dotnet msbuild -restore $slnFile -p:Configuration=Debug -p:Platform=$platform -p:RuntimeIdentifiers=$RUNTIME -t:PublishAllRids
 
 dotnet new tool-manifest
-dotnet tool install --version 6.6.2 Swashbuckle.AspNetCore.Cli
+dotnet tool install --version 10.3.0 Swashbuckle.AspNetCore.Cli
 
 dotnet tool run swagger tofile --output ./src/Readarr.Api.V1/openapi.json "$outputFolder/$FRAMEWORK/$RUNTIME/$application" v1 &
 

@@ -16,7 +16,7 @@ RUN yarn install --frozen-lockfile --network-timeout 120000
 COPY frontend ./frontend
 RUN yarn build --env production
 
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:6.0.428-1-bookworm-slim AS backend
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0.401-noble AS backend
 ARG TARGETARCH
 # Read by src/Directory.Build.props. Keep Major below 10 and Revision at or below 10000, or the app runs in development mode.
 ARG READARRVERSION=0.5.0.0
@@ -30,10 +30,10 @@ RUN case "$TARGETARCH" in \
         arm64) rid=linux-arm64 ;; \
         *) echo "Unsupported architecture: $TARGETARCH" >&2; exit 1 ;; \
     esac \
-    && ./build.sh --backend -r "$rid" -f net6.0 \
+    && ./build.sh --backend -r "$rid" -f net10.0 \
     && cp -r /ui _output/UI \
-    && ./build.sh --packages -r "$rid" -f net6.0 \
-    && mv "_artifacts/$rid/net6.0/Readarr" /readarr \
+    && ./build.sh --packages -r "$rid" -f net10.0 \
+    && mv "_artifacts/$rid/net10.0/Readarr" /readarr \
     && rm -rf /readarr/Readarr.Update
 
 FROM debian:bookworm-slim
