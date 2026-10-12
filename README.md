@@ -1,96 +1,78 @@
-# Announcement: Retirement of Readarr
+# Readarr Redux
 
-We would like to announce that the [Readarr project](<https://github.com/Readarr/Readarr>) has been retired. This difficult decision was made due to a combination of factors: the project's metadata has become unusable, we no longer have the time to remake or repair it, and the community effort to transition to using Open Library as the source has stalled without much progress.
+An unofficial, community-maintained continuation of [Readarr](https://github.com/Readarr/Readarr), the ebook and audiobook manager for Usenet and BitTorrent users. The Servarr team retired upstream Readarr in June 2025, after its metadata became unusable and nobody had the time to rebuild it. This fork runs against a metadata source you choose and fixes the bugs that made Readarr lose books.
 
-Third-party metadata mirrors exist, but as we're not involved with them at all, we cannot provide support for them. Use of them is entirely at your own risk. The most popular mirror appears to be [rreading-glasses](<https://github.com/blampe/rreading-glasses>).
+Readarr Redux is not affiliated with or supported by the Servarr team. Please don't ask for help with it in the Readarr or Servarr Discord, or file its bugs on their trackers.
 
-Without anyone to take over Readarr development, we expect it to wither away, so we still encourage you to seek alternatives to Readarr.
+## Status
 
-## Key Points:
-- **Effective Immediately**: The retirement takes effect immediately. Please stay tuned for any possible further communications.
-- **Support Window**: We will provide support during a brief transition period to help with troubleshooting non metadata related issues.
-- **Alternative Solutions**: Users are encouraged to explore and adopt any other possible solutions as alternatives to Readarr.
-- **Opportunities for Revival**: We are open to someone taking over and revitalizing the project. If you are interested, please get in touch.
-- **Gratitude**: We extend our deepest gratitude to all the contributors and community members who supported Readarr over the years.
+- One person ([@dervish666](https://github.com/dervish666)) maintains it for his own library. Issues and pull requests are welcome; replies are best effort.
+- The supported install is the Docker image for Linux amd64 and arm64. Building from source works on macOS and Windows, but CI doesn't test those.
+- Claude Code wrote most of the changes since the fork, and every fork commit carries a `Claude-Session` trailer.
+- The app still calls itself Readarr, and its data folders, database names and assembly names are unchanged, so an existing install can move over (see below).
 
-Thank you for being part of the Readarr journey. For any inquiries or assistance during this transition, please contact our team.
+## You need a metadata source
 
-Sincerely,  
-The Servarr Team
+Upstream's metadata server, `api.bookinfo.club`, is gone, and Readarr Redux has no default.
 
-# Readarr
+1. Run [rreading-glasses](https://github.com/blampe/rreading-glasses) yourself, or use a public instance you trust. The public Goodreads-backed instance at `https://api.bookinfo.pro` answered when this was written, but it is shared and may be rate limited.
+2. In Settings > Metadata Source, enter the base URL, press Test and save.
+3. Until a source is set, adding authors, search and refresh fail, and System > Status shows a health warning.
 
-[![Build Status](https://dev.azure.com/Readarr/Readarr/_apis/build/status/Readarr.Readarr?branchName=develop)](https://dev.azure.com/Readarr/Readarr/_build/latest?definitionId=1&branchName=develop)
-[![Translated](https://translate.servarr.com/widgets/servarr/-/readarr/svg-badge.svg)](https://translate.servarr.com/engage/readarr/?utm_source=widget)
-[![Docker Pulls](https://img.shields.io/docker/pulls/hotio/readarr)](https://wiki.servarr.com/readarr/installation#docker)
-[![Donors on Open Collective](https://opencollective.com/Readarr/backers/badge.svg)](#backers)
-[![Sponsors on Open Collective](https://opencollective.com/Readarr/sponsors/badge.svg)](#sponsors)
-[![Mega Sponsors on Open Collective](https://opencollective.com/Readarr/megasponsors/badge.svg)](#mega-sponsors)
+Don't move an existing library between a Goodreads-backed and a Hardcover-backed source. They use different IDs, so no author or book would match any more.
 
-### Readarr is currently in beta testing and is generally still in a work in progress. Features may be broken, incomplete, or cause spontaneous combustion
+If the source has an outage, searches fall back to the last good answer it gave, and refreshes leave your authors and books alone instead of deleting them.
 
-Readarr is an ebook and audiobook collection manager for Usenet and BitTorrent users. It can monitor multiple RSS feeds for new books from your favorite authors and will grab, sort, and rename them.
-Note that only one type of a given book is supported. If you want both an audiobook and ebook of a given book you will need multiple instances.
+## Install with Docker
 
-## Major Features Include
+```
+docker run -d --name readarr \
+  -p 8787:8787 \
+  -e PUID=1000 -e PGID=1000 -e UMASK=022 \
+  -v /path/to/config:/config \
+  -v /path/to/books:/books \
+  -v /path/to/downloads:/downloads \
+  ghcr.io/dervish666/readarr:latest
+```
 
-* Can watch for better quality of the ebooks and audiobooks you have and do an automatic upgrade. *e.g. from PDF to AZW3*
-* Support for major platforms: Windows, Linux, macOS, Raspberry Pi, etc.
-* Automatically detects new books
-* Can scan your existing library and download any missing books
-* Automatic failed download handling will try another release if one fails
-* Manual search so you can pick any release or to see why a release was not downloaded automatically
-* Advanced customization for profiles, such that Readarr will always download the copy you want
-* Fully configurable book renaming
-* SABnzbd, NZBGet, QBittorrent, Deluge, rTorrent, Transmission, uTorrent, and other download clients are supported and integrated
-* Full integration with Calibre (add to library, conversion) (Requires Calibre Content Server)
-* And a beautiful UI
+The image is a drop-in for the linuxserver.io one: `config.xml` and `readarr.db` sit at the root of `/config`, the app listens on 8787, and `PUID`, `PGID` and `UMASK` work the same way. Tags are `latest`, `develop` and `0.5.0.<build>`. The in-app updater is off; update by pulling a newer image.
 
-## Support
+## Moving from upstream Readarr
 
-[![Wiki](https://img.shields.io/badge/servarr-wiki-181717.svg?maxAge=60)](https://wiki.servarr.com/readarr)
-[![Discord](https://img.shields.io/badge/discord-chat-7289DA.svg?maxAge=60)](https://readarr.com/discord)
+1. Stop upstream Readarr and back up its `/config` folder (`readarr.db`, `config.xml`).
+2. Start Readarr Redux on the same `/config`. The database is migrated from schema 040 to 041, which adds salted password hashes.
+3. Your first login after that rehashes your password with PBKDF2. Upstream Readarr can't check the new hash, so going back means restoring the backup.
+4. Set the metadata source (above), then refresh your authors.
 
-Note: GitHub Issues are for Bugs and Feature Requests Only
+Indexers, download clients, root folders, profiles and Calibre settings carry over unchanged.
 
-[![GitHub - Bugs and Feature Requests Only](https://img.shields.io/badge/github-issues-red.svg?maxAge=60)](https://github.com/Readarr/Readarr/issues)
+## What changed from upstream
 
-## Contributors & Developers
+The full list is in [CHANGELOG.md](CHANGELOG.md).
 
-[API Documentation](https://readarr.com/docs/api/)
+- **Metadata.** The source is a setting with a Test button and a health check. Search, ISBN and ASIN lookups, the Goodreads Series import list and refreshes all go through it; only the Goodreads List import list still reads goodreads.com. An outage serves the last good answer instead of failing, and rate limits or a slow source can no longer stall a refresh for hours.
+- **Data loss.** Authors, books and editions are no longer deleted when the source answers 404, returns a truncated works list or merges a work into another one (merges are followed). Upgrades no longer remove old files before the new ones are in place.
+- **Imports.** Downloads stay matched to the book that was grabbed, packs import as packs, and multi-part audiobooks no longer lose, misnumber or silently skip parts.
+- **Security.** Salted PBKDF2 password hashes, login throttling, sessions revoked when credentials change, and fixes for a forwarded-header auth bypass, path traversal in file routes, zip-slip and SQL injection (CVE-2025-50983).
+- **Platform.** .NET 10 and React 18. No call-home: Sentry, update checks and server-side notifications are removed.
 
-This project exists thanks to all the people who contribute.
-- [Contribute (GitHub)](CONTRIBUTING.md)
-- [Contribution (Wiki Article)](https://wiki.servarr.com/readarr/contributing)
+## Building from source
 
-[![Contributors List](https://opencollective.com/Readarr/contributors.svg?width=890&button=false)](https://github.com/Readarr/Readarr/graphs/contributors)
+You need the .NET 10 SDK, Node 20 and Yarn 1.
 
-## Backers
+```
+yarn install --frozen-lockfile
+yarn build
+dotnet build src/Readarr.sln -p:Configuration=Debug -p:Platform=Posix
+dotnet _output/net10.0/Readarr.dll -nobrowser -data=/tmp/readarr-dev
+```
 
-Thank you to all our backers! 🙏 [Become a backer](https://opencollective.com/Readarr#backer)
+Then open http://localhost:8787. Restore needs no private feeds; the packages that only existed on Servarr's feeds are vendored in [src/Libraries/nuget](src/Libraries/nuget/README.md). [CONTRIBUTING.md](CONTRIBUTING.md) has the test commands.
 
-[![Backers List](https://opencollective.com/Readarr/backers.svg?width=890)](https://opencollective.com/Readarr#backer)
+The [upstream wiki](https://wiki.servarr.com/readarr) still describes most settings correctly.
 
-## Sponsors
+## Credits and licence
 
-Support this project by becoming a sponsor. Your logo will show up here with a link to your website. [Become a sponsor](https://opencollective.com/readarr#sponsor)
+Readarr is the work of the Readarr and Servarr team and its contributors, and most of this code is theirs. Several security fixes here are ports of [Sonarr](https://github.com/Sonarr/Sonarr) changes.
 
-[![Sponsors List](https://opencollective.com/Readarr/sponsors.svg?width=890)](https://opencollective.com/readarr#sponsor)
-
-## Mega Sponsors
-
-[![Mega Sponsors List](https://opencollective.com/Readarr/tiers/mega-sponsor.svg?width=890)](https://opencollective.com/readarr#mega-sponsor)
-
-## DigitalOcean
-
-This project is also supported by DigitalOcean
-<p>
-  <a href="https://www.digitalocean.com/">
-    <img src="https://opensource.nyc3.cdn.digitaloceanspaces.com/attribution/assets/SVG/DO_Logo_horizontal_blue.svg" width="201px">
-  </a>
-</p>
-
-### License
-
-* [GNU GPL v3](http://www.gnu.org/licenses/gpl.html)
-* Copyright 2010-2022
+Readarr Redux is released under the GNU GPL v3, the same as Readarr. See [LICENSE.md](LICENSE.md) and [NOTICE.md](NOTICE.md).

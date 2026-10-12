@@ -70,8 +70,9 @@
   <!-- Set the Product and Version info for our own projects -->
   <PropertyGroup Condition="'$(ReadarrProject)'=='true'">
     <Product>Readarr</Product>
-    <Company>readarr.com</Company>
-    <Copyright>Copyright 2017-$([System.DateTime]::Now.ToString('yyyy')) readarr.com (GNU General Public v3)</Copyright>
+    <!-- Product stays Readarr so existing installs keep their folders and names. See NOTICE.md. -->
+    <Company>Readarr Redux</Company>
+    <Copyright>Copyright 2017-2025 readarr.com, 2026-$([System.DateTime]::Now.ToString('yyyy')) Readarr Redux contributors (GNU General Public v3)</Copyright>
 
     <!--
       CI and the Dockerfile set READARRVERSION=0.5.0.<build number> and BUILD_SOURCEBRANCHNAME.
