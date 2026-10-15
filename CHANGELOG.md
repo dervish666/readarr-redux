@@ -6,6 +6,7 @@ Versions are `0.5.0.<CI run number>`. Only pushes to `develop` publish an image,
 
 ## Unreleased
 
+- Fixed: Rescans leaving a file unmapped when it names its book by series position ("Defiance of the Fall 1", "Mistborn #2", "The Expanse, Book 3"), common for book 1 of a long series titled after the series. Such a file could also come out closest to a later book in the series, which the rescan then rightly refused.
 - The vendored FluentMigrator no longer pulls in every database runner, so Microsoft SQL Server Compact, the Visual C++ 2008 runtime and `Microsoft.Data.SqlClient` are gone from the build and the image. Only SQLite and Postgres were ever used.
 - New README, NOTICE.md, SECURITY.md and CONTRIBUTING.md for the fork.
 - The header donate button and the Readarr donation tile are gone, since that money went to a retired project. The Sonarr, Radarr, Lidarr and Prowlarr tiles stay.
