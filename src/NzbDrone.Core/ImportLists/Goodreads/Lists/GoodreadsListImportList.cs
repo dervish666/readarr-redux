@@ -60,8 +60,9 @@ namespace NzbDrone.Core.ImportLists.Goodreads
 
                 _importListStatusService.RecordSuccess(Definition.Id);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.Warn(ex, "Unable to fetch Goodreads list {0}", Settings.ListId);
                 _importListStatusService.RecordFailure(Definition.Id);
             }
 
