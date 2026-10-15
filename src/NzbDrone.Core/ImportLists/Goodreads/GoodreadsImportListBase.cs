@@ -147,8 +147,8 @@ namespace NzbDrone.Core.ImportLists.Goodreads
             };
             request.Headers.Set("Content-Type", "application/json");
 
+            // The payload carries the consumer and token secrets, so it is never logged
             var payload = oAuthRequest.ToJson();
-            _logger.Trace(payload);
             request.SetContent(payload);
 
             var response = _httpClient.Post<AuthorizationHeader>(request).Resource;
