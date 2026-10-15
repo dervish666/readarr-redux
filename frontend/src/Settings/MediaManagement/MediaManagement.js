@@ -184,6 +184,27 @@ class MediaManagement extends Component {
                         size={sizes.MEDIUM}
                       >
                         <FormLabel>
+                          {translate('MinimumBookMatch')}
+                        </FormLabel>
+
+                        <FormInputGroup
+                          type={inputTypes.NUMBER}
+                          unit='%'
+                          name="minimumBookMatchPercent"
+                          min={50}
+                          max={100}
+                          helpText={translate('MinimumBookMatchHelpText')}
+                          onChange={onInputChange}
+                          {...settings.minimumBookMatchPercent}
+                        />
+                      </FormGroup>
+
+                      <FormGroup
+                        advancedSettings={advancedSettings}
+                        isAdvanced={true}
+                        size={sizes.MEDIUM}
+                      >
+                        <FormLabel>
                           {translate('UseHardlinksInsteadOfCopy')}
                         </FormLabel>
 
