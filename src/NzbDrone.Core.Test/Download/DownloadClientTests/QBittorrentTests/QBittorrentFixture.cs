@@ -716,6 +716,20 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.QBittorrentTests
 
         [TestCase("pausedUP")]
         [TestCase("stoppedUP")]
+        public void should_not_be_removable_or_allow_move_files_if_remove_completed_downloads_is_off(string state)
+        {
+            Subject.Definition.As<DownloadClientDefinition>().RemoveCompletedDownloads = false;
+
+            GivenGlobalSeedLimits(1.0f);
+            GivenCompletedTorrent(state, ratio: 1.0f);
+
+            var item = Subject.GetItems().Single();
+            item.CanBeRemoved.Should().BeFalse();
+            item.CanMoveFiles.Should().BeFalse();
+        }
+
+        [TestCase("pausedUP")]
+        [TestCase("stoppedUP")]
         public void should_be_removable_and_should_allow_move_files_if_max_ratio_reached_and_paused(string state)
         {
             GivenGlobalSeedLimits(1.0f);

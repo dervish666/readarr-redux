@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using Newtonsoft.Json.Linq;
 using NLog;
@@ -13,15 +14,16 @@ namespace NzbDrone.Core.Download.Clients.Transmission
 {
     public interface ITransmissionProxy
     {
-        List<TransmissionTorrent> GetTorrents(TransmissionSettings settings);
+        IReadOnlyCollection<TransmissionTorrent> GetTorrents(IReadOnlyCollection<string> hashStrings, TransmissionSettings settings);
         void AddTorrentFromUrl(string torrentUrl, string downloadDirectory, TransmissionSettings settings);
         void AddTorrentFromData(byte[] torrentData, string downloadDirectory, TransmissionSettings settings);
         void SetTorrentSeedingConfiguration(string hash, TorrentSeedConfiguration seedConfiguration, TransmissionSettings settings);
         TransmissionConfig GetConfig(TransmissionSettings settings);
         string GetProtocolVersion(TransmissionSettings settings);
-        string GetClientVersion(TransmissionSettings settings);
+        string GetClientVersion(TransmissionSettings settings, bool force = false);
         void RemoveTorrent(string hash, bool removeData, TransmissionSettings settings);
         void MoveTorrentToTopInQueue(string hashString, TransmissionSettings settings);
+        void SetTorrentLabels(string hash, IEnumerable<string> labels, TransmissionSettings settings);
     }
 
     public class TransmissionProxy : ITransmissionProxy
@@ -29,7 +31,8 @@ namespace NzbDrone.Core.Download.Clients.Transmission
         private readonly IHttpClient _httpClient;
         private readonly Logger _logger;
 
-        private ICached<string> _authSessionIDCache;
+        private readonly ICached<string> _authSessionIDCache;
+        private readonly ICached<string> _versionCache;
 
         public TransmissionProxy(ICacheManager cacheManager, IHttpClient httpClient, Logger logger)
         {
@@ -37,11 +40,12 @@ namespace NzbDrone.Core.Download.Clients.Transmission
             _logger = logger;
 
             _authSessionIDCache = cacheManager.GetCache<string>(GetType(), "authSessionID");
+            _versionCache = cacheManager.GetCache<string>(GetType(), "versions");
         }
 
-        public List<TransmissionTorrent> GetTorrents(TransmissionSettings settings)
+        public IReadOnlyCollection<TransmissionTorrent> GetTorrents(IReadOnlyCollection<string> hashStrings, TransmissionSettings settings)
         {
-            var result = GetTorrentStatus(settings);
+            var result = GetTorrentStatus(hashStrings, settings);
 
             var torrents = ((JArray)result.Arguments["torrents"]).ToObject<List<TransmissionTorrent>>();
 
@@ -59,6 +63,11 @@ namespace NzbDrone.Core.Download.Clients.Transmission
                 arguments.Add("download-dir", downloadDirectory);
             }
 
+            if (settings.MusicCategory.IsNotNullOrWhiteSpace())
+            {
+                arguments.Add("labels", new List<string> { settings.MusicCategory });
+            }
+
             ProcessRequest("torrent-add", arguments, settings);
         }
 
@@ -71,6 +80,11 @@ namespace NzbDrone.Core.Download.Clients.Transmission
             if (!downloadDirectory.IsNullOrWhiteSpace())
             {
                 arguments.Add("download-dir", downloadDirectory);
+            }
+
+            if (settings.MusicCategory.IsNotNullOrWhiteSpace())
+            {
+                arguments.Add("labels", new List<string> { settings.MusicCategory });
             }
 
             ProcessRequest("torrent-add", arguments, settings);
@@ -98,6 +112,12 @@ namespace NzbDrone.Core.Download.Clients.Transmission
                 arguments.Add("seedIdleMode", 1);
             }
 
+            // Avoid extraneous request if no limits are to be set
+            if (arguments.Count == 1)
+            {
+                return;
+            }
+
             ProcessRequest("torrent-set", arguments, settings);
         }
 
@@ -108,11 +128,16 @@ namespace NzbDrone.Core.Download.Clients.Transmission
             return config.RpcVersion;
         }
 
-        public string GetClientVersion(TransmissionSettings settings)
+        public string GetClientVersion(TransmissionSettings settings, bool force = false)
         {
-            var config = GetConfig(settings);
+            var cacheKey = HttpRequestBuilder.BuildBaseUrl(settings.UseSsl, settings.Host, settings.Port, settings.UrlBase);
 
-            return config.Version;
+            if (force)
+            {
+                _versionCache.Remove(cacheKey);
+            }
+
+            return _versionCache.Get(cacheKey, () => GetConfig(settings).Version, TimeSpan.FromHours(6));
         }
 
         public TransmissionConfig GetConfig(TransmissionSettings settings)
@@ -140,6 +165,17 @@ namespace NzbDrone.Core.Download.Clients.Transmission
             ProcessRequest("queue-move-top", arguments, settings);
         }
 
+        public void SetTorrentLabels(string hash, IEnumerable<string> labels, TransmissionSettings settings)
+        {
+            var arguments = new Dictionary<string, object>
+            {
+                { "ids", new List<string> { hash } },
+                { "labels", labels.ToHashSet() }
+            };
+
+            ProcessRequest("torrent-set", arguments, settings);
+        }
+
         private TransmissionResponse GetSessionVariables(TransmissionSettings settings)
         {
             // Retrieve transmission information such as the default download directory, bandwith throttling and seed ratio.
@@ -149,11 +185,6 @@ namespace NzbDrone.Core.Download.Clients.Transmission
         private TransmissionResponse GetSessionStatistics(TransmissionSettings settings)
         {
             return ProcessRequest("session-stats", null, settings);
-        }
-
-        private TransmissionResponse GetTorrentStatus(TransmissionSettings settings)
-        {
-            return GetTorrentStatus(null, settings);
         }
 
         private TransmissionResponse GetTorrentStatus(IEnumerable<string> hashStrings, TransmissionSettings settings)
@@ -178,7 +209,9 @@ namespace NzbDrone.Core.Download.Clients.Transmission
                 "seedRatioMode",
                 "seedIdleLimit",
                 "seedIdleMode",
-                "fileCount"
+                "fileCount",
+                "file-count",
+                "labels"
             };
 
             var arguments = new Dictionary<string, object>();

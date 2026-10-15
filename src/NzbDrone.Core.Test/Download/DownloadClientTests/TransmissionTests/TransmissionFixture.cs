@@ -13,6 +13,14 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.TransmissionTests
     [TestFixture]
     public class TransmissionFixture : TransmissionFixtureBase<Transmission>
     {
+        [SetUp]
+        public void Setup_Transmission()
+        {
+            Mocker.GetMock<ITransmissionProxy>()
+                .Setup(v => v.GetClientVersion(It.IsAny<TransmissionSettings>(), It.IsAny<bool>()))
+                .Returns("4.0.6");
+        }
+
         [Test]
         public void queued_item_should_have_required_properties()
         {
@@ -87,8 +95,12 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.TransmissionTests
         }
 
         [Test]
-        public async Task Download_with_category_should_force_directory()
+        public async Task Download_with_category_on_v3_should_force_directory()
         {
+            Mocker.GetMock<ITransmissionProxy>()
+                .Setup(v => v.GetClientVersion(It.IsAny<TransmissionSettings>(), It.IsAny<bool>()))
+                .Returns("3.0.6");
+
             GivenMusicCategory();
             GivenSuccessfulDownload();
 
@@ -103,8 +115,109 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.TransmissionTests
         }
 
         [Test]
-        public async Task Download_with_category_should_not_have_double_slashes()
+        public void should_not_allow_category_and_directory_on_v3()
         {
+            Mocker.GetMock<ITransmissionProxy>()
+                .Setup(v => v.GetClientVersion(It.IsAny<TransmissionSettings>(), It.IsAny<bool>()))
+                .Returns("3.0.6");
+
+            GivenMusicCategory();
+            GivenTvDirectory();
+
+            Subject.Test().IsValid.Should().BeFalse();
+        }
+
+        [Test]
+        public void should_allow_category_and_directory_on_v4()
+        {
+            GivenMusicCategory();
+            GivenTvDirectory();
+
+            Subject.Test().IsValid.Should().BeTrue();
+        }
+
+        [Test]
+        public async Task Download_with_category_on_v4_should_not_force_directory()
+        {
+            GivenMusicCategory();
+            GivenSuccessfulDownload();
+
+            var remoteBook = CreateRemoteBook();
+
+            var id = await Subject.Download(remoteBook, CreateIndexer());
+
+            id.Should().NotBeNullOrEmpty();
+
+            Mocker.GetMock<ITransmissionProxy>()
+                  .Verify(v => v.AddTorrentFromData(It.IsAny<byte[]>(), null, It.IsAny<TransmissionSettings>()), Times.Once());
+        }
+
+        [Test]
+        public async Task Download_with_directory_and_category_on_v4_should_use_directory()
+        {
+            GivenTvDirectory();
+            GivenMusicCategory();
+            GivenSuccessfulDownload();
+
+            var remoteBook = CreateRemoteBook();
+
+            var id = await Subject.Download(remoteBook, CreateIndexer());
+
+            id.Should().NotBeNullOrEmpty();
+
+            Mocker.GetMock<ITransmissionProxy>()
+                  .Verify(v => v.AddTorrentFromData(It.IsAny<byte[]>(), @"C:/Downloads/Finished/Readarr", It.IsAny<TransmissionSettings>()), Times.Once());
+        }
+
+        [Test]
+        public void should_match_v4_torrents_by_label_and_legacy_torrents_by_subfolder()
+        {
+            GivenMusicCategory();
+
+            var labelled = new TransmissionTorrent
+            {
+                HashString = "HASH1",
+                Name = _title,
+                DownloadDir = "C:/Downloads/Finished/transmission",
+                Labels = new[] { "readarr" },
+                Status = TransmissionTorrentStatus.Downloading,
+                TotalSize = 1000,
+                LeftUntilDone = 100
+            };
+
+            var legacy = new TransmissionTorrent
+            {
+                HashString = "HASH2",
+                Name = _title,
+                DownloadDir = "C:/Downloads/Finished/transmission/Readarr",
+                Status = TransmissionTorrentStatus.Downloading,
+                TotalSize = 1000,
+                LeftUntilDone = 100
+            };
+
+            var other = new TransmissionTorrent
+            {
+                HashString = "HASH3",
+                Name = _title,
+                DownloadDir = "C:/Downloads/Finished/transmission",
+                Labels = new[] { "tv-sonarr" },
+                Status = TransmissionTorrentStatus.Downloading,
+                TotalSize = 1000,
+                LeftUntilDone = 100
+            };
+
+            GivenTorrents(new List<TransmissionTorrent> { labelled, legacy, other });
+
+            Subject.GetItems().Select(i => i.DownloadId).Should().BeEquivalentTo(new[] { "HASH1", "HASH2" });
+        }
+
+        [Test]
+        public async Task Download_with_category_on_v3_should_not_have_double_slashes()
+        {
+            Mocker.GetMock<ITransmissionProxy>()
+                .Setup(v => v.GetClientVersion(It.IsAny<TransmissionSettings>(), It.IsAny<bool>()))
+                .Returns("3.0.6");
+
             GivenMusicCategory();
             GivenSuccessfulDownload();
 
@@ -272,7 +385,7 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.TransmissionTests
         public void should_only_check_version_number(string version)
         {
             Mocker.GetMock<ITransmissionProxy>()
-                  .Setup(s => s.GetClientVersion(It.IsAny<TransmissionSettings>()))
+                  .Setup(s => s.GetClientVersion(It.IsAny<TransmissionSettings>(), true))
                   .Returns(version);
 
             Subject.Test().IsValid.Should().BeTrue();
