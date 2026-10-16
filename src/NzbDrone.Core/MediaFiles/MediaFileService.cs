@@ -128,12 +128,14 @@ namespace NzbDrone.Core.MediaFiles
             List<IFileInfo> unwanted = null;
             if (filter == FilterFilesType.Known)
             {
+                // An unmapped file is retried even when unchanged, so a rescan after a matching fix can map it
                 unwanted = combined
                     .Where(x => x.DiskFile.Length == x.DbFile.Size &&
-                           Math.Abs((x.DiskFile.LastWriteTimeUtc - x.DbFile.Modified.ToUniversalTime()).TotalSeconds) <= 1)
+                           Math.Abs((x.DiskFile.LastWriteTimeUtc - x.DbFile.Modified.ToUniversalTime()).TotalSeconds) <= 1 &&
+                           !IsUnmapped(x.DbFile))
                     .Select(x => x.DiskFile)
                     .ToList();
-                _logger.Trace($"{unwanted.Count} unchanged existing files");
+                _logger.Trace($"{unwanted.Count} unchanged mapped files");
             }
             else if (filter == FilterFilesType.Matched)
             {
@@ -196,6 +198,12 @@ namespace NzbDrone.Core.MediaFiles
         public List<BookFile> GetFilesByEdition(int editionId)
         {
             return _mediaFileRepository.GetFilesByEdition(editionId);
+        }
+
+        // GetFileWithPath left-joins the edition, so an unmapped file comes back with it loaded as null
+        private static bool IsUnmapped(BookFile file)
+        {
+            return file.Edition != null && file.Edition.IsLoaded && file.Edition.Value == null;
         }
 
         public List<BookFile> GetUnmappedFiles()
