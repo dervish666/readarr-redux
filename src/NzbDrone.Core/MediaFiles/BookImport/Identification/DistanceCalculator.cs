@@ -242,6 +242,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
             }
 
             titleOptions.AddRange(SeriesTitles(edition));
+            titleOptions.AddRange(PositionTitles(edition).Where(x => !titleOptions.Contains(x)).ToList());
 
             return titleOptions;
         }
@@ -265,6 +266,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
             }
 
             titles.AddRange(SeriesTitles(edition));
+            titles.AddRange(PositionTitles(edition));
 
             return titles.Where(x => x.IsNotNullOrWhiteSpace()).Distinct().ToList();
         }
@@ -284,6 +286,37 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
                     yield return $"{l.Series.Value.Title} Book {l.Position} {edition.Title}";
                     yield return $"{edition.Title} {l.Series.Value.Title} {l.Position}";
                     yield return $"{edition.Title} {l.Series.Value.Title} Book {l.Position}";
+                }
+            }
+        }
+
+        // A book is also named by its place in a series: "Defiance of the Fall 1", "Mistborn #2", "The Expanse, Book 3".
+        // Book 1 of a long series is often titled after the series alone, so its files carry a number its own title
+        // lacks, and the same-numbers rule would otherwise rule out every title it has.
+        private static IEnumerable<string> PositionTitles(Edition edition)
+        {
+            if (!(edition.Book.Value.SeriesLinks?.Value?.Any() ?? false))
+            {
+                yield break;
+            }
+
+            foreach (var l in edition.Book.Value.SeriesLinks.Value)
+            {
+                if (l.Position.IsNullOrWhiteSpace())
+                {
+                    continue;
+                }
+
+                var names = new[] { l.Series?.Value?.Title, edition.Book.Value.Title }
+                    .Where(x => x.IsNotNullOrWhiteSpace())
+                    .Distinct();
+
+                foreach (var name in names)
+                {
+                    yield return $"{name} {l.Position}";
+                    yield return $"{name} #{l.Position}";
+                    yield return $"{name}, Book {l.Position}";
+                    yield return $"{name} Book {l.Position}";
                 }
             }
         }
