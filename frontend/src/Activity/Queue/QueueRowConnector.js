@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
-import { grabQueueItem, removeQueueItem } from 'Store/Actions/queueActions';
+import { grabQueueItem, importQueueItem, removeQueueItem } from 'Store/Actions/queueActions';
 import createAuthorSelector from 'Store/Selectors/createAuthorSelector';
 import createBookSelector from 'Store/Selectors/createBookSelector';
 import createUISettingsSelector from 'Store/Selectors/createUISettingsSelector';
@@ -31,6 +31,7 @@ function createMapStateToProps() {
 
 const mapDispatchToProps = {
   grabQueueItem,
+  importQueueItem,
   removeQueueItem
 };
 
@@ -41,6 +42,10 @@ class QueueRowConnector extends Component {
 
   onGrabPress = () => {
     this.props.grabQueueItem({ id: this.props.id });
+  };
+
+  onImportQueueItemPress = (payload) => {
+    this.props.importQueueItem({ id: this.props.id, ...payload });
   };
 
   onRemoveQueueItemPress = (payload) => {
@@ -55,6 +60,7 @@ class QueueRowConnector extends Component {
       <QueueRow
         {...this.props}
         onGrabPress={this.onGrabPress}
+        onImportQueueItemPress={this.onImportQueueItemPress}
         onRemoveQueueItemPress={this.onRemoveQueueItemPress}
       />
     );
@@ -65,6 +71,7 @@ QueueRowConnector.propTypes = {
   id: PropTypes.number.isRequired,
   book: PropTypes.object,
   grabQueueItem: PropTypes.func.isRequired,
+  importQueueItem: PropTypes.func.isRequired,
   removeQueueItem: PropTypes.func.isRequired
 };
 

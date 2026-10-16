@@ -20,7 +20,7 @@ namespace NzbDrone.Core.Download
     public interface ICompletedDownloadService
     {
         void Check(TrackedDownload trackedDownload);
-        void Import(TrackedDownload trackedDownload);
+        void Import(TrackedDownload trackedDownload, DownloadImportOptions options = null);
         bool VerifyImport(TrackedDownload trackedDownload, List<ImportResult> importResults);
         Book GetGrabbedBook(TrackedDownload trackedDownload);
     }
@@ -83,7 +83,7 @@ namespace NzbDrone.Core.Download
             trackedDownload.State = TrackedDownloadState.ImportPending;
         }
 
-        public void Import(TrackedDownload trackedDownload)
+        public void Import(TrackedDownload trackedDownload, DownloadImportOptions options = null)
         {
             SetImportItem(trackedDownload);
 
@@ -108,7 +108,7 @@ namespace NzbDrone.Core.Download
             trackedDownload.State = TrackedDownloadState.Importing;
 
             var outputPath = trackedDownload.ImportItem.OutputPath.FullPath;
-            var importResults = _downloadedTracksImportService.ProcessPath(outputPath, ImportMode.Auto, trackedDownload.RemoteBook?.Author, trackedDownload.DownloadItem, grabbedBook);
+            var importResults = _downloadedTracksImportService.ProcessPath(outputPath, ImportMode.Auto, trackedDownload.RemoteBook?.Author, trackedDownload.DownloadItem, grabbedBook, options);
 
             if (importResults.Empty())
             {

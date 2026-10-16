@@ -198,6 +198,7 @@ export const CLEAR_QUEUE = 'queue/clearQueue';
 
 export const GRAB_QUEUE_ITEM = 'queue/grabQueueItem';
 export const GRAB_QUEUE_ITEMS = 'queue/grabQueueItems';
+export const IMPORT_QUEUE_ITEM = 'queue/importQueueItem';
 export const REMOVE_QUEUE_ITEM = 'queue/removeQueueItem';
 export const REMOVE_QUEUE_ITEMS = 'queue/removeQueueItems';
 
@@ -222,6 +223,7 @@ export const clearQueue = createAction(CLEAR_QUEUE);
 
 export const grabQueueItem = createThunk(GRAB_QUEUE_ITEM);
 export const grabQueueItems = createThunk(GRAB_QUEUE_ITEMS);
+export const importQueueItem = createThunk(IMPORT_QUEUE_ITEM);
 export const removeQueueItem = createThunk(REMOVE_QUEUE_ITEM);
 export const removeQueueItems = createThunk(REMOVE_QUEUE_ITEMS);
 
@@ -363,6 +365,33 @@ export const actionHandlers = handleThunks({
 
         set({ section: paged, isGrabbing: false })
       ]));
+    });
+  },
+
+  [IMPORT_QUEUE_ITEM]: function(getState, payload, dispatch) {
+    const {
+      id,
+      ignoreMatchThreshold = false,
+      replaceDestination = false
+    } = payload;
+
+    dispatch(updateItem({ section: paged, id, isImporting: true, importError: null }));
+
+    const promise = createAjaxRequest({
+      url: `/queue/${id}/import`,
+      method: 'POST',
+      contentType: 'application/json',
+      dataType: 'json',
+      data: JSON.stringify({ ignoreMatchThreshold, replaceDestination })
+    }).request;
+
+    // The import runs as a command and the queue refreshes when it's done, which clears isImporting
+    promise.done(() => {
+      dispatch(fetchQueue());
+    });
+
+    promise.fail((xhr) => {
+      dispatch(updateItem({ section: paged, id, isImporting: false, importError: xhr }));
     });
   },
 

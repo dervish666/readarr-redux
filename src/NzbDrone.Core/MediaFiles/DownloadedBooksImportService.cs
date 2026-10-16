@@ -20,7 +20,7 @@ namespace NzbDrone.Core.MediaFiles
     public interface IDownloadedBooksImportService
     {
         List<ImportResult> ProcessRootFolder(IDirectoryInfo directoryInfo);
-        List<ImportResult> ProcessPath(string path, ImportMode importMode = ImportMode.Auto, Author author = null, DownloadClientItem downloadClientItem = null, Book book = null);
+        List<ImportResult> ProcessPath(string path, ImportMode importMode = ImportMode.Auto, Author author = null, DownloadClientItem downloadClientItem = null, Book book = null, DownloadImportOptions options = null);
         bool ShouldDeleteFolder(IDirectoryInfo directoryInfo);
     }
 
@@ -76,7 +76,7 @@ namespace NzbDrone.Core.MediaFiles
             return results;
         }
 
-        public List<ImportResult> ProcessPath(string path, ImportMode importMode = ImportMode.Auto, Author author = null, DownloadClientItem downloadClientItem = null, Book book = null)
+        public List<ImportResult> ProcessPath(string path, ImportMode importMode = ImportMode.Auto, Author author = null, DownloadClientItem downloadClientItem = null, Book book = null, DownloadImportOptions options = null)
         {
             _logger.Debug("Processing path: {0}", path);
 
@@ -89,7 +89,7 @@ namespace NzbDrone.Core.MediaFiles
                     return ProcessFolder(directoryInfo, importMode, downloadClientItem);
                 }
 
-                return ProcessFolder(directoryInfo, importMode, author, downloadClientItem, book);
+                return ProcessFolder(directoryInfo, importMode, author, downloadClientItem, book, options);
             }
 
             if (_diskProvider.FileExists(path))
@@ -101,7 +101,7 @@ namespace NzbDrone.Core.MediaFiles
                     return ProcessFile(fileInfo, importMode, downloadClientItem);
                 }
 
-                return ProcessFile(fileInfo, importMode, author, downloadClientItem, book);
+                return ProcessFile(fileInfo, importMode, author, downloadClientItem, book, options);
             }
 
             LogInaccessiblePathError(path);
@@ -161,7 +161,7 @@ namespace NzbDrone.Core.MediaFiles
             return ProcessFolder(directoryInfo, importMode, author, downloadClientItem);
         }
 
-        private List<ImportResult> ProcessFolder(IDirectoryInfo directoryInfo, ImportMode importMode, Author author, DownloadClientItem downloadClientItem, Book book = null)
+        private List<ImportResult> ProcessFolder(IDirectoryInfo directoryInfo, ImportMode importMode, Author author, DownloadClientItem downloadClientItem, Book book = null, DownloadImportOptions options = null)
         {
             if (_authorService.AuthorPathExists(directoryInfo.FullName))
             {
@@ -224,10 +224,12 @@ namespace NzbDrone.Core.MediaFiles
                 NewDownload = true,
                 SingleRelease = false,
                 IncludeExisting = false,
-                AddNewAuthors = false
+                AddNewAuthors = false,
+                IgnoreMatchThreshold = options?.IgnoreMatchThreshold ?? false
             };
 
             var decisions = _importDecisionMaker.GetImportDecisions(audioFiles, idOverrides, idInfo, idConfig);
+            SetReplaceDestination(decisions, options);
             var importResults = _importApprovedTracks.Import(decisions, true, downloadClientItem, importMode);
 
             if (importMode == ImportMode.Auto)
@@ -271,7 +273,7 @@ namespace NzbDrone.Core.MediaFiles
             return ProcessFile(fileInfo, importMode, author, downloadClientItem);
         }
 
-        private List<ImportResult> ProcessFile(IFileInfo fileInfo, ImportMode importMode, Author author, DownloadClientItem downloadClientItem, Book book = null)
+        private List<ImportResult> ProcessFile(IFileInfo fileInfo, ImportMode importMode, Author author, DownloadClientItem downloadClientItem, Book book = null, DownloadImportOptions options = null)
         {
             if (Path.GetFileNameWithoutExtension(fileInfo.Name).StartsWith("._"))
             {
@@ -310,12 +312,28 @@ namespace NzbDrone.Core.MediaFiles
                 NewDownload = true,
                 SingleRelease = false,
                 IncludeExisting = false,
-                AddNewAuthors = false
+                AddNewAuthors = false,
+                IgnoreMatchThreshold = options?.IgnoreMatchThreshold ?? false
             };
 
             var decisions = _importDecisionMaker.GetImportDecisions(new List<IFileInfo>() { fileInfo }, idOverrides, idInfo, idConfig);
 
+            SetReplaceDestination(decisions, options);
+
             return _importApprovedTracks.Import(decisions, true, downloadClientItem, importMode);
+        }
+
+        private static void SetReplaceDestination(List<ImportDecision<LocalBook>> decisions, DownloadImportOptions options)
+        {
+            if (options?.ReplaceDestination != true)
+            {
+                return;
+            }
+
+            foreach (var decision in decisions.Where(d => d.Item != null))
+            {
+                decision.Item.ReplaceDestination = true;
+            }
         }
 
         private string GetCleanedUpFolderName(string folder)

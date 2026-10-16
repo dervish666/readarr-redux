@@ -6,8 +6,11 @@ import BookFormats from 'Book/BookFormats';
 import BookQuality from 'Book/BookQuality';
 import BookTitleLink from 'Book/BookTitleLink';
 import Icon from 'Components/Icon';
+import Button from 'Components/Link/Button';
 import IconButton from 'Components/Link/IconButton';
+import SpinnerButton from 'Components/Link/SpinnerButton';
 import SpinnerIconButton from 'Components/Link/SpinnerIconButton';
+import ConfirmModal from 'Components/Modal/ConfirmModal';
 import ProgressBar from 'Components/ProgressBar';
 import RelativeDateCellConnector from 'Components/Table/Cells/RelativeDateCellConnector';
 import TableRowCell from 'Components/Table/Cells/TableRowCell';
@@ -15,11 +18,13 @@ import TableSelectCell from 'Components/Table/Cells/TableSelectCell';
 import TableRow from 'Components/Table/TableRow';
 import Popover from 'Components/Tooltip/Popover';
 import Tooltip from 'Components/Tooltip/Tooltip';
-import { icons, kinds, tooltipPositions } from 'Helpers/Props';
+import { icons, kinds, sizes, tooltipPositions } from 'Helpers/Props';
 import InteractiveImportModal from 'InteractiveImport/InteractiveImportModal';
 import formatBytes from 'Utilities/Number/formatBytes';
 import formatCustomFormatScore from 'Utilities/Number/formatCustomFormatScore';
 import translate from 'Utilities/String/translate';
+import getQueueStatusChips, { canRetryImport, CLOSE_MATCH, DESTINATION_EXISTS } from './getQueueStatusChips';
+import ImportDestinationsModal from './ImportDestinations/ImportDestinationsModal';
 import QueueStatusCell from './QueueStatusCell';
 import RemoveQueueItemModal from './RemoveQueueItemModal';
 import TimeleftCell from './TimeleftCell';
@@ -35,7 +40,9 @@ class QueueRow extends Component {
 
     this.state = {
       isRemoveQueueItemModalOpen: false,
-      isInteractiveImportModalOpen: false
+      isInteractiveImportModalOpen: false,
+      isBlocklistAndSearchModalOpen: false,
+      isImportDestinationsModalOpen: false
     };
   }
 
@@ -76,6 +83,53 @@ class QueueRow extends Component {
     this.setState({ isInteractiveImportModalOpen: false });
   };
 
+  onImportAnywayPress = () => {
+    this.props.onImportQueueItemPress({ ignoreMatchThreshold: true });
+  };
+
+  onBlocklistAndSearchPress = () => {
+    this.props.onQueueRowModalOpenOrClose(true);
+
+    this.setState({ isBlocklistAndSearchModalOpen: true });
+  };
+
+  onBlocklistAndSearchConfirmed = () => {
+    this.props.onQueueRowModalOpenOrClose(false);
+    this.props.onRemoveQueueItemPress({ remove: true, changeCategory: false, blocklist: true, skipRedownload: false });
+
+    this.setState({ isBlocklistAndSearchModalOpen: false });
+  };
+
+  onBlocklistAndSearchModalClose = () => {
+    this.props.onQueueRowModalOpenOrClose(false);
+
+    this.setState({ isBlocklistAndSearchModalOpen: false });
+  };
+
+  onComparePress = () => {
+    this.props.onQueueRowModalOpenOrClose(true);
+
+    this.setState({ isImportDestinationsModalOpen: true });
+  };
+
+  onImportDestinationsModalClose = () => {
+    this.props.onQueueRowModalOpenOrClose(false);
+
+    this.setState({ isImportDestinationsModalOpen: false });
+  };
+
+  onImportAndReplacePress = () => {
+    // The user has seen which book the files go to, so the match threshold doesn't hold them back either
+    this.props.onImportQueueItemPress({ ignoreMatchThreshold: true, replaceDestination: true });
+  };
+
+  onCompareRemovePress = () => {
+    this.setState({
+      isImportDestinationsModalOpen: false,
+      isRemoveQueueItemModalOpen: true
+    });
+  };
+
   //
   // Render
 
@@ -109,6 +163,7 @@ class QueueRow extends Component {
       timeFormat,
       isGrabbing,
       grabError,
+      isImporting,
       isRemoving,
       isSelected,
       columns,
@@ -118,8 +173,15 @@ class QueueRow extends Component {
 
     const {
       isRemoveQueueItemModalOpen,
-      isInteractiveImportModalOpen
+      isInteractiveImportModalOpen,
+      isBlocklistAndSearchModalOpen,
+      isImportDestinationsModalOpen
     } = this.state;
+
+    const chips = getQueueStatusChips(this.props);
+    const canRetry = canRetryImport(this.props);
+    const hasCloseMatch = canRetry && chips.some((c) => c.key === CLOSE_MATCH);
+    const hasDestinationExists = canRetry && chips.some((c) => c.key === DESTINATION_EXISTS);
 
     const progress = 100 - (sizeleft / size * 100);
     const showInteractiveImport = status === 'completed' && trackedDownloadStatus === 'warning';
@@ -154,7 +216,47 @@ class QueueRow extends Component {
                   trackedDownloadState={trackedDownloadState}
                   statusMessages={statusMessages}
                   errorMessage={errorMessage}
-                />
+                  chips={chips}
+                >
+                  {
+                    hasCloseMatch &&
+                      <SpinnerButton
+                        size={sizes.SMALL}
+                        kind={kinds.PRIMARY}
+                        title={translate('ImportAnywayHelpText')}
+                        isSpinning={isImporting}
+                        onPress={this.onImportAnywayPress}
+                      >
+                        {translate('ImportAnyway')}
+                      </SpinnerButton>
+                  }
+
+                  {
+                    hasCloseMatch &&
+                      <Button
+                        size={sizes.SMALL}
+                        kind={kinds.WARNING}
+                        title={translate('BlocklistAndSearchHelpText')}
+                        isDisabled={isRemoving}
+                        onPress={this.onBlocklistAndSearchPress}
+                      >
+                        {translate('BlocklistAndSearch')}
+                      </Button>
+                  }
+
+                  {
+                    hasDestinationExists &&
+                      <SpinnerButton
+                        size={sizes.SMALL}
+                        kind={kinds.DANGER}
+                        title={translate('CompareHelpText')}
+                        isSpinning={isImporting}
+                        onPress={this.onComparePress}
+                      >
+                        {translate('Compare')}
+                      </SpinnerButton>
+                  }
+                </QueueStatusCell>
               );
             }
 
@@ -387,6 +489,28 @@ class QueueRow extends Component {
           replaceExistingFiles={true}
         />
 
+        <ConfirmModal
+          isOpen={isBlocklistAndSearchModalOpen}
+          kind={kinds.WARNING}
+          title={translate('BlocklistAndSearch')}
+          message={translate('BlocklistAndSearchMessage', { title })}
+          confirmLabel={translate('BlocklistAndSearch')}
+          onConfirm={this.onBlocklistAndSearchConfirmed}
+          onCancel={this.onBlocklistAndSearchModalClose}
+        />
+
+        <ImportDestinationsModal
+          isOpen={isImportDestinationsModalOpen}
+          id={id}
+          title={title}
+          shortDateFormat={shortDateFormat}
+          timeFormat={timeFormat}
+          isImporting={isImporting}
+          onImportAndReplacePress={this.onImportAndReplacePress}
+          onRemovePress={this.onCompareRemovePress}
+          onModalClose={this.onImportDestinationsModalClose}
+        />
+
         <RemoveQueueItemModal
           isOpen={isRemoveQueueItemModalOpen}
           sourceTitle={title}
@@ -431,11 +555,13 @@ QueueRow.propTypes = {
   timeFormat: PropTypes.string.isRequired,
   isGrabbing: PropTypes.bool.isRequired,
   grabError: PropTypes.object,
+  isImporting: PropTypes.bool.isRequired,
   isRemoving: PropTypes.bool.isRequired,
   isSelected: PropTypes.bool,
   columns: PropTypes.arrayOf(PropTypes.object).isRequired,
   onSelectedChange: PropTypes.func.isRequired,
   onGrabPress: PropTypes.func.isRequired,
+  onImportQueueItemPress: PropTypes.func.isRequired,
   onRemoveQueueItemPress: PropTypes.func.isRequired,
   onQueueRowModalOpenOrClose: PropTypes.func.isRequired
 };
@@ -443,6 +569,7 @@ QueueRow.propTypes = {
 QueueRow.defaultProps = {
   customFormats: [],
   isGrabbing: false,
+  isImporting: false,
   isRemoving: false
 };
 

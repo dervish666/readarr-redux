@@ -7,6 +7,7 @@ using FluentAssertions;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Core.Books;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.History;
@@ -14,6 +15,7 @@ using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.BookImport;
 using NzbDrone.Core.MediaFiles.BookImport.Aggregation;
 using NzbDrone.Core.MediaFiles.BookImport.Identification;
+using NzbDrone.Core.MediaFiles.BookImport.Specifications;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Profiles.Qualities;
 using NzbDrone.Core.Qualities;
@@ -279,6 +281,62 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport
             var result = Subject.GetImportDecisions(_fileInfos, null, null, _idConfig);
 
             result.Single().Approved.Should().BeTrue();
+        }
+
+        private void GivenCloseMatchSpecification(params Mock<IImportDecisionEngineSpecification<LocalEdition>>[] others)
+        {
+            Mocker.GetMock<IConfigService>()
+                .SetupGet(c => c.MinimumBookMatchPercent)
+                .Returns(80);
+
+            // A new LocalEdition is as far from its book as it can be, so the real spec always rejects it
+            var closeMatch = new CloseBookMatchSpecification(Mocker.GetMock<IConfigService>().Object, TestLogger);
+
+            Mocker.SetConstant<IEnumerable<IImportDecisionEngineSpecification<LocalEdition>>>(
+                new[] { closeMatch }.Concat(others.Select(o => o.Object)).ToList());
+        }
+
+        [Test]
+        public void should_reject_a_release_that_is_not_a_close_enough_match()
+        {
+            GivenAugmentationSuccess();
+            GivenCloseMatchSpecification();
+            GivenSpecifications(_pass1);
+            _idConfig.NewDownload = true;
+
+            var result = Subject.GetImportDecisions(_fileInfos, null, null, _idConfig);
+
+            result.Single().Approved.Should().BeFalse();
+            result.Single().Rejections.Single().Reason.Should().StartWith("Book match is not close enough");
+        }
+
+        [Test]
+        public void should_approve_a_release_that_is_not_a_close_enough_match_when_told_to_ignore_the_threshold()
+        {
+            GivenAugmentationSuccess();
+            GivenCloseMatchSpecification();
+            GivenSpecifications(_pass1);
+            _idConfig.NewDownload = true;
+            _idConfig.IgnoreMatchThreshold = true;
+
+            var result = Subject.GetImportDecisions(_fileInfos, null, null, _idConfig);
+
+            result.Single().Approved.Should().BeTrue();
+            _pass1.Verify(c => c.IsSatisfiedBy(It.IsAny<LocalBook>(), It.IsAny<DownloadClientItem>()), Times.Once());
+        }
+
+        [Test]
+        public void should_still_apply_every_other_check_when_told_to_ignore_the_threshold()
+        {
+            GivenAugmentationSuccess();
+            GivenCloseMatchSpecification(_bookfail1);
+            GivenSpecifications(_pass1);
+            _idConfig.IgnoreMatchThreshold = true;
+
+            var result = Subject.GetImportDecisions(_fileInfos, null, null, _idConfig);
+
+            result.Single().Approved.Should().BeFalse();
+            result.Single().Rejections.Select(r => r.Reason).Should().BeEquivalentTo(new[] { "_bookfail1" });
         }
 
         [Test]
