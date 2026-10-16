@@ -4,13 +4,28 @@ Changes in Readarr Redux since it forked from Readarr (upstream commit `0b79d300
 
 Versions are `0.5.0.<CI run number>`. Only pushes to `develop` publish an image, so the numbers have gaps. Each entry is the image tag and the day it was built. The commit messages explain each fix in detail.
 
-## Unreleased
+## 0.5.0.81 (2026-10-16)
 
-- Fixed: Manual Import listing the same file several times when files in a folder matched the same book, which ticked the copies together and kept Import disabled.
+- Fixed: Manual Import listing the same file several times when several files in a folder matched the same book. The copies ticked together and a rejected copy kept Import disabled, so a mis-tagged file couldn't be moved to its right book.
+
+## 0.5.0.78 (2026-10-16)
+
 - Fixed: Rescan Folders skipping unmapped files that hadn't changed on disk, so a file left unmapped stayed unmapped even after a matching fix. Unchanged unmapped files are now matched again on every rescan.
-- Fixed: Rescans leaving a file unmapped when it names its book by series position ("Defiance of the Fall 1", "Mistborn #2", "The Expanse, Book 3"), common for book 1 of a long series titled after the series. Such a file could also come out closest to a later book in the series, which the rescan then rightly refused.
-- Fixed: qBittorrent 5.2 login with a username and password. qBittorrent API keys are supported, and a release qBittorrent already has is rejected instead of failing the grab.
-- Fixed: Torrent clients moved files out of finished torrents even with Remove Completed Downloads off. Those imports now copy or hardlink, so the torrent keeps seeding.
+
+## 0.5.0.58 to 0.5.0.77 (2026-10-16)
+
+- Dependency updates only: js-yaml, source-map-js, fast-uri, immutable, moment, qs, browserslist, nanoid, postcss, websocket-driver and `@babel/core` in the UI, and `actions/setup-node` in CI. Builds that a newer merge cancelled published no image, so their changes arrived in the next one.
+
+## 0.5.0.47 (2026-10-16)
+
+- Fixed: Rescans leaving a file unmapped when it names its book by series position ("Defiance of the Fall 1", "Mistborn #2", "The Expanse, Book 3"), common for book 1 of a long series titled after the series. Such a file could also come out closest to a later book in the series, which the rescan then rightly refused. Files already unmapped are only picked up again from 0.5.0.78.
+
+## 0.5.0.34 (2026-10-16)
+
+Download-client and integration parity with Sonarr. Migration 043.
+
+- Fixed: qBittorrent 5.2 login with a username and password. qBittorrent API keys are supported, and a release qBittorrent already has is rejected instead of failing the grab. qBittorrent and NZBGet back off properly when they're unreachable.
+- Fixed: Torrent clients moved files out of finished torrents even with Remove Completed Downloads off. Those imports now copy or hardlink, so the torrent keeps seeding and its files stay in the download folder.
 - New: Transmission 4 labels, and a post-import label. Torrents added before an upgrade from Transmission 3 still match by category folder.
 - Fixed: Deluge reconnects to its daemon when torrents come back without names, and detects the Label plugin reliably.
 - Fixed: SABnzbd 4.1 sorters are checked when testing the client.
@@ -18,9 +33,27 @@ Versions are `0.5.0.<CI run number>`. Only pushes to `develop` publish an image,
 - New: Settings > Media Management > Minimum Book Match (advanced), the match percentage needed to import automatically. Default 80, as before.
 - Fixed: Plex sign-in in browsers that enforce Cross-Origin-Opener-Policy.
 - Removed: Twitter notifications and the Goodreads Owned Books list and notification. Saved ones are dropped at startup with a warning.
-- Fixed: Goodreads OAuth signing payloads, which carry the token secret, no longer reach the trace log.
+- Fixed: Goodreads OAuth signing payloads, which carry the token secret, no longer reach the trace log. The README now explains that Goodreads Bookshelf signs requests through auth.servarr.com.
 - Fixed: Discord timestamps on systems with a non-Gregorian calendar, Goodreads list failures being swallowed, and Calibre conversion checks that could loop forever.
-- Security: `System.Security.Cryptography.Pkcs` pinned to 10.0.13 for GHSA-846f-f764-76mx and GHSA-2fmv-rv2c-59x7.
+- Security: `System.Security.Cryptography.Pkcs` pinned to 10.0.13 for GHSA-846f-f764-76mx and GHSA-2fmv-rv2c-59x7. Without it the build fails NuGet's audit, which is why there is no 0.5.0.31.
+
+## 0.5.0.22 (2026-10-12)
+
+Migration 042.
+
+- Fixed: Rescans linking untracked files to the wrong book and then writing that book's tags into them. One untracked file was outvoted by any book with more files of its own. A rescan now needs the edition's ISBN, ASIN or Goodreads id, or a title close to the book's own with the same numbers, and no other book fitting as well; otherwise the file stays unmapped. Files mis-tagged before this keep the wrong tags until they are imported again for the right book.
+- Fixed: Retagged books importing again on every rescan.
+- Fixed: A re-imported download leaving its earlier copy on the wrong book. The earlier copy now goes to the recycle bin.
+- Fixed: Audiobook releases smaller than the quality's minimum size being grabbed, so single chapters and partial uploads stop coming in. Audio qualities default to a 10 MiB minimum (migration 042, only where none was set).
+- New: Quality definitions show the audiobook minimum release size in MB. Ebook qualities read "Not size checked".
+
+## 0.5.0.21 (2026-10-12)
+
+- Fixed: Deleting a book with its files left the files and their database rows behind. The files now go to the recycle bin with their rows.
+- Fixed: Rescan failing on a UNIQUE constraint on BookFiles.Path, which also stopped the scan before it added its unmapped files.
+
+## 0.5.0.20 (2026-10-12)
+
 - The vendored FluentMigrator no longer pulls in every database runner, so Microsoft SQL Server Compact, the Visual C++ 2008 runtime and `Microsoft.Data.SqlClient` are gone from the build and the image. Only SQLite and Postgres were ever used.
 - New README, NOTICE.md, SECURITY.md and CONTRIBUTING.md for the fork.
 - The header donate button and the Readarr donation tile are gone, since that money went to a retired project. The Sonarr, Radarr, Lidarr and Prowlarr tiles stay.
