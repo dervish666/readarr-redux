@@ -31,6 +31,7 @@ namespace NzbDrone.Core.Configuration
         FileDateType FileDate { get; set; }
         bool SkipFreeSpaceCheckWhenImporting { get; set; }
         int MinimumFreeSpaceWhenImporting { get; set; }
+        int MinimumBookMatchPercent { get; set; }
         bool CopyUsingHardlinks { get; set; }
         bool ImportExtraFiles { get; set; }
         string ExtraFileExtensions { get; set; }

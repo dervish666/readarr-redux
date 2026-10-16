@@ -509,6 +509,21 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.QBittorrentTests
         }
 
         [Test]
+        public void Download_should_reject_release_when_qbittorrent_returns_conflict()
+        {
+            var remoteBook = CreateRemoteBook();
+            remoteBook.Release.DownloadUrl = "magnet:?xt=urn:btih:ZPBPA2P6ROZPKRHK44D5OW6NHXU5Z6KR&tr=udp://abc";
+
+            var conflict = new HttpException(new HttpResponse(new HttpRequest("http://me.local/"), new HttpHeader(), new byte[0], System.Net.HttpStatusCode.Conflict));
+
+            Mocker.GetMock<IQBittorrentProxy>()
+                  .Setup(s => s.AddTorrentFromUrl(It.IsAny<string>(), It.IsAny<TorrentSeedConfiguration>(), It.IsAny<QBittorrentSettings>()))
+                  .Throws(new DownloadClientException("Failed to connect to qBittorrent, check your settings.", conflict));
+
+            Assert.ThrowsAsync<DownloadClientRejectedReleaseException>(async () => await Subject.Download(remoteBook, CreateIndexer()));
+        }
+
+        [Test]
         public async Task Download_should_set_top_priority()
         {
             GivenHighPriority();
@@ -692,6 +707,20 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.QBittorrentTests
         public void should_not_be_removable_and_should_not_allow_move_files_if_max_ratio_is_not_set(string state)
         {
             GivenGlobalSeedLimits(-1);
+            GivenCompletedTorrent(state, ratio: 1.0f);
+
+            var item = Subject.GetItems().Single();
+            item.CanBeRemoved.Should().BeFalse();
+            item.CanMoveFiles.Should().BeFalse();
+        }
+
+        [TestCase("pausedUP")]
+        [TestCase("stoppedUP")]
+        public void should_not_be_removable_or_allow_move_files_if_remove_completed_downloads_is_off(string state)
+        {
+            Subject.Definition.As<DownloadClientDefinition>().RemoveCompletedDownloads = false;
+
+            GivenGlobalSeedLimits(1.0f);
             GivenCompletedTorrent(state, ratio: 1.0f);
 
             var item = Subject.GetItems().Single();

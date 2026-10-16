@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using FluentValidation.Results;
 using NLog;
 using NzbDrone.Common.Disk;
@@ -17,6 +18,8 @@ namespace NzbDrone.Core.Download.Clients.Transmission
 {
     public abstract class TransmissionBase : TorrentClientBase<TransmissionSettings>
     {
+        public abstract bool SupportsLabels { get; }
+
         protected readonly ITransmissionProxy _proxy;
 
         public TransmissionBase(ITransmissionProxy proxy,
@@ -35,7 +38,8 @@ namespace NzbDrone.Core.Download.Clients.Transmission
         public override IEnumerable<DownloadClientItem> GetItems()
         {
             var configFunc = new Lazy<TransmissionConfig>(() => _proxy.GetConfig(Settings));
-            var torrents = _proxy.GetTorrents(Settings);
+            var torrents = _proxy.GetTorrents(null, Settings);
+            var downloadDirectory = GetDownloadDirectory();
 
             var items = new List<DownloadClientItem>();
 
@@ -43,20 +47,26 @@ namespace NzbDrone.Core.Download.Clients.Transmission
             {
                 var outputPath = new OsPath(torrent.DownloadDir);
 
-                if (Settings.TvDirectory.IsNotNullOrWhiteSpace())
+                if (Settings.MusicCategory.IsNotNullOrWhiteSpace() && SupportsLabels)
                 {
-                    if (!new OsPath(Settings.TvDirectory).Contains(outputPath))
+                    // For people who are moving from Transmission 3 -> 4, torrents predating
+                    // labels are still matched by their category subfolder.
+                    if (torrent.Labels is { Count: > 0 })
+                    {
+                        if (!torrent.Labels.Contains(Settings.MusicCategory, StringComparer.InvariantCultureIgnoreCase))
+                        {
+                            continue;
+                        }
+                    }
+                    else if (!outputPath.FullPath.Split('\\', '/').Contains(Settings.MusicCategory))
                     {
                         continue;
                     }
                 }
-                else if (Settings.MusicCategory.IsNotNullOrWhiteSpace())
+
+                if (downloadDirectory.IsNotNullOrWhiteSpace() && !new OsPath(downloadDirectory).Contains(outputPath))
                 {
-                    var directories = outputPath.FullPath.Split('\\', '/');
-                    if (!directories.Contains(Settings.MusicCategory))
-                    {
-                        continue;
-                    }
+                    continue;
                 }
 
                 outputPath = _remotePathMappingService.RemapRemoteToLocal(Settings.Host, outputPath);
@@ -66,7 +76,7 @@ namespace NzbDrone.Core.Download.Clients.Transmission
                 item.Category = Settings.MusicCategory;
                 item.Title = torrent.Name;
 
-                item.DownloadClientInfo = DownloadClientItemClientInfo.FromDownloadClient(this, false);
+                item.DownloadClientInfo = DownloadClientItemClientInfo.FromDownloadClient(this, Settings.MusicImportedCategory.IsNotNullOrWhiteSpace() && SupportsLabels);
 
                 item.OutputPath = GetOutputPath(outputPath, torrent);
                 item.TotalSize = torrent.TotalSize;
@@ -89,7 +99,7 @@ namespace NzbDrone.Core.Download.Clients.Transmission
                 if (!torrent.ErrorString.IsNullOrWhiteSpace())
                 {
                     item.Status = DownloadItemStatus.Warning;
-                    item.Message = torrent.ErrorString;
+                    item.Message = $"{Name} is reporting an error: {torrent.ErrorString}";
                 }
                 else if (torrent.TotalSize == 0)
                 {
@@ -115,7 +125,7 @@ namespace NzbDrone.Core.Download.Clients.Transmission
                     item.Status = DownloadItemStatus.Downloading;
                 }
 
-                item.CanBeRemoved = HasReachedSeedLimit(torrent, item.SeedRatio, configFunc);
+                item.CanBeRemoved = item.DownloadClientInfo.RemoveCompletedDownloads && HasReachedSeedLimit(torrent, item.SeedRatio, configFunc);
                 item.CanMoveFiles = item.CanBeRemoved && torrent.Status == TransmissionTorrentStatus.Stopped;
 
                 items.Add(item);
@@ -171,13 +181,7 @@ namespace NzbDrone.Core.Download.Clients.Transmission
 
         public override DownloadClientInfo GetStatus()
         {
-            var config = _proxy.GetConfig(Settings);
-            var destDir = config.DownloadDir;
-
-            if (Settings.MusicCategory.IsNotNullOrWhiteSpace())
-            {
-                destDir = string.Format("{0}/{1}", destDir, Settings.MusicCategory);
-            }
+            var destDir = GetDownloadDirectory() ?? _proxy.GetConfig(Settings).DownloadDir;
 
             return new DownloadClientInfo
             {
@@ -226,6 +230,11 @@ namespace NzbDrone.Core.Download.Clients.Transmission
                 return;
             }
 
+            if (!SupportsLabels && Settings.MusicCategory.IsNotNullOrWhiteSpace() && Settings.TvDirectory.IsNotNullOrWhiteSpace())
+            {
+                failures.Add(new NzbDroneValidationFailure("MusicCategory", "Cannot use Category and Directory"));
+            }
+
             failures.AddIfNotNull(TestGetTorrents());
         }
 
@@ -241,15 +250,12 @@ namespace NzbDrone.Core.Download.Clients.Transmission
                 return Settings.TvDirectory;
             }
 
-            if (!Settings.MusicCategory.IsNotNullOrWhiteSpace())
+            if (SupportsLabels || Settings.MusicCategory.IsNullOrWhiteSpace())
             {
                 return null;
             }
 
-            var config = _proxy.GetConfig(Settings);
-            var destDir = config.DownloadDir;
-
-            return $"{destDir.TrimEnd('/')}/{Settings.MusicCategory}";
+            return $"{_proxy.GetConfig(Settings).DownloadDir.TrimEnd('/')}/{Settings.MusicCategory}";
         }
 
         protected ValidationFailure TestConnection()
@@ -289,7 +295,7 @@ namespace NzbDrone.Core.Download.Clients.Transmission
         {
             try
             {
-                _proxy.GetTorrents(Settings);
+                _proxy.GetTorrents(null, Settings);
             }
             catch (Exception ex)
             {
@@ -298,6 +304,16 @@ namespace NzbDrone.Core.Download.Clients.Transmission
             }
 
             return null;
+        }
+
+        protected bool HasClientVersion(int major, int minor)
+        {
+            var rawVersion = _proxy.GetClientVersion(Settings);
+
+            var versionResult = Regex.Match(rawVersion, @"(?<!\(|(\d|\.)+)(\d|\.)+(?!\)|(\d|\.)+)").Value;
+            var clientVersion = Version.Parse(versionResult);
+
+            return clientVersion >= new Version(major, minor);
         }
     }
 }

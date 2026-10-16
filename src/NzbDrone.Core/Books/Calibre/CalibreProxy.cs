@@ -387,8 +387,8 @@ namespace NzbDrone.Core.Books.Calibre
 
                 var jobId = _httpClient.Post<long>(request).Resource;
 
-                // Run async task to check if conversion complete
-                _ = PollConvertStatus(jobId, settings);
+                // Poll in the background until the conversion finishes, logging the outcome
+                _ = Task.Run(() => PollConvertStatus(jobId, settings));
 
                 return jobId;
             }
@@ -581,21 +581,33 @@ namespace NzbDrone.Core.Books.Calibre
                 .AddQueryParam("library_id", settings.Library)
                 .Build();
 
-            while (true)
-            {
-                var status = _httpClient.Get<CalibreConversionStatus>(request).Resource;
+            // A conversion that runs this long has hung, stop polling rather than loop forever
+            var deadline = DateTime.UtcNow.AddHours(1);
 
-                if (!status.Running)
+            try
+            {
+                while (DateTime.UtcNow < deadline)
                 {
-                    if (!status.Ok)
+                    var status = _httpClient.Get<CalibreConversionStatus>(request).Resource;
+
+                    if (!status.Running)
                     {
-                        _logger.Warn("Calibre conversion failed.\n{0}\n{1}", status.Traceback, status.Log);
+                        if (!status.Ok)
+                        {
+                            _logger.Warn("Calibre conversion {0} failed.\n{1}\n{2}", jobId, status.Traceback, status.Log);
+                        }
+
+                        return;
                     }
 
-                    return;
+                    await Task.Delay(2000);
                 }
 
-                await Task.Delay(2000);
+                _logger.Warn("Calibre conversion {0} still running after an hour, no longer checking it", jobId);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "Unable to check Calibre conversion {0}", jobId);
             }
         }
 

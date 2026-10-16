@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using NLog;
 using NzbDrone.Common.Cache;
 using NzbDrone.Common.Http;
@@ -246,7 +247,7 @@ namespace NzbDrone.Core.Download.Clients.Nzbget
 
                 throw new DownloadClientException("Unable to connect to NzbGet. " + ex.Message, ex);
             }
-            catch (WebException ex)
+            catch (Exception ex) when (ex is WebException or HttpRequestException)
             {
                 throw new DownloadClientUnavailableException("Unable to connect to NzbGet. " + ex.Message, ex);
             }

@@ -199,6 +199,13 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("MinimumFreeSpaceWhenImporting", value); }
         }
 
+        public int MinimumBookMatchPercent
+        {
+            get { return GetValueInt("MinimumBookMatchPercent", 80); }
+
+            set { SetValue("MinimumBookMatchPercent", value); }
+        }
+
         public bool CopyUsingHardlinks
         {
             get { return GetValueBoolean("CopyUsingHardlinks", true); }
