@@ -274,6 +274,7 @@ namespace NzbDrone.Core.Books
             local.AuthorMetadataId = entity.Metadata.Value.Id;
 
             remote.UseDbFieldsFrom(local);
+            remote.MetadataOverrides?.ApplyTo(remote);
         }
 
         protected override void ProcessChildren(Author entity, SortedChildren children)

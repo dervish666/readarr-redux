@@ -6,6 +6,7 @@ namespace NzbDrone.Core.Books
     {
         bool Upsert(AuthorMetadata author);
         bool UpsertMany(List<AuthorMetadata> authors);
+        void Update(AuthorMetadata author);
     }
 
     public class AuthorMetadataService : IAuthorMetadataService
@@ -25,6 +26,12 @@ namespace NzbDrone.Core.Books
         public bool UpsertMany(List<AuthorMetadata> authors)
         {
             return _authorMetadataRepository.UpsertMany(authors);
+        }
+
+        // Saves the user's edits as they are. UpsertMany would take the stored overrides over the new ones.
+        public void Update(AuthorMetadata author)
+        {
+            _authorMetadataRepository.Update(author);
         }
     }
 }

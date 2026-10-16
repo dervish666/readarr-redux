@@ -111,7 +111,8 @@ namespace Readarr.Api.V1.Books
 
         public static List<Edition> ToModel(this IEnumerable<EditionResource> resources)
         {
-            return resources.Select(ToModel).ToList();
+            // A partial update, like toggling monitored, sends no editions
+            return resources?.Select(ToModel).ToList();
         }
     }
 }

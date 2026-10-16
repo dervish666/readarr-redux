@@ -42,6 +42,9 @@ namespace NzbDrone.Core.Books
                     // populate Id in remote data
                     meta.UseDbFieldsFrom(existing);
 
+                    // and the user's values over the source's, so a kept override reads as no change
+                    meta.MetadataOverrides?.ApplyTo(meta);
+
                     // responses vary, so try adding remote to what we have
                     if (!meta.Equals(existing))
                     {

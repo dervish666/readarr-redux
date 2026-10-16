@@ -73,7 +73,9 @@ namespace NzbDrone.Core.Books
         protected override void DeleteEntity(Series local, bool deleteFiles)
         {
             _logger.Trace($"Removing links for series {local} author {local.ForeignAuthorId}");
-            var children = GetLocalChildren(local, null);
+
+            // Links the user added keep the series alive
+            var children = GetLocalChildren(local, null).Where(x => !x.IsManual).ToList();
             _linkService.DeleteMany(children);
 
             if (!_linkService.GetLinksBySeries(local.Id).Any())
@@ -127,6 +129,12 @@ namespace NzbDrone.Core.Books
             return _refreshLinkService.RefreshSeriesBookLinkInfo(localChildren.Added, localChildren.Updated, localChildren.Merged, localChildren.Deleted, localChildren.UpToDate, remoteChildren, forceUpdateFileTags);
         }
 
+        // The user took the book out of this series, so the metadata source's link doesn't come back
+        private static bool RemovedByUser(Book book, string foreignSeriesId)
+        {
+            return book.MetadataOverrides?.RemovedFromSeries?.Contains(foreignSeriesId) == true;
+        }
+
         public bool RefreshSeriesInfo(int authorMetadataId, List<Series> remoteSeries, Author remoteData, bool forceBookRefresh, bool forceUpdateFileTags, DateTime? lastUpdate)
         {
             var updated = false;
@@ -153,6 +161,7 @@ namespace NzbDrone.Core.Books
                 // Put in the links that go with the books we actually have
                 var links = (s.LinkItems?.Value ?? new List<SeriesBookLink>())
                     .Where(x => bookDict.ContainsKey(x.Book.Value.ForeignBookId))
+                    .Where(x => !RemovedByUser(bookDict[x.Book.Value.ForeignBookId], s.ForeignSeriesId))
                     .DistinctBy(x => x.Book.Value.ForeignBookId)
                     .Select(x =>
                     {

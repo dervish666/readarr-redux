@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace NzbDrone.Core.Books
 {
@@ -8,6 +9,7 @@ namespace NzbDrone.Core.Books
         List<Series> FindById(List<string> foreignSeriesId);
         List<Series> GetByAuthorMetadataId(int authorMetadataId);
         List<Series> GetByAuthorId(int authorId);
+        List<Series> GetSeries(IEnumerable<int> ids);
         void Delete(int seriesId);
         void InsertMany(IList<Series> series);
         void UpdateMany(IList<Series> series);
@@ -40,6 +42,11 @@ namespace NzbDrone.Core.Books
         public List<Series> GetByAuthorId(int authorId)
         {
             return _seriesRepository.GetByAuthorId(authorId);
+        }
+
+        public List<Series> GetSeries(IEnumerable<int> ids)
+        {
+            return _seriesRepository.Get(ids).ToList();
         }
 
         public void Delete(int seriesId)

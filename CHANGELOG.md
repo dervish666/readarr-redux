@@ -6,6 +6,15 @@ Versions are `0.5.0.<CI run number>`. Only pushes to `develop` publish an image,
 
 ## Unreleased
 
+Editing metadata by hand. Migration 044.
+
+- New: Edit Book has a Metadata section for title, release date, pages and overview. Values set there are kept over the metadata source's on every refresh, and clearing a field brings the source's value back. A changed title is also what downloaded files are matched against. Files keep their tags until you retag them.
+- New: Edit Book also edits the book's series: add it to any of the author's series at a position, start a new series, change its position, or take it out. A refresh keeps all of it. Series links from the metadata source are no longer deleted just because the source stops listing them, if you added or moved them yourself.
+- New: Edit Author has an Overview field, kept over the metadata source's, for authors the source has no bio for.
+- Fixed: Saving the Edit Book dialog without changing the edition failed. Saving it also wrote the browser's copy of every edition back over the server's.
+
+## 0.5.0.87 (2026-10-16)
+
 Queue triage: dealing with a failed import without hovering or leaving the queue.
 
 - New: The queue shows why each item is stuck as chips next to its status icon ("Match 61.4%", "Destination exists", "Not an upgrade", "Waiting to import" and so on). Hover a chip for every message behind it. The status icon's popover is still there.
