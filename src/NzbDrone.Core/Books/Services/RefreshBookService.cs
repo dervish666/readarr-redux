@@ -289,6 +289,10 @@ namespace NzbDrone.Core.Books
 
             remote.UseDbFieldsFrom(local);
 
+            // Put the user's values over the source's before comparing, so a kept override reads as no change and
+            // doesn't retag the book's files on every refresh
+            remote.MetadataOverrides?.ApplyTo(remote);
+
             if (local.Title != (remote.Title ?? "Unknown") ||
                 local.ForeignBookId != remote.ForeignBookId ||
                 local.AuthorMetadata.Value.ForeignAuthorId != remote.AuthorMetadata.Value.ForeignAuthorId)
@@ -374,6 +378,8 @@ namespace NzbDrone.Core.Books
         {
             child.BookId = entity.Id;
             child.Book = entity;
+
+            entity.MetadataOverrides?.ApplyTo(child);
         }
 
         protected override void PrepareExistingChild(Edition local, Edition remote, Book entity)
@@ -382,6 +388,7 @@ namespace NzbDrone.Core.Books
             local.Book = entity;
 
             remote.UseDbFieldsFrom(local);
+            entity.MetadataOverrides?.ApplyTo(remote);
         }
 
         protected override void ProcessChildren(Book entity, SortedChildren children)

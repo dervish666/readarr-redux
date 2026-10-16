@@ -905,5 +905,60 @@ namespace NzbDrone.Core.Test.MusicTests
 
             ExceptionVerification.ExpectedErrors(1);
         }
+
+        private void GivenOverrides()
+        {
+            _book.MetadataOverrides = new BookMetadataOverrides { Title = "Defiance of the Fall 6", Overview = "Zac's own blurb", PageCount = 812 };
+        }
+
+        [Test]
+        public void should_keep_the_users_book_and_edition_values_over_the_sources()
+        {
+            GivenOverrides();
+            var local = GivenLocalEdition(1, true, false);
+
+            RefreshWithRemoteEditions(new List<Edition> { local }, new List<Edition> { RemoteEdition("1", true) });
+
+            _book.Title.Should().Be("Defiance of the Fall 6");
+            _book.CleanTitle.Should().Be(Parser.Parser.CleanAuthorName("Defiance of the Fall 6"));
+
+            Mocker.GetMock<IEditionService>()
+                .Verify(v => v.UpdateMany(It.Is<List<Edition>>(l => l.Single().Title == "Defiance of the Fall 6" &&
+                                                                    l.Single().Overview == "Zac's own blurb" &&
+                                                                    l.Single().PageCount == 812)), Times.Once());
+        }
+
+        [Test]
+        public void should_give_a_new_edition_the_users_values()
+        {
+            GivenOverrides();
+
+            RefreshWithRemoteEditions(new List<Edition>(), new List<Edition> { RemoteEdition("5", true) });
+
+            Mocker.GetMock<IEditionService>()
+                .Verify(v => v.InsertMany(It.Is<List<Edition>>(l => l.Single().Overview == "Zac's own blurb" && l.Single().PageCount == 812)), Times.Once());
+        }
+
+        [Test]
+        public void should_not_retag_files_on_every_refresh_for_a_kept_title()
+        {
+            GivenOverrides();
+            _book.Title = "Defiance of the Fall 6";
+
+            var local = GivenLocalEdition(1, true, false);
+            _book.MetadataOverrides.ApplyTo(local);
+
+            var remote = RemoteEdition("1", true);
+            remote.Overview = local.Overview;
+            remote.PageCount = local.PageCount;
+            remote.Title = "Defiance of the Fall: A LitRPG Adventure";
+
+            RefreshWithRemoteEditions(new List<Edition> { local }, new List<Edition> { remote });
+
+            // The remote book's title differs from the override, but the override wins before the comparison, so
+            // nothing about the edition changed and no file needs its tags rewritten
+            Mocker.GetMock<IMetadataTagService>()
+                .Verify(v => v.SyncTags(It.Is<List<Edition>>(l => !l.Any())), Times.Once());
+        }
     }
 }

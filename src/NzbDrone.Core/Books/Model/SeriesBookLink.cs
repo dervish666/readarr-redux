@@ -11,6 +11,9 @@ namespace NzbDrone.Core.Books
         public int BookId { get; set; }
         public bool IsPrimary { get; set; }
 
+        // Added or repositioned by the user. A refresh never removes it or changes its position.
+        public bool IsManual { get; set; }
+
         [MemberwiseEqualityIgnore]
         public LazyLoaded<Series> Series { get; set; }
         [MemberwiseEqualityIgnore]
@@ -28,6 +31,7 @@ namespace NzbDrone.Core.Books
             Id = other.Id;
             SeriesId = other.SeriesId;
             BookId = other.BookId;
+            IsManual = other.IsManual;
         }
     }
 }

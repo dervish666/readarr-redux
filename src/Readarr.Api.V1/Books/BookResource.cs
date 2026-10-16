@@ -115,7 +115,23 @@ namespace Readarr.Api.V1.Books
             var updatedBook = resource.ToModel();
 
             book.ApplyChanges(updatedBook);
-            book.Editions = updatedBook.Editions;
+
+            // Only which edition is monitored comes from the client. Its copies of the editions' metadata are
+            // whatever it loaded, and saving them would undo values the user set by hand since.
+            var sent = updatedBook.Editions?.Value ?? new List<Edition>();
+            var editions = book.Editions.Value;
+
+            foreach (var edition in editions)
+            {
+                var updated = sent.FirstOrDefault(x => x.Id == edition.Id);
+
+                if (updated != null)
+                {
+                    edition.ApplyChanges(updated);
+                }
+            }
+
+            book.Editions = editions;
 
             return book;
         }

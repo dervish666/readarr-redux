@@ -18,6 +18,7 @@ namespace NzbDrone.Core.Books
             Genres = new List<string>();
             RelatedBooks = new List<int>();
             Ratings = new Ratings();
+            MetadataOverrides = new BookMetadataOverrides();
             Author = new Author();
             AddOptions = new AddBookOptions();
         }
@@ -35,6 +36,7 @@ namespace NzbDrone.Core.Books
         public List<int> RelatedBooks { get; set; }
         public Ratings Ratings { get; set; }
         public DateTime? LastSearchTime { get; set; }
+        public BookMetadataOverrides MetadataOverrides { get; set; }
 
         // These are Readarr generated/config
         public string CleanTitle { get; set; }
@@ -94,6 +96,7 @@ namespace NzbDrone.Core.Books
             LastSearchTime = other.LastSearchTime;
             Added = other.Added;
             AddOptions = other.AddOptions;
+            MetadataOverrides = other.MetadataOverrides;
         }
 
         public override void ApplyChanges(Book other)

@@ -3,6 +3,7 @@ import React, { Component } from 'react';
 import AuthorMetadataProfilePopoverContent from 'AddAuthor/AuthorMetadataProfilePopoverContent';
 import AuthorMonitorNewItemsOptionsPopoverContent from 'AddAuthor/AuthorMonitorNewItemsOptionsPopoverContent';
 import MoveAuthorModal from 'Author/MoveAuthor/MoveAuthorModal';
+import Alert from 'Components/Alert';
 import Form from 'Components/Form/Form';
 import FormGroup from 'Components/Form/FormGroup';
 import FormInputGroup from 'Components/Form/FormInputGroup';
@@ -16,6 +17,8 @@ import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
 import Popover from 'Components/Tooltip/Popover';
 import { icons, inputTypes, kinds, tooltipPositions } from 'Helpers/Props';
+import createAjaxRequest from 'Utilities/createAjaxRequest';
+import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
 import styles from './EditAuthorModalContent.css';
 
@@ -28,12 +31,68 @@ class EditAuthorModalContent extends Component {
     super(props, context);
 
     this.state = {
-      isConfirmMoveModalOpen: false
+      isConfirmMoveModalOpen: false,
+      overview: null,
+      savedOverview: null,
+      isOverviewSaving: false,
+      overviewSaveError: null
     };
+  }
+
+  componentDidMount() {
+    this._overviewRequest = createAjaxRequest({
+      url: `/author/${this.props.authorId}/metadata`
+    });
+
+    this._overviewRequest.request.done((data) => {
+      this.setState({ overview: data.overview || '', savedOverview: data.overview || '' });
+    });
+  }
+
+  componentWillUnmount() {
+    if (this._overviewRequest) {
+      this._overviewRequest.abortRequest();
+    }
   }
 
   //
   // Listeners
+
+  onOverviewChange = ({ value }) => {
+    this.setState({ overview: value });
+  };
+
+  // The overview the user sets is kept over the metadata source's; saved first, then the rest of the author
+  saveOverviewThen = (next) => {
+    const {
+      overview,
+      savedOverview
+    } = this.state;
+
+    if (overview === null || overview === savedOverview) {
+      next();
+      return;
+    }
+
+    this.setState({ isOverviewSaving: true, overviewSaveError: null });
+
+    const promise = createAjaxRequest({
+      url: `/author/${this.props.authorId}/metadata`,
+      method: 'PUT',
+      contentType: 'application/json',
+      dataType: 'json',
+      data: JSON.stringify({ overview: overview.trim() || null })
+    }).request;
+
+    promise.done(() => {
+      this.setState({ isOverviewSaving: false, savedOverview: overview });
+      next();
+    });
+
+    promise.fail((xhr) => {
+      this.setState({ isOverviewSaving: false, overviewSaveError: xhr });
+    });
+  };
 
   onSavePress = () => {
     const {
@@ -46,14 +105,14 @@ class EditAuthorModalContent extends Component {
     } else {
       this.setState({ isConfirmMoveModalOpen: false });
 
-      onSavePress(false);
+      this.saveOverviewThen(() => onSavePress(false));
     }
   };
 
   onMoveAuthorPress = () => {
     this.setState({ isConfirmMoveModalOpen: false });
 
-    this.props.onSavePress(true);
+    this.saveOverviewThen(() => this.props.onSavePress(true));
   };
 
   //
@@ -197,6 +256,30 @@ class EditAuthorModalContent extends Component {
                 onChange={onInputChange}
               />
             </FormGroup>
+
+            {
+              this.state.overview !== null &&
+                <FormGroup>
+                  <FormLabel>
+                    {translate('Overview')}
+                  </FormLabel>
+
+                  <FormInputGroup
+                    type={inputTypes.TEXT_AREA}
+                    name="overview"
+                    value={this.state.overview}
+                    helpText={translate('AuthorOverviewOverrideHelpText')}
+                    onChange={this.onOverviewChange}
+                  />
+                </FormGroup>
+            }
+
+            {
+              !!this.state.overviewSaveError &&
+                <Alert kind={kinds.DANGER}>
+                  {getErrorMessage(this.state.overviewSaveError, translate('AuthorOverviewSaveError'))}
+                </Alert>
+            }
           </Form>
         </ModalBody>
         <ModalFooter>
@@ -215,7 +298,7 @@ class EditAuthorModalContent extends Component {
           </Button>
 
           <SpinnerButton
-            isSpinning={isSaving}
+            isSpinning={isSaving || this.state.isOverviewSaving}
             onPress={this.onSavePress}
           >
             Save

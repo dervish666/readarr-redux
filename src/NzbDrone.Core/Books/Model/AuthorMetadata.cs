@@ -14,6 +14,7 @@ namespace NzbDrone.Core.Books
             Links = new List<Links>();
             Aliases = new List<string>();
             Ratings = new Ratings();
+            MetadataOverrides = new AuthorMetadataOverrides();
         }
 
         public string ForeignAuthorId { get; set; }
@@ -34,10 +35,18 @@ namespace NzbDrone.Core.Books
         public List<Links> Links { get; set; }
         public List<string> Genres { get; set; }
         public Ratings Ratings { get; set; }
+        public AuthorMetadataOverrides MetadataOverrides { get; set; }
 
         public override string ToString()
         {
             return string.Format("[{0}][{1}]", ForeignAuthorId, Name.NullSafe());
+        }
+
+        // The metadata source's copy of an author has no overrides, so it takes the library's
+        public override void UseDbFieldsFrom(AuthorMetadata other)
+        {
+            Id = other.Id;
+            MetadataOverrides = other.MetadataOverrides ?? new AuthorMetadataOverrides();
         }
 
         public override void UseMetadataFrom(AuthorMetadata other)

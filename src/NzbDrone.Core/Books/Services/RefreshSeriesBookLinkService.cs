@@ -26,7 +26,10 @@ namespace NzbDrone.Core.Books
         {
             var updateList = new List<SeriesBookLink>();
 
-            foreach (var link in update)
+            // The user's links keep their position, and stay when the metadata source doesn't list them
+            delete = delete.Where(x => !x.IsManual).ToList();
+
+            foreach (var link in update.Where(x => !x.IsManual))
             {
                 var remoteSeriesBookLink = remoteSeriesBookLinks.Single(e => e.Book.Value.Id == link.BookId);
                 link.UseMetadataFrom(remoteSeriesBookLink);
