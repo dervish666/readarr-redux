@@ -195,6 +195,7 @@ namespace NzbDrone.Core.Test.MediaFiles.MediaFileServiceTests
             Subject.FilterUnchangedFiles(files, filter).Select(x => x.FullName).Should().NotContain("C:\\file2.avi".AsOsAgnostic());
         }
 
+        [TestCase(FilterFilesType.Known)]
         [TestCase(FilterFilesType.Matched)]
         public void filter_unmatched_should_return_existing_file_if_unmatched(FilterFilesType filter)
         {
@@ -221,6 +222,7 @@ namespace NzbDrone.Core.Test.MediaFiles.MediaFileServiceTests
             Subject.FilterUnchangedFiles(files, filter).Select(x => x.FullName).Should().Contain("C:\\file2.avi".AsOsAgnostic());
         }
 
+        [TestCase(FilterFilesType.Known)]
         [TestCase(FilterFilesType.Matched)]
         public void filter_unmatched_should_not_return_existing_file_if_matched(FilterFilesType filter)
         {
