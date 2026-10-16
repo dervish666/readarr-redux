@@ -171,7 +171,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                 KeepAllEditions = true
             };
 
-            var decisions = _importDecisionMaker.GetImportDecisions(authorFiles, idOverrides, itemInfo, config);
+            var decisions = OnePerPath(_importDecisionMaker.GetImportDecisions(authorFiles, idOverrides, itemInfo, config));
 
             // paths will be different for new and old files which is why we need to map separately
             var newFiles = authorFiles.Join(decisions,
@@ -216,7 +216,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                     IncludeExisting = !replaceExistingFiles,
                     AddNewAuthors = false
                 };
-                var decisions = _importDecisionMaker.GetImportDecisions(files, idOverride, null, config);
+                var decisions = OnePerPath(_importDecisionMaker.GetImportDecisions(files, idOverride, null, config));
 
                 var existingItems = group.Join(decisions,
                                                i => i.Path,
@@ -256,11 +256,24 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                     result.Add(item);
                 }
 
-                var newDecisions = decisions.Except(existingItems.Select(x => x.Decision));
+                var newDecisions = decisions.Except(existingItems.Select(x => x.Decision))
+                    .Where(x => !result.Any(r => PathEqualityComparer.Instance.Equals(r.Path, x.Item.Path)));
                 result.AddRange(newDecisions.Select(x => MapItem(x, null, replaceExistingFiles, disableReleaseSwitching)));
             }
 
             return result;
+        }
+
+        // When several files each match the same book, every release gets that book's files on disk added as
+        // additional files, so one path can come back once as itself and again as another release's additional
+        // file. Rows are keyed by a hash of the path, so the copies tick and untick together and a rejected copy
+        // keeps Import disabled. Keep one decision per path, the file's own over an additional copy.
+        private static List<ImportDecision<LocalBook>> OnePerPath(List<ImportDecision<LocalBook>> decisions)
+        {
+            return decisions
+                .GroupBy(d => d.Item.Path, PathEqualityComparer.Instance)
+                .Select(g => g.OrderBy(d => d.Item.AdditionalFile).First())
+                .ToList();
         }
 
         private ManualImportItem MapItem(ImportDecision<LocalBook> decision, string downloadId, bool replaceExistingFiles, bool disableReleaseSwitching)
