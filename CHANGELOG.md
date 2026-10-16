@@ -7,6 +7,18 @@ Versions are `0.5.0.<CI run number>`. Only pushes to `develop` publish an image,
 ## Unreleased
 
 - Fixed: Rescans leaving a file unmapped when it names its book by series position ("Defiance of the Fall 1", "Mistborn #2", "The Expanse, Book 3"), common for book 1 of a long series titled after the series. Such a file could also come out closest to a later book in the series, which the rescan then rightly refused.
+- Fixed: qBittorrent 5.2 login with a username and password. qBittorrent API keys are supported, and a release qBittorrent already has is rejected instead of failing the grab.
+- Fixed: Torrent clients moved files out of finished torrents even with Remove Completed Downloads off. Those imports now copy or hardlink, so the torrent keeps seeding.
+- New: Transmission 4 labels, and a post-import label. Torrents added before an upgrade from Transmission 3 still match by category folder.
+- Fixed: Deluge reconnects to its daemon when torrents come back without names, and detects the Label plugin reliably.
+- Fixed: SABnzbd 4.1 sorters are checked when testing the client.
+- Fixed: HTML-encoded release titles. Nzb.su indexers move to nzb.life (migration 043); the dead NZBCat and SimplyNZBs presets are gone.
+- New: Settings > Media Management > Minimum Book Match (advanced), the match percentage needed to import automatically. Default 80, as before.
+- Fixed: Plex sign-in in browsers that enforce Cross-Origin-Opener-Policy.
+- Removed: Twitter notifications and the Goodreads Owned Books list and notification. Saved ones are dropped at startup with a warning.
+- Fixed: Goodreads OAuth signing payloads, which carry the token secret, no longer reach the trace log.
+- Fixed: Discord timestamps on systems with a non-Gregorian calendar, Goodreads list failures being swallowed, and Calibre conversion checks that could loop forever.
+- Security: `System.Security.Cryptography.Pkcs` pinned to 10.0.13 for GHSA-846f-f764-76mx and GHSA-2fmv-rv2c-59x7.
 - The vendored FluentMigrator no longer pulls in every database runner, so Microsoft SQL Server Compact, the Visual C++ 2008 runtime and `Microsoft.Data.SqlClient` are gone from the build and the image. Only SQLite and Postgres were ever used.
 - New README, NOTICE.md, SECURITY.md and CONTRIBUTING.md for the fork.
 - The header donate button and the Readarr donation tile are gone, since that money went to a retired project. The Sonarr, Radarr, Lidarr and Prowlarr tiles stay.

@@ -8,6 +8,7 @@ using FluentAssertions;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Core.Books;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.BookImport;
 using NzbDrone.Core.MediaFiles.BookImport.Identification;
@@ -106,11 +107,21 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport.Identification
         // The rules that judge a book match, as the container collects them
         private static List<IImportDecisionEngineSpecification<LocalEdition>> MatchSpecifications()
         {
+            var config = new Mock<IConfigService>();
+            config.SetupGet(c => c.MinimumBookMatchPercent).Returns(80);
+
             return typeof(ImportDecisionMaker).Assembly.GetTypes()
                 .Where(t => !t.IsAbstract &&
                             typeof(IImportDecisionEngineSpecification<LocalEdition>).IsAssignableFrom(t) &&
                             t.Name.EndsWith("MatchSpecification"))
-                .Select(t => (IImportDecisionEngineSpecification<LocalEdition>)Activator.CreateInstance(t, TestLogger))
+                .Select(t =>
+                {
+                    var args = t.GetConstructors().Single().GetParameters()
+                        .Select(p => p.ParameterType == typeof(IConfigService) ? (object)config.Object : TestLogger)
+                        .ToArray();
+
+                    return (IImportDecisionEngineSpecification<LocalEdition>)Activator.CreateInstance(t, args);
+                })
                 .ToList();
         }
 

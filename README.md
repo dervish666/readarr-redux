@@ -55,6 +55,15 @@ The full list is in [CHANGELOG.md](CHANGELOG.md).
 - **Imports.** Downloads stay matched to the book that was grabbed, packs import as packs, and multi-part audiobooks no longer lose, misnumber or silently skip parts.
 - **Security.** Salted PBKDF2 password hashes, login throttling, sessions revoked when credentials change, and fixes for a forwarded-header auth bypass, path traversal in file routes, zip-slip and SQL injection (CVE-2025-50983).
 - **Platform.** .NET 10 and React 18. No call-home: Sentry, update checks and server-side notifications are removed.
+- **Download clients.** qBittorrent 5.2 login and API keys, Transmission 4 labels, Deluge daemon reconnects, SABnzbd 4.1 sorter checks, and torrents left intact when Remove Completed Downloads is off.
+
+### Goodreads Bookshelf and auth.servarr.com
+
+The Goodreads Bookshelf import list and notification sign their Goodreads requests through `https://auth.servarr.com/v1/goodreads/sign`, a service the Servarr team still runs. Using either one sends your Goodreads OAuth token and token secret to that service on every call. Nothing else in Readarr Redux talks to Servarr. If you don't want that, don't add a Goodreads Bookshelf list or notification. The Goodreads Owned Books list and notification, and Twitter notifications, are gone because the APIs behind them no longer exist.
+
+### Who can make Readarr fetch URLs
+
+Indexers, download clients, notifications, import lists and the metadata source all take URLs, and Readarr will request whatever they point at, including addresses on your LAN. That is by design: anyone with the API key or a login is an administrator. Keep both private.
 
 ## Building from source
 

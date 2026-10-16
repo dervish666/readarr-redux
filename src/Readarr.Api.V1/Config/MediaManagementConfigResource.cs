@@ -24,6 +24,7 @@ namespace Readarr.Api.V1.Config
 
         public bool SkipFreeSpaceCheckWhenImporting { get; set; }
         public int MinimumFreeSpaceWhenImporting { get; set; }
+        public int MinimumBookMatchPercent { get; set; }
         public bool CopyUsingHardlinks { get; set; }
         public bool ImportExtraFiles { get; set; }
         public string ExtraFileExtensions { get; set; }
@@ -52,6 +53,7 @@ namespace Readarr.Api.V1.Config
 
                 SkipFreeSpaceCheckWhenImporting = model.SkipFreeSpaceCheckWhenImporting,
                 MinimumFreeSpaceWhenImporting = model.MinimumFreeSpaceWhenImporting,
+                MinimumBookMatchPercent = model.MinimumBookMatchPercent,
                 CopyUsingHardlinks = model.CopyUsingHardlinks,
                 ImportExtraFiles = model.ImportExtraFiles,
                 ExtraFileExtensions = model.ExtraFileExtensions,

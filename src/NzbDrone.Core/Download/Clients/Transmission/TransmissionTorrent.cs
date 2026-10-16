@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using Newtonsoft.Json;
+
 namespace NzbDrone.Core.Download.Clients.Transmission
 {
     public class TransmissionTorrent
@@ -6,6 +10,7 @@ namespace NzbDrone.Core.Download.Clients.Transmission
         public string HashString { get; set; }
         public string Name { get; set; }
         public string DownloadDir { get; set; }
+        public IReadOnlyCollection<string> Labels { get; set; } = Array.Empty<string>();
         public long TotalSize { get; set; }
         public long LeftUntilDone { get; set; }
         public bool IsFinished { get; set; }
@@ -20,6 +25,12 @@ namespace NzbDrone.Core.Download.Clients.Transmission
         public int SeedRatioMode { get; set; }
         public long SeedIdleLimit { get; set; }
         public int SeedIdleMode { get; set; }
-        public int FileCount { get; set; }
+        public int FileCount => TransmissionFileCount ?? VuzeFileCount ?? 0;
+
+        [JsonProperty(PropertyName = "file-count")]
+        public int? TransmissionFileCount { get; set; }
+
+        [JsonProperty(PropertyName = "fileCount")]
+        public int? VuzeFileCount { get; set; }
     }
 }
