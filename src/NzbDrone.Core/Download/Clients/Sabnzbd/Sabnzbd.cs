@@ -460,6 +460,16 @@ namespace NzbDrone.Core.Download.Clients.Sabnzbd
                 }
             }
 
+            // New in SABnzbd 4.1, but on older versions this will be empty and not apply
+            if (config.Sorters.Any(s => s.is_active && ContainsCategory(s.sort_cats, Settings.MusicCategory)))
+            {
+                return new NzbDroneValidationFailure("MusicCategory", "Disable Sorting")
+                {
+                    InfoLink = _proxy.GetBaseUrl(Settings, "config/sorting/"),
+                    DetailedDescription = "You must disable every active Sabnzbd sorter that applies to the category Readarr uses to prevent import issues. Go to Sabnzbd to fix it."
+                };
+            }
+
             if (config.Misc.enable_tv_sorting && ContainsCategory(config.Misc.tv_categories, Settings.MusicCategory))
             {
                 return new NzbDroneValidationFailure("MusicCategory", "Disable TV Sorting")

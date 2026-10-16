@@ -8,6 +8,7 @@ using FluentAssertions;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Core.Books;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.BookImport;
 using NzbDrone.Core.MediaFiles.BookImport.Identification;
@@ -106,11 +107,21 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport.Identification
         // The rules that judge a book match, as the container collects them
         private static List<IImportDecisionEngineSpecification<LocalEdition>> MatchSpecifications()
         {
+            var config = new Mock<IConfigService>();
+            config.SetupGet(c => c.MinimumBookMatchPercent).Returns(80);
+
             return typeof(ImportDecisionMaker).Assembly.GetTypes()
                 .Where(t => !t.IsAbstract &&
                             typeof(IImportDecisionEngineSpecification<LocalEdition>).IsAssignableFrom(t) &&
                             t.Name.EndsWith("MatchSpecification"))
-                .Select(t => (IImportDecisionEngineSpecification<LocalEdition>)Activator.CreateInstance(t, TestLogger))
+                .Select(t =>
+                {
+                    var args = t.GetConstructors().Single().GetParameters()
+                        .Select(p => p.ParameterType == typeof(IConfigService) ? (object)config.Object : TestLogger)
+                        .ToArray();
+
+                    return (IImportDecisionEngineSpecification<LocalEdition>)Activator.CreateInstance(t, args);
+                })
                 .ToList();
         }
 
@@ -375,6 +386,54 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport.Identification
             GivenBook(barker, 98051, "Hellraiser #6", "Comic", publisher: "Boom!");
 
             var file = GivenFile(BookPath(barker, "Hellraiser", "Clive Barker - Hellraiser 5.m4b"), Tags(barker, "Hellraiser #5", 2011, "Boom!"));
+
+            DecisionFor(Rescan(file), file).Approved.Should().BeFalse();
+        }
+
+        // Book 1 of a long series is titled after the series alone, so its files name it as "Series 1"
+        private Book GivenDefianceOfTheFall(out Author author)
+        {
+            author = GivenAuthor(9100, "TheFirstDefier");
+
+            var series = new Series { Id = 1, Title = "Defiance of the Fall" };
+
+            var first = GivenBook(author, 9101, "Defiance of the Fall", "Audible Audio", released: new DateTime(2021, 5, 27));
+            var seventeenth = GivenBook(author, 9117, "Defiance of the Fall 17", "Audible Audio", released: new DateTime(2026, 12, 2));
+            var eighteenth = GivenBook(author, 9118, "Defiance of the Fall 18", "Audible Audio", released: new DateTime(2027, 9, 8));
+
+            foreach (var (book, position) in new[] { (first, "1"), (seventeenth, "17"), (eighteenth, "18") })
+            {
+                book.SeriesLinks = new List<SeriesBookLink> { new SeriesBookLink { Position = position, Series = series, Book = book } };
+            }
+
+            GivenBookFile(seventeenth, BookPath(author, "Defiance of the Fall 17", "TheFirstDefier - Defiance of the Fall 17.m4b"), Tags(author, seventeenth.Title, 2026));
+            GivenBookFile(eighteenth, BookPath(author, "Defiance of the Fall 18", "TheFirstDefier - Defiance of the Fall 18.m4b"), Tags(author, eighteenth.Title, 2027));
+
+            return first;
+        }
+
+        [TestCase("Defiance of the Fall 1")]
+        [TestCase("Defiance of the Fall #1")]
+        [TestCase("Defiance of the Fall, Book 1")]
+        [TestCase("Defiance of the Fall Book 1")]
+        public void should_match_a_file_named_by_series_and_position_to_that_book(string bookTag)
+        {
+            var first = GivenDefianceOfTheFall(out var author);
+
+            var file = GivenFile(BookPath(author, "Defiance of the Fall/Defiance of the Fall 1", "TheFirstDefier - Defiance of the Fall 1.m4b"), Tags(author, bookTag, 2021));
+
+            var decision = DecisionFor(Rescan(file), file);
+
+            decision.Approved.Should().BeTrue();
+            decision.Item.Book.ForeignBookId.Should().Be(first.ForeignBookId);
+        }
+
+        [Test]
+        public void should_not_match_a_series_position_to_a_book_at_another_position()
+        {
+            GivenDefianceOfTheFall(out var author);
+
+            var file = GivenFile(BookPath(author, "Defiance of the Fall/Defiance of the Fall 2", "TheFirstDefier - Defiance of the Fall 2.m4b"), Tags(author, "Defiance of the Fall 2", 2021));
 
             DecisionFor(Rescan(file), file).Approved.Should().BeFalse();
         }

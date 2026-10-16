@@ -220,7 +220,7 @@ namespace NzbDrone.Core.Notifications.Discord
                         IconUrl = "https://raw.githubusercontent.com/Readarr/Readarr/develop/Logo/256.png"
                     },
                     Title = APPLICATION_UPDATE_TITLE,
-                    Timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+                    Timestamp = DateTime.UtcNow.ToString("O"),
                     Color = (int)DiscordColors.Standard,
                     Fields = new List<DiscordField>()
                     {

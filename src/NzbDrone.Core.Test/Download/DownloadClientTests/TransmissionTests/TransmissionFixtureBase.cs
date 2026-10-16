@@ -152,7 +152,7 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.TransmissionTests
             }
 
             Mocker.GetMock<ITransmissionProxy>()
-                  .Setup(s => s.GetTorrents(It.IsAny<TransmissionSettings>()))
+                  .Setup(s => s.GetTorrents(null, It.IsAny<TransmissionSettings>()))
                   .Returns(torrents);
         }
 
