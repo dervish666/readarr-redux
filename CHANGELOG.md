@@ -6,6 +6,7 @@ Versions are `0.5.0.<CI run number>`. Only pushes to `develop` publish an image,
 
 ## Unreleased
 
+- Fixed: Manual Import listing the same file several times when files in a folder matched the same book, which ticked the copies together and kept Import disabled.
 - Fixed: Rescan Folders skipping unmapped files that hadn't changed on disk, so a file left unmapped stayed unmapped even after a matching fix. Unchanged unmapped files are now matched again on every rescan.
 - Fixed: Rescans leaving a file unmapped when it names its book by series position ("Defiance of the Fall 1", "Mistborn #2", "The Expanse, Book 3"), common for book 1 of a long series titled after the series. Such a file could also come out closest to a later book in the series, which the rescan then rightly refused.
 - Fixed: qBittorrent 5.2 login with a username and password. qBittorrent API keys are supported, and a release qBittorrent already has is rejected instead of failing the grab.
