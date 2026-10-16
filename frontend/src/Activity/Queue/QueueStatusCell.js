@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types';
 import React from 'react';
 import Icon from 'Components/Icon';
+import Label from 'Components/Label';
 import TableRowCell from 'Components/Table/Cells/TableRowCell';
 import Popover from 'Components/Tooltip/Popover';
 import { icons, kinds, tooltipPositions } from 'Helpers/Props';
@@ -41,9 +42,13 @@ function QueueStatusCell(props) {
     trackedDownloadStatus,
     trackedDownloadState,
     statusMessages,
-    errorMessage
+    errorMessage,
+    chips,
+    children
   } = props;
 
+  // The row's triage buttons, only those that apply to it
+  const actions = React.Children.toArray(children);
   const hasWarning = trackedDownloadStatus === 'warning';
   const hasError = trackedDownloadStatus === 'error';
 
@@ -122,19 +127,42 @@ function QueueStatusCell(props) {
   }
 
   return (
-    <TableRowCell className={styles.status}>
-      <Popover
-        anchor={
-          <Icon
-            name={iconName}
-            kind={iconKind}
-          />
+    <TableRowCell className={chips.length || actions.length ? styles.statusWithChips : styles.status}>
+      <div className={styles.content}>
+        <Popover
+          anchor={
+            <Icon
+              name={iconName}
+              kind={iconKind}
+            />
+          }
+          title={title}
+          body={hasWarning || hasError ? getDetailedPopoverBody(statusMessages) : sourceTitle}
+          position={tooltipPositions.RIGHT}
+          canFlip={false}
+        />
+
+        {
+          chips.map((chip) => {
+            return (
+              <Label
+                key={chip.key}
+                kind={chip.kind}
+                title={chip.details.join('\n')}
+              >
+                {chip.label}
+              </Label>
+            );
+          })
         }
-        title={title}
-        body={hasWarning || hasError ? getDetailedPopoverBody(statusMessages) : sourceTitle}
-        position={tooltipPositions.RIGHT}
-        canFlip={false}
-      />
+      </div>
+
+      {
+        actions.length > 0 &&
+          <div className={styles.actions}>
+            {actions}
+          </div>
+      }
     </TableRowCell>
   );
 }
@@ -145,10 +173,13 @@ QueueStatusCell.propTypes = {
   trackedDownloadStatus: PropTypes.string.isRequired,
   trackedDownloadState: PropTypes.string.isRequired,
   statusMessages: PropTypes.arrayOf(PropTypes.object),
-  errorMessage: PropTypes.string
+  errorMessage: PropTypes.string,
+  chips: PropTypes.arrayOf(PropTypes.object).isRequired,
+  children: PropTypes.node
 };
 
 QueueStatusCell.defaultProps = {
+  chips: [],
   trackedDownloadStatus: 'Ok',
   trackedDownloadState: 'Downloading'
 };

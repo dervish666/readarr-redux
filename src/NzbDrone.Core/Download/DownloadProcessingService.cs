@@ -1,14 +1,16 @@
 using System;
 using System.Linq;
 using NLog;
+using NzbDrone.Common.Instrumentation.Extensions;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Download.TrackedDownloads;
+using NzbDrone.Core.MediaFiles.BookImport;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 
 namespace NzbDrone.Core.Download
 {
-    public class DownloadProcessingService : IExecute<ProcessMonitoredDownloadsCommand>
+    public class DownloadProcessingService : IExecute<ProcessMonitoredDownloadsCommand>, IExecute<ImportQueueItemCommand>
     {
         private readonly IConfigService _configService;
         private readonly ICompletedDownloadService _completedDownloadService;
@@ -74,6 +76,40 @@ namespace NzbDrone.Core.Download
             RemoveCompletedDownloads();
 
             _eventAggregator.PublishEvent(new DownloadsProcessedEvent());
+        }
+
+        public void Execute(ImportQueueItemCommand message)
+        {
+            var trackedDownload = _trackedDownloadService.Find(message.DownloadId);
+
+            if (trackedDownload == null)
+            {
+                _logger.Warn("Download {0} is no longer in the queue, not importing it", message.DownloadId);
+                return;
+            }
+
+            if (!CanRetryImport(trackedDownload))
+            {
+                _logger.Warn("{0} isn't waiting to be imported, not importing it", trackedDownload.DownloadItem.Title);
+                return;
+            }
+
+            _logger.ProgressInfo("Importing {0}", trackedDownload.DownloadItem.Title);
+
+            trackedDownload.State = TrackedDownloadState.ImportPending;
+            _completedDownloadService.Import(trackedDownload, new DownloadImportOptions
+            {
+                IgnoreMatchThreshold = message.IgnoreMatchThreshold,
+                ReplaceDestination = message.ReplaceDestination
+            });
+
+            _eventAggregator.PublishEvent(new DownloadsProcessedEvent());
+        }
+
+        public static bool CanRetryImport(TrackedDownload trackedDownload)
+        {
+            return trackedDownload.DownloadItem.Status == DownloadItemStatus.Completed &&
+                   trackedDownload.State is TrackedDownloadState.ImportFailed or TrackedDownloadState.ImportPending;
         }
     }
 }

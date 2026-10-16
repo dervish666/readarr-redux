@@ -332,6 +332,114 @@ namespace NzbDrone.Core.Test.MediaFiles
             ExceptionVerification.ExpectedWarns(1);
         }
 
+        private Dictionary<string, string> GivenAFileInTheWay(BookFile occupant)
+        {
+            _localTrack.Book = Builder<Book>.CreateNew().Build();
+
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(s => s.GetFilesByBook(_localTrack.Book.Id))
+                .Returns(new List<BookFile>());
+
+            var sourcePath = @"C:\Test\Downloads\Defiance 6.m4b".AsOsAgnostic();
+            var destination = Path.Combine(_rootPath, @"Defiance of the Fall 6\Defiance of the Fall 6.m4b");
+            var disk = new Dictionary<string, string> { { sourcePath, "new" }, { destination, "other" } };
+            _trackFile.Path = sourcePath;
+            GivenDisk(disk);
+
+            Mocker.GetMock<IMoveBookFiles>()
+                .Setup(c => c.GetBookFilePath(It.IsAny<BookFile>(), It.IsAny<LocalBook>()))
+                .Returns(destination);
+
+            Mocker.GetMock<IMoveBookFiles>()
+                .Setup(c => c.MoveBookFile(It.IsAny<BookFile>(), It.IsAny<LocalBook>()))
+                .Returns<BookFile, LocalBook>((file, localBook) =>
+                {
+                    if (disk.ContainsKey(destination))
+                    {
+                        throw new DestinationAlreadyExistsException($"Destination {destination} already exists.");
+                    }
+
+                    disk[destination] = disk[file.Path];
+                    disk.Remove(file.Path);
+                    file.Path = destination;
+
+                    return file;
+                });
+
+            if (occupant != null)
+            {
+                occupant.Path = destination;
+
+                Mocker.GetMock<IMediaFileService>()
+                    .Setup(s => s.GetFileWithPath(destination))
+                    .Returns(occupant);
+            }
+
+            return disk;
+        }
+
+        [Test]
+        public void should_fail_on_a_file_in_the_way_unless_asked_to_replace_it()
+        {
+            var occupant = new BookFile { Id = 7, EditionId = 4 };
+            var disk = GivenAFileInTheWay(occupant);
+
+            Assert.Throws<DestinationAlreadyExistsException>(() => Subject.UpgradeBookFile(_trackFile, _localTrack));
+
+            disk.Should().Contain(occupant.Path, "other");
+            Mocker.GetMock<IMediaFileService>().Verify(v => v.Delete(It.IsAny<BookFile>(), It.IsAny<DeleteMediaFileReason>()), Times.Never());
+        }
+
+        [Test]
+        public void should_set_aside_a_file_in_the_way_when_asked_to_replace_it()
+        {
+            var occupant = new BookFile { Id = 7, EditionId = 4 };
+            var disk = GivenAFileInTheWay(occupant);
+            _localTrack.ReplaceDestination = true;
+
+            var result = Subject.UpgradeBookFile(_trackFile, _localTrack);
+
+            disk.Should().Contain(occupant.Path, "new");
+            result.SetAsideFiles.Should().ContainSingle(f => f.OriginalPath == occupant.Path);
+            disk.Should().Contain(result.SetAsideFiles[0].Path, "other");
+
+            // Its row goes now, its file is recycled with the release's other set-aside files
+            Mocker.GetMock<IMediaFileService>().Verify(v => v.Delete(occupant, DeleteMediaFileReason.Upgrade), Times.Once());
+            Mocker.GetMock<IRecycleBinProvider>().Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+            result.OldFiles.Should().BeEmpty();
+        }
+
+        [Test]
+        public void should_set_aside_an_unmapped_file_in_the_way_when_asked_to_replace_it()
+        {
+            var disk = GivenAFileInTheWay(null);
+            var destination = disk.Keys.Single(k => k.Contains("Defiance of the Fall 6"));
+            _localTrack.ReplaceDestination = true;
+
+            var result = Subject.UpgradeBookFile(_trackFile, _localTrack);
+
+            disk.Should().Contain(destination, "new");
+            result.SetAsideFiles.Should().ContainSingle(f => f.OriginalPath == destination);
+            Mocker.GetMock<IMediaFileService>().Verify(v => v.Delete(It.IsAny<BookFile>(), It.IsAny<DeleteMediaFileReason>()), Times.Never());
+        }
+
+        [Test]
+        public void should_put_a_file_in_the_way_back_when_the_move_fails()
+        {
+            var occupant = new BookFile { Id = 7, EditionId = 4 };
+            var disk = GivenAFileInTheWay(occupant);
+            _localTrack.ReplaceDestination = true;
+
+            Mocker.GetMock<IMoveBookFiles>()
+                .Setup(c => c.MoveBookFile(It.IsAny<BookFile>(), It.IsAny<LocalBook>()))
+                .Throws(new IOException("There is not enough space on the disk."));
+
+            Assert.Throws<IOException>(() => Subject.UpgradeBookFile(_trackFile, _localTrack));
+
+            disk.Should().Contain(occupant.Path, "other");
+            Mocker.GetMock<IMediaFileService>().Verify(v => v.Delete(It.IsAny<BookFile>(), It.IsAny<DeleteMediaFileReason>()), Times.Never());
+        }
+
         [Test]
         public void should_return_old_track_file_in_oldFiles()
         {

@@ -80,6 +80,7 @@ namespace NzbDrone.Core.MediaFiles
             var setAside = new List<SetAsideBookFile>();
             var setAsideFolder = string.Format(SetAsideFolderFormat, DateTime.UtcNow, Guid.NewGuid());
             var sourcePath = bookFile.Path;
+            BookFile displaced = null;
 
             try
             {
@@ -119,6 +120,11 @@ namespace NzbDrone.Core.MediaFiles
                     // path stays claimed either way so no other book's upgrade takes what's there for an old file.
                     // Done after the set-aside above, which must still clear this book's own old file off that path.
                     var destination = _bookFileMover.GetBookFilePath(bookFile, localBook);
+
+                    if (localBook.ReplaceDestination)
+                    {
+                        displaced = SetAsideDestination(destination, sourcePath, rootFolderPath, setAsideFolder, existingFiles, setAside, importedPaths);
+                    }
 
                     if (destination.IsNotNullOrWhiteSpace())
                     {
@@ -165,6 +171,14 @@ namespace NzbDrone.Core.MediaFiles
                 _mediaFileService.Delete(file, DeleteMediaFileReason.Upgrade);
             }
 
+            // The file that was in the way belongs to another book, or to none. Its row goes, its file is recycled
+            // with the set-aside files once the release has imported.
+            if (displaced != null)
+            {
+                _logger.Info("{0} replaced the file already at {1}", localBook.Book, displaced.Path);
+                _mediaFileService.Delete(displaced, DeleteMediaFileReason.Upgrade);
+            }
+
             moveFileResult.SetAsideFiles = setAside;
 
             if (!isCalibre)
@@ -181,6 +195,33 @@ namespace NzbDrone.Core.MediaFiles
             }
 
             return moveFileResult;
+        }
+
+        // When asked to, a file already at the destination is set aside like the book's own old files, so a failed
+        // move puts it back. Returns its database row, if it has one that isn't one of this book's files.
+        private BookFile SetAsideDestination(string destination, string sourcePath, string rootFolderPath, string setAsideFolder, List<BookFile> existingFiles, List<SetAsideBookFile> setAside, ICollection<string> importedPaths)
+        {
+            if (destination.IsNullOrWhiteSpace() ||
+                destination.PathEquals(sourcePath) ||
+                !_diskProvider.FileExists(destination))
+            {
+                return null;
+            }
+
+            // Another part of this release has just landed there, so it isn't the file the user asked to replace
+            if (importedPaths != null && importedPaths.Contains(destination))
+            {
+                return null;
+            }
+
+            _logger.Debug("Replacing {0}, which is already at the destination", destination);
+
+            var subfolder = rootFolderPath.GetRelativePath(_diskProvider.GetParentFolder(destination));
+            setAside.Add(SetAside(destination, subfolder, setAsideFolder));
+
+            var occupant = _mediaFileService.GetFileWithPath(destination);
+
+            return occupant != null && existingFiles.All(f => f.Id != occupant.Id) ? occupant : null;
         }
 
         public void RemoveSetAsideFiles(IEnumerable<SetAsideBookFile> files)

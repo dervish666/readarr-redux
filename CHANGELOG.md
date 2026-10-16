@@ -4,6 +4,15 @@ Changes in Readarr Redux since it forked from Readarr (upstream commit `0b79d300
 
 Versions are `0.5.0.<CI run number>`. Only pushes to `develop` publish an image, so the numbers have gaps. Each entry is the image tag and the day it was built. The commit messages explain each fix in detail.
 
+## Unreleased
+
+Queue triage: dealing with a failed import without hovering or leaving the queue.
+
+- New: The queue shows why each item is stuck as chips next to its status icon ("Match 61.4%", "Destination exists", "Not an upgrade", "Waiting to import" and so on). Hover a chip for every message behind it. The status icon's popover is still there.
+- New: Import anyway, on a download that failed the minimum book match. It imports into the book it was grabbed for, and every other import check still applies.
+- New: Blocklist and Search, on the same rows. It removes the download from the client, blocklists the release and searches for another, after a confirmation.
+- New: Compare, on a download that failed because a file is already at its destination. It shows the download and the file in its way side by side: name, folder, size, date, quality, tags, and which book the library has that file as. Import and replace imports the download over it. The file in its way is set aside like an upgrade's old file, put back if the import fails, and recycled once it succeeds. Its library entry, if it has one, is removed.
+
 ## 0.5.0.81 (2026-10-16)
 
 - Fixed: Manual Import listing the same file several times when several files in a folder matched the same book. The copies ticked together and a rejected copy kept Import disabled, so a mis-tagged file couldn't be moved to its right book.

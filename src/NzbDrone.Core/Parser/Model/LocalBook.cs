@@ -26,6 +26,9 @@ namespace NzbDrone.Core.Parser.Model
         public IndexerFlags IndexerFlags { get; set; }
         public bool ExistingFile { get; set; }
         public bool AdditionalFile { get; set; }
+
+        // Set aside whatever is already at this file's destination instead of failing the import on it
+        public bool ReplaceDestination { get; set; }
         public bool SceneSource { get; set; }
         public string ReleaseGroup { get; set; }
         public string SceneName { get; set; }

@@ -11,6 +11,7 @@ using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.MediaFiles.BookImport.Aggregation;
 using NzbDrone.Core.MediaFiles.BookImport.Identification;
+using NzbDrone.Core.MediaFiles.BookImport.Specifications;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Profiles.Qualities;
@@ -47,6 +48,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport
         public bool IncludeExisting { get; set; }
         public bool AddNewAuthors { get; set; }
         public bool KeepAllEditions { get; set; }
+
+        // Import a release even when it isn't a close enough match for the book, every other check still applies
+        public bool IgnoreMatchThreshold { get; set; }
     }
 
     public class ImportDecisionMaker : IMakeImportDecision
@@ -187,7 +191,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 EnsureData(release);
                 release.NewDownload = config.NewDownload;
 
-                var releaseDecision = GetDecision(release, itemInfo.DownloadClientItem);
+                var releaseDecision = GetDecision(release, itemInfo.DownloadClientItem, config.IgnoreMatchThreshold);
 
                 foreach (var localTrack in release.LocalBooks)
                 {
@@ -218,7 +222,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             }
         }
 
-        private ImportDecision<LocalEdition> GetDecision(LocalEdition localEdition, DownloadClientItem downloadClientItem)
+        private ImportDecision<LocalEdition> GetDecision(LocalEdition localEdition, DownloadClientItem downloadClientItem, bool ignoreMatchThreshold)
         {
             ImportDecision<LocalEdition> decision = null;
 
@@ -228,7 +232,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             }
             else
             {
-                var reasons = _bookSpecifications.Select(c => EvaluateSpec(c, localEdition, downloadClientItem))
+                var reasons = _bookSpecifications.Where(c => !(ignoreMatchThreshold && c is CloseBookMatchSpecification))
+                    .Select(c => EvaluateSpec(c, localEdition, downloadClientItem))
                     .Where(c => c != null);
 
                 decision = new ImportDecision<LocalEdition>(localEdition, reasons.ToArray());

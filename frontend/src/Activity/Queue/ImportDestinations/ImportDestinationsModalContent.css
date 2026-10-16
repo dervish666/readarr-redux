@@ -1,0 +1,49 @@
+.file {
+  margin-bottom: 20px;
+  padding: 10px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+}
+
+.collision {
+  border-color: var(--dangerColor);
+}
+
+.target {
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.rejections {
+  margin-bottom: 5px;
+  color: var(--warningColor);
+}
+
+.compare {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.columnTitle {
+  padding: 4px 8px;
+  text-align: left;
+}
+
+.rowTitle {
+  padding: 4px 8px;
+  width: 120px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.value {
+  padding: 4px 8px;
+  word-break: break-all;
+}
+
+.differs {
+  .value {
+    color: var(--warningColor);
+  }
+}

@@ -29,6 +29,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
     public interface IImportApprovedBooks
     {
         List<ImportResult> Import(List<ImportDecision<LocalBook>> decisions, bool replaceExisting, DownloadClientItem downloadClientItem = null, ImportMode importMode = ImportMode.Auto);
+        void NumberParts(List<ImportDecision<LocalBook>> decisions, Book book);
     }
 
     public class ImportApprovedBooks : IImportApprovedBooks
@@ -148,18 +149,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 //     RemoveExistingTrackFiles(author, book);
                 // }
 
-                // Make sure part numbers are populated for audiobooks
-                // If all audio files and all part numbers are zero, set them by filename order
-                if (decisionList.All(b => MediaFileExtensions.AudioExtensions.Contains(Path.GetExtension(b.Item.Path)) && b.Item.Part == 0))
-                {
-                    var part = 1;
-                    foreach (var d in decisionList.OrderBy(x => PadNumbers.Replace(x.Item.Path)))
-                    {
-                        d.Item.Part = part++;
-                    }
-                }
-
-                NumberClashingPartsFromFilenames(decisionList, book);
+                // Number an audiobook's parts, which also decide their filenames
+                NumberParts(decisionList, book);
 
                 // set the correct release to be monitored before importing the new files
                 var newRelease = bookDecision.First().Item.Edition;
@@ -642,6 +633,23 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             {
                 _logger.Warn(e, "Couldn't read {0} after writing its tags, the next scan may import it again", bookFile.Path);
             }
+        }
+
+        // The part numbers one book's files will import with, which also decide their filenames
+        public void NumberParts(List<ImportDecision<LocalBook>> decisions, Book book)
+        {
+            // Make sure part numbers are populated for audiobooks
+            // If all audio files and all part numbers are zero, set them by filename order
+            if (decisions.All(b => MediaFileExtensions.AudioExtensions.Contains(Path.GetExtension(b.Item.Path)) && b.Item.Part == 0))
+            {
+                var part = 1;
+                foreach (var d in decisions.OrderBy(x => PadNumbers.Replace(x.Item.Path)))
+                {
+                    d.Item.Part = part++;
+                }
+            }
+
+            NumberClashingPartsFromFilenames(decisions, book);
         }
 
         // An audiobook's part numbers come from its files' track tags, and only one file per part number imports.
