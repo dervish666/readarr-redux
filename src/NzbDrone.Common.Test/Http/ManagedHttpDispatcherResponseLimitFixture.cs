@@ -46,7 +46,7 @@ namespace NzbDrone.Common.Test.Http
                 _handler = handler;
             }
 
-            protected override HttpClient GetClient(HttpUri uri)
+            protected override HttpClient GetClient(HttpUri uri, bool publicAddressesOnly)
             {
                 return new HttpClient(_handler, false);
             }

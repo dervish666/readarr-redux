@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -20,8 +21,10 @@ namespace NzbDrone.Common.Http.Dispatchers
     public class ManagedHttpDispatcher : IHttpDispatcher
     {
         private const string NO_PROXY_KEY = "no-proxy";
+        private const string PUBLIC_ONLY_KEY_SUFFIX = "|public-only";
 
         private const int connection_establish_timeout = 2000;
+        private static readonly HttpRequestOptionsKey<HashSet<string>> PrivateAddressHostsOption = new ("Readarr.PrivateAddressHosts");
         private static bool useIPv6 = Socket.OSSupportsIPv6;
         private static bool hasResolvedIPv6Availability;
 
@@ -109,7 +112,12 @@ namespace NzbDrone.Common.Http.Dispatchers
                 AddRequestHeaders(requestMessage, request.Headers);
             }
 
-            var httpClient = GetClient(request.Url);
+            if (request.PublicAddressesOnly)
+            {
+                requestMessage.Options.Set(PrivateAddressHostsOption, request.PrivateAddressHosts);
+            }
+
+            var httpClient = GetClient(request.Url, request.PublicAddressesOnly);
 
             try
             {
@@ -209,11 +217,13 @@ namespace NzbDrone.Common.Http.Dispatchers
             }
         }
 
-        protected virtual System.Net.Http.HttpClient GetClient(HttpUri uri)
+        // Public-only requests get their own connection pool, so they never reuse a connection another request
+        // opened to a private address
+        protected virtual System.Net.Http.HttpClient GetClient(HttpUri uri, bool publicAddressesOnly)
         {
             var proxySettings = _proxySettingsProvider.GetProxySettings(uri);
 
-            var key = proxySettings?.Key ?? NO_PROXY_KEY;
+            var key = (proxySettings?.Key ?? NO_PROXY_KEY) + (publicAddressesOnly ? PUBLIC_ONLY_KEY_SUFFIX : string.Empty);
 
             return _httpClientCache.Get(key, () => CreateHttpClient(proxySettings));
         }
@@ -342,6 +352,9 @@ namespace NzbDrone.Common.Http.Dispatchers
 
         private async ValueTask<Stream> onConnect(SocketsHttpConnectionContext context, CancellationToken cancellationToken)
         {
+            // Checked before the IPv6 attempt, so a refusal can't count as IPv6 being unavailable
+            var addresses = await GetPermittedAddressesAsync(context, cancellationToken);
+
             // Until .NET supports an implementation of Happy Eyeballs (https://tools.ietf.org/html/rfc8305#section-2), let's make IPv4 fallback work in a simple way.
             // This issue is being tracked at https://github.com/dotnet/runtime/issues/26177 and expected to be fixed in .NET 6.
             if (useIPv6)
@@ -359,7 +372,7 @@ namespace NzbDrone.Common.Http.Dispatchers
                         localToken = linkedTokenSource.Token;
                     }
 
-                    return await attemptConnection(AddressFamily.InterNetworkV6, context, localToken);
+                    return await attemptConnection(AddressFamily.InterNetworkV6, context, addresses, localToken);
                 }
                 catch
                 {
@@ -375,10 +388,50 @@ namespace NzbDrone.Common.Http.Dispatchers
             }
 
             // fallback to IPv4.
-            return await attemptConnection(AddressFamily.InterNetwork, context, cancellationToken);
+            return await attemptConnection(AddressFamily.InterNetwork, context, addresses, cancellationToken);
         }
 
-        private static async ValueTask<Stream> attemptConnection(AddressFamily addressFamily, SocketsHttpConnectionContext context, CancellationToken cancellationToken)
+        // Null when the request has no address policy, or goes through a proxy. Otherwise the host's addresses, all of
+        // them public, which are then the only ones connected to, so a DNS answer can't change between check and use.
+        private static async Task<IPAddress[]> GetPermittedAddressesAsync(SocketsHttpConnectionContext context, CancellationToken cancellationToken)
+        {
+            var requestUri = context.InitialRequestMessage.RequestUri;
+
+            if (!context.InitialRequestMessage.Options.TryGetValue(PrivateAddressHostsOption, out var privateAddressHosts) ||
+                requestUri == null ||
+                !string.Equals(context.DnsEndPoint.Host, requestUri.IdnHost, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            var host = context.DnsEndPoint.Host;
+
+            if (privateAddressHosts.Contains(host))
+            {
+                return null;
+            }
+
+            var addresses = IPAddress.TryParse(host, out var literal)
+                ? new[] { literal }
+                : await Dns.GetHostAddressesAsync(host, cancellationToken).ConfigureAwait(false);
+
+            CheckPublicAddresses(host, addresses);
+
+            return addresses;
+        }
+
+        public static void CheckPublicAddresses(string host, IPAddress[] addresses)
+        {
+            // Every address has to pass: a hostile name can list a public address next to a private one
+            var refused = addresses.FirstOrDefault(a => !a.IsPublicAddress());
+
+            if (refused != null)
+            {
+                throw new PrivateAddressRefusedException(host, refused);
+            }
+        }
+
+        private static async ValueTask<Stream> attemptConnection(AddressFamily addressFamily, SocketsHttpConnectionContext context, IPAddress[] addresses, CancellationToken cancellationToken)
         {
             // The following socket constructor will create a dual-mode socket on systems where IPV6 is available.
             var socket = new Socket(addressFamily, SocketType.Stream, ProtocolType.Tcp)
@@ -389,7 +442,21 @@ namespace NzbDrone.Common.Http.Dispatchers
 
             try
             {
-                await socket.ConnectAsync(context.DnsEndPoint, cancellationToken).ConfigureAwait(false);
+                if (addresses == null)
+                {
+                    await socket.ConnectAsync(context.DnsEndPoint, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    var family = addresses.Where(a => a.AddressFamily == addressFamily).ToArray();
+
+                    if (family.Length == 0)
+                    {
+                        throw new SocketException((int)SocketError.AddressNotAvailable);
+                    }
+
+                    await socket.ConnectAsync(family, context.DnsEndPoint.Port, cancellationToken).ConfigureAwait(false);
+                }
 
                 // The stream should take the ownership of the underlying socket,
                 // closing it when it's disposed.

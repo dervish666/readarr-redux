@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Threading;
 using NLog;
 using NzbDrone.Common.Disk;
@@ -38,6 +39,7 @@ namespace NzbDrone.Core.MediaCover
         private readonly IDiskProvider _diskProvider;
         private readonly ICoverExistsSpecification _coverExistsSpecification;
         private readonly IConfigFileProvider _configFileProvider;
+        private readonly IConfigService _configService;
         private readonly IEventAggregator _eventAggregator;
         private readonly Logger _logger;
 
@@ -55,6 +57,7 @@ namespace NzbDrone.Core.MediaCover
                                  IAppFolderInfo appFolderInfo,
                                  ICoverExistsSpecification coverExistsSpecification,
                                  IConfigFileProvider configFileProvider,
+                                 IConfigService configService,
                                  IEventAggregator eventAggregator,
                                  Logger logger)
         {
@@ -65,6 +68,7 @@ namespace NzbDrone.Core.MediaCover
             _diskProvider = diskProvider;
             _coverExistsSpecification = coverExistsSpecification;
             _configFileProvider = configFileProvider;
+            _configService = configService;
             _eventAggregator = eventAggregator;
             _logger = logger;
 
@@ -168,6 +172,10 @@ namespace NzbDrone.Core.MediaCover
                 {
                     _logger.Warn("Couldn't download media cover for {0}. {1}", author, e.Message);
                 }
+                catch (Exception e) when (e is HttpRequestException or HttpResponseTooLargeException)
+                {
+                    _logger.Warn("Couldn't download media cover for {0}. {1}", author, e.GetBaseException().Message);
+                }
                 catch (Exception e)
                 {
                     _logger.Error(e, "Couldn't download media cover for {0}", author);
@@ -232,6 +240,10 @@ namespace NzbDrone.Core.MediaCover
                 {
                     _logger.Warn("Couldn't download media cover for {0}. {1}", book, e.Message);
                 }
+                catch (Exception e) when (e is HttpRequestException or HttpResponseTooLargeException)
+                {
+                    _logger.Warn("Couldn't download media cover for {0}. {1}", book, e.GetBaseException().Message);
+                }
                 catch (Exception e)
                 {
                     _logger.Error(e, "Couldn't download media cover for {0}", book);
@@ -244,7 +256,7 @@ namespace NzbDrone.Core.MediaCover
             var fileName = GetCoverPath(author.Id, MediaCoverEntity.Author, cover.CoverType, cover.Extension);
 
             _logger.Info("Downloading {0} for {1} {2}", cover.CoverType, author, cover.Url);
-            _httpClient.DownloadFile(cover.Url, fileName, USER_AGENT, CoverImageFormat.MaxLength);
+            _httpClient.DownloadFile(CreateRequest(cover.Url), fileName);
 
             if (!DiscardIfNotImage(fileName, cover.Url))
             {
@@ -266,7 +278,7 @@ namespace NzbDrone.Core.MediaCover
             var fileName = GetCoverPath(book.Id, MediaCoverEntity.Book, cover.CoverType, cover.Extension, null);
 
             _logger.Info("Downloading {0} for {1} {2}", cover.CoverType, book, cover.Url);
-            _httpClient.DownloadFile(cover.Url, fileName, USER_AGENT, CoverImageFormat.MaxLength);
+            _httpClient.DownloadFile(CreateRequest(cover.Url), fileName);
 
             if (!DiscardIfNotImage(fileName, cover.Url))
             {
@@ -381,18 +393,19 @@ namespace NzbDrone.Core.MediaCover
         private HttpHeader GetServerHeaders(string url)
         {
             // Goodreads doesn't allow a HEAD, so request a zero byte range instead
-            var request = new HttpRequest(url)
-            {
-                AllowAutoRedirect = true,
-
-                // A server that ignores the range sends the whole body, and that is read into memory
-                MaxResponseLength = CoverImageFormat.MaxLength
-            };
-
+            // A server that ignores the range sends the whole body, which the request's size limit bounds
+            var request = CreateRequest(url);
             request.Headers.Add("Range", "bytes=0-0");
-            request.Headers.Add("User-Agent", USER_AGENT);
 
             return _httpClient.Get(request).Headers;
+        }
+
+        private HttpRequest CreateRequest(string url)
+        {
+            var request = CoverRequest.Create(url, _configService.MetadataSource);
+            request.Headers.Add("User-Agent", USER_AGENT);
+
+            return request;
         }
 
         private long? GetContentLength(HttpHeader headers)

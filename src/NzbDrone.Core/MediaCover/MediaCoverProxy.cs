@@ -20,12 +20,14 @@ namespace NzbDrone.Core.MediaCover
     {
         private readonly IHttpClient _httpClient;
         private readonly IConfigFileProvider _configFileProvider;
+        private readonly IConfigService _configService;
         private readonly ICached<string> _cache;
 
-        public MediaCoverProxy(IHttpClient httpClient, IConfigFileProvider configFileProvider, ICacheManager cacheManager)
+        public MediaCoverProxy(IHttpClient httpClient, IConfigFileProvider configFileProvider, IConfigService configService, ICacheManager cacheManager)
         {
             _httpClient = httpClient;
             _configFileProvider = configFileProvider;
+            _configService = configService;
             _cache = cacheManager.GetCache<string>(GetType());
         }
 
@@ -62,10 +64,7 @@ namespace NzbDrone.Core.MediaCover
         {
             var url = GetUrl(hash);
 
-            var request = new HttpRequest(url)
-            {
-                MaxResponseLength = CoverImageFormat.MaxLength
-            };
+            var request = CoverRequest.Create(url, _configService.MetadataSource);
 
             return _httpClient.Get(request).ResponseData;
         }
