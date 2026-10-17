@@ -68,7 +68,14 @@ function showOAuthWindow(url, payload, poll = false, ajaxOptions = undefined) {
   }
 
   if (poll) {
+    // Ten minutes. The sign-in window's closed flag can't be trusted under Cross-Origin-Opener-Policy, so a
+    // sign-in the user walked away from ends here instead of leaving the button spinning for good.
+    const maxPolls = 120;
+    let polls = 0;
+
     const pollAction = () => {
+      polls++;
+
       requestAction({
         action: 'pollOAuth',
         queryParams: ajaxOptions,
@@ -76,11 +83,24 @@ function showOAuthWindow(url, payload, poll = false, ajaxOptions = undefined) {
       }).then((response) => {
         if (response.success) {
           deferred.resolve({});
+        } else if (polls >= maxPolls) {
+          deferred.reject({
+            status: 400,
+            responseJSON: [
+              {
+                propertyName: payload.name,
+                errorMessage: 'Sign-in timed out, try again'
+              }
+            ]
+          });
         } else {
           setTimeout(() => {
             pollAction();
           }, 5000);
         }
+      }, (xhr) => {
+        // A failed poll used to be dropped, leaving authorization pending forever
+        deferred.reject(xhr);
       });
     };
 
