@@ -677,7 +677,7 @@ namespace NzbDrone.Common.Disk
         public void RemoveEmptySubfolders(string path)
         {
             // Depth first search for empty subdirectories
-            foreach (var subdir in Directory.EnumerateDirectories(path))
+            foreach (var subdir in _fileSystem.Directory.EnumerateDirectories(path))
             {
                 // A directory link is neither entered nor removed: its target can be anywhere, the library included
                 if (IsDirectoryLink(subdir))
@@ -687,11 +687,11 @@ namespace NzbDrone.Common.Disk
 
                 RemoveEmptySubfolders(subdir);
 
-                if (Directory.EnumerateFileSystemEntries(subdir).Empty())
+                if (_fileSystem.Directory.EnumerateFileSystemEntries(subdir).Empty())
                 {
                     try
                     {
-                        Directory.Delete(subdir, false);
+                        _fileSystem.Directory.Delete(subdir, false);
                     }
                     catch (Exception ex)
                     {
