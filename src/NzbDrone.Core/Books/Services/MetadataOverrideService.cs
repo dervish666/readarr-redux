@@ -124,41 +124,47 @@ namespace NzbDrone.Core.Books
 
         public void UpdateBookMetadata(int bookId, BookMetadataEdit edit)
         {
-            var book = _bookService.GetBook(bookId);
-            var editions = _editionService.GetEditionsByBook(bookId);
-            var old = book.MetadataOverrides ?? new BookMetadataOverrides();
+            bool cleared;
 
-            var overrides = new BookMetadataOverrides
+            // A refresh of this book waits until the edit is saved, and an edit waits for a running refresh
+            using (BookEditLock.Take(bookId))
             {
-                Title = edit.Title.IsNullOrWhiteSpace() ? null : edit.Title.Trim(),
-                ReleaseDate = edit.ReleaseDate,
-                Overview = edit.Overview.IsNullOrWhiteSpace() ? null : edit.Overview.Trim(),
-                PageCount = edit.PageCount,
-                RemovedFromSeries = old.RemovedFromSeries?.ToList() ?? new List<string>()
-            };
+                var book = _bookService.GetBook(bookId);
+                var editions = _editionService.GetEditionsByBook(bookId);
+                var old = book.MetadataOverrides ?? new BookMetadataOverrides();
 
-            var cleared = (old.Title != null && overrides.Title == null) ||
+                var overrides = new BookMetadataOverrides
+                {
+                    Title = edit.Title.IsNullOrWhiteSpace() ? null : edit.Title.Trim(),
+                    ReleaseDate = edit.ReleaseDate,
+                    Overview = edit.Overview.IsNullOrWhiteSpace() ? null : edit.Overview.Trim(),
+                    PageCount = edit.PageCount,
+                    RemovedFromSeries = old.RemovedFromSeries?.ToList() ?? new List<string>()
+                };
+
+                cleared = (old.Title != null && overrides.Title == null) ||
                           (old.ReleaseDate.HasValue && !overrides.ReleaseDate.HasValue) ||
                           (old.Overview != null && overrides.Overview == null) ||
                           (old.PageCount.HasValue && !overrides.PageCount.HasValue);
 
-            // An edition keeps its overview when the metadata source sends none, so a cleared one must go now or
-            // the user's text would stay forever
-            if (old.Overview != null && overrides.Overview == null)
-            {
-                editions.ForEach(x => x.Overview = string.Empty);
+                // An edition keeps its overview when the metadata source sends none, so a cleared one must go now or
+                // the user's text would stay forever
+                if (old.Overview != null && overrides.Overview == null)
+                {
+                    editions.ForEach(x => x.Overview = string.Empty);
+                }
+
+                UpdateSeries(book, overrides, edit.Series ?? new List<BookSeriesEdit>());
+
+                overrides.ApplyTo(book);
+                editions.ForEach(overrides.ApplyTo);
+                book.MetadataOverrides = overrides;
+
+                _bookService.UpdateMany(new List<Book> { book });
+                _editionService.UpdateMany(editions);
+
+                _logger.Info("Updated the metadata of {0} by hand", book);
             }
-
-            UpdateSeries(book, overrides, edit.Series ?? new List<BookSeriesEdit>());
-
-            overrides.ApplyTo(book);
-            editions.ForEach(overrides.ApplyTo);
-            book.MetadataOverrides = overrides;
-
-            _bookService.UpdateMany(new List<Book> { book });
-            _editionService.UpdateMany(editions);
-
-            _logger.Info("Updated the metadata of {0} by hand", book);
 
             // Values the user stopped overriding come back from the metadata source
             if (cleared)

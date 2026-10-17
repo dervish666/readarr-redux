@@ -788,6 +788,25 @@ namespace NzbDrone.Core.Test.MusicTests
         }
 
         [Test]
+        public void should_refresh_with_the_overrides_saved_since_the_book_was_loaded()
+        {
+            _book.MetadataOverrides = new BookMetadataOverrides { Title = "Old title" };
+
+            Mocker.GetMock<IBookService>()
+                .Setup(s => s.FindById(_book.ForeignBookId))
+                .Returns(Builder<Book>.CreateNew()
+                    .With(b => b.Id = _book.Id)
+                    .With(b => b.ForeignBookId = _book.ForeignBookId)
+                    .With(b => b.MetadataOverrides = new BookMetadataOverrides { Title = "New title" })
+                    .Build());
+
+            RefreshWithRemoteEditions(new List<Edition>(), new List<Edition> { RemoteEdition("1", true) });
+
+            _book.MetadataOverrides.Title.Should().Be("New title");
+            _book.Title.Should().Be("New title");
+        }
+
+        [Test]
         public void should_keep_book_whose_work_and_edition_are_gone_the_first_time_it_is_missing()
         {
             GivenMergedWork(HttpStatusCode.NotFound);

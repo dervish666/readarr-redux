@@ -587,7 +587,19 @@ namespace NzbDrone.Core.Books
 
         public bool RefreshBookInfo(Book book, List<Book> remoteBooks, Author remoteData, bool forceUpdateFileTags)
         {
-            return RefreshEntityInfo(book, remoteBooks, remoteData, true, forceUpdateFileTags, null);
+            using (BookEditLock.Take(book.Id))
+            {
+                // The book may have been loaded long before this point in an author refresh. An edit saved since
+                // then must win, or this refresh writes the old overrides back and keeps applying them.
+                var stored = _bookService.FindById(book.ForeignBookId);
+
+                if (stored != null && stored.Id == book.Id)
+                {
+                    book.MetadataOverrides = stored.MetadataOverrides;
+                }
+
+                return RefreshEntityInfo(book, remoteBooks, remoteData, true, forceUpdateFileTags, null);
+            }
         }
 
         public bool RefreshBookInfo(Book book)
