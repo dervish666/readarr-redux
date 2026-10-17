@@ -43,6 +43,7 @@ namespace NzbDrone.Core.Books
         private readonly IEventAggregator _eventAggregator;
         private readonly ICheckIfBookShouldBeRefreshed _checkIfBookShouldBeRefreshed;
         private readonly IMapCoversToLocal _mediaCoverService;
+        private readonly ISeriesBookLinkService _seriesBookLinkService;
         private readonly Logger _logger;
 
         public RefreshBookService(IBookService bookService,
@@ -57,6 +58,7 @@ namespace NzbDrone.Core.Books
                                   IEventAggregator eventAggregator,
                                   ICheckIfBookShouldBeRefreshed checkIfBookShouldBeRefreshed,
                                   IMapCoversToLocal mediaCoverService,
+                                  ISeriesBookLinkService seriesBookLinkService,
                                   Logger logger)
         : base(logger, authorMetadataService)
         {
@@ -71,6 +73,7 @@ namespace NzbDrone.Core.Books
             _eventAggregator = eventAggregator;
             _checkIfBookShouldBeRefreshed = checkIfBookShouldBeRefreshed;
             _mediaCoverService = mediaCoverService;
+            _seriesBookLinkService = seriesBookLinkService;
             _logger = logger;
         }
 
@@ -268,9 +271,21 @@ namespace NzbDrone.Core.Books
 
         protected override bool ShouldDelete(Book local)
         {
-            // not manually added and has no files
+            // Not added by hand, no files, and nothing the user changed by hand: deleting a book with metadata
+            // overrides or series links the user made would lose that work for good
             return local.AddOptions.AddType != BookAddType.Manual &&
-                !_mediaFileService.GetFilesByBook(local.Id).Any();
+                !_mediaFileService.GetFilesByBook(local.Id).Any() &&
+                !HasManualEdits(local);
+        }
+
+        private bool HasManualEdits(Book local)
+        {
+            if (local.MetadataOverrides != null && !local.MetadataOverrides.IsEmpty)
+            {
+                return true;
+            }
+
+            return _seriesBookLinkService.GetLinksByBook(new List<int> { local.Id })?.Any(x => x.IsManual) == true;
         }
 
         protected override void LogProgress(Book local)

@@ -783,6 +783,43 @@ namespace NzbDrone.Core.Test.MusicTests
         }
 
         [Test]
+        public void should_keep_book_whose_work_and_edition_are_gone_if_the_user_edited_its_metadata()
+        {
+            GivenMergedWork(HttpStatusCode.NotFound);
+            GivenMonitoredEdition();
+
+            _book.MetadataOverrides = new BookMetadataOverrides { Title = "My title" };
+
+            RefreshWithBookMissingFromAuthorList();
+
+            VerifyEditionLookups(0);
+            VerifyBookDeleted(Times.Never());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_keep_book_merged_into_a_library_book_if_the_user_linked_it_to_a_series()
+        {
+            GivenMergedWork(HttpStatusCode.SeeOther);
+            GivenMonitoredEdition();
+
+            Mocker.GetMock<IBookService>()
+                .Setup(s => s.FindById("2"))
+                .Returns(Builder<Book>.CreateNew().With(b => b.Id = 2).With(b => b.ForeignBookId = "2").Build());
+
+            Mocker.GetMock<ISeriesBookLinkService>()
+                .Setup(s => s.GetLinksByBook(It.Is<List<int>>(l => l.Contains(_book.Id))))
+                .Returns(new List<SeriesBookLink> { new SeriesBookLink { BookId = _book.Id, IsManual = true } });
+
+            RefreshWithBookMissingFromAuthorList();
+
+            VerifyBookDeleted(Times.Never());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
         public void should_delete_book_whose_work_is_gone_without_a_monitored_edition_to_follow()
         {
             GivenMergedWork(HttpStatusCode.SeeOther);

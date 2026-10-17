@@ -6,9 +6,9 @@ using NLog;
 namespace NzbDrone.Core.Books
 {
     // A refresh keeps a book as it is when the metadata source can't return it: a work Goodreads merged away, on a
-    // book with files or added by hand, or a work the source answers with a server error. The same books turn up on
-    // every run, so inside a run each logs at Debug and the run ends with one Warn listing them. Outside a run each
-    // logs its own Warn.
+    // book with files or added or edited by hand, or a work the source answers with a server error. The same books
+    // turn up on every run, so inside a run each logs at Debug and the run ends with one Warn listing them. Outside a
+    // run each logs its own Warn.
     public static class KeptBooks
     {
         private static readonly AsyncLocal<Tally> Current = new AsyncLocal<Tally>();
@@ -22,7 +22,7 @@ namespace NzbDrone.Core.Books
 
         public static void NotFound(Book book, Logger logger)
         {
-            const string message = "Book {0} is no longer in the metadata. Keeping it, as it has files or was added by hand";
+            const string message = "Book {0} is no longer in the metadata. Keeping it, as it has files or was added or edited by hand";
 
             var tally = Current.Value;
 
@@ -81,7 +81,7 @@ namespace NzbDrone.Core.Books
 
                 if (tally.NotFound.Count > 0)
                 {
-                    parts.Add($"No longer in the metadata, kept for their files or as added by hand ({tally.NotFound.Count}): {string.Join(", ", tally.NotFound)}.");
+                    parts.Add($"No longer in the metadata, kept for their files or as added or edited by hand ({tally.NotFound.Count}): {string.Join(", ", tally.NotFound)}.");
                 }
 
                 if (tally.Failed.Count > 0)
