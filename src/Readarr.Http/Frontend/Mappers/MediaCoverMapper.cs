@@ -1,16 +1,18 @@
 using System;
 using System.IO;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Mvc;
 using NLog;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.MediaCover;
 
 namespace Readarr.Http.Frontend.Mappers
 {
     public class MediaCoverMapper : StaticResourceMapperBase
     {
-        private static readonly Regex RegexResizedImage = new Regex(@"-\d+(?=\.(jpg|png|gif)($|\?))", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex RegexResizedImage = new Regex(@"-\d+(?=\.(jpg|jpeg|png|gif|webp)($|\?))", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         private readonly IAppFolderInfo _appFolderInfo;
         private readonly IDiskProvider _diskProvider;
@@ -41,6 +43,20 @@ namespace Readarr.Http.Frontend.Mappers
             }
 
             return resourcePath;
+        }
+
+        // Older versions saved a cover under whatever extension its URL had, so an .html or .svg
+        // can already be sitting in the cache. Only image files are ever served from it.
+        public override IActionResult GetResponse(string resourceUrl)
+        {
+            var path = resourceUrl.Split('?')[0];
+
+            if (!CoverImageFormat.HasAllowedExtension(path))
+            {
+                return null;
+            }
+
+            return base.GetResponse(resourceUrl);
         }
 
         public override bool CanHandle(string resourceUrl)

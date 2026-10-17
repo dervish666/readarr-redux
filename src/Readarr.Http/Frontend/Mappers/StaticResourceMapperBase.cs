@@ -39,7 +39,7 @@ namespace Readarr.Http.Frontend.Mappers
             return filePath.StartsWith(parentPath, StringComparison.Ordinal) ? filePath : null;
         }
 
-        public IActionResult GetResponse(string resourceUrl)
+        public virtual IActionResult GetResponse(string resourceUrl)
         {
             var filePath = Map(resourceUrl);
 
