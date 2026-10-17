@@ -438,8 +438,38 @@ namespace NzbDrone.Core.Test.MediaFiles
             Mocker.GetMock<IRecycleBinProvider>()
                 .Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
 
-            ExceptionVerification.ExpectedErrors(1);
-            ExceptionVerification.ExpectedWarns(3);
+            // The new parts go back to the download first, so every old part fits back in place and nothing is left
+            // set aside to warn about
+        }
+
+        [Test]
+        public void should_undo_the_import_and_its_deleted_rows_when_the_new_rows_cannot_be_saved()
+        {
+            var disk = new Dictionary<string, string>();
+            var database = new List<BookFile>();
+            var decisions = GivenMultiPartUpgrade(disk, database);
+
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(s => s.AddMany(It.IsAny<List<BookFile>>()))
+                .Throws(new InvalidOperationException("database or disk is full"));
+
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(s => s.Add(It.IsAny<BookFile>()))
+                .Returns<BookFile>(f =>
+                {
+                    database.Add(f);
+                    return f;
+                });
+
+            Assert.Throws<InvalidOperationException>(() => Subject.Import(decisions, true));
+
+            // The new parts are back in the download, the old ones in the library, each with its row
+            disk.Where(x => x.Value == "old").Should().HaveCount(3);
+            disk.Where(x => x.Value == "new").Select(x => x.Key).Should().BeEquivalentTo(decisions.Select(d => d.Item.Path));
+            database.Select(x => x.Path).Should().BeEquivalentTo(disk.Where(x => x.Value == "old").Select(x => x.Key));
+
+            ExceptionVerification.IgnoreWarns();
+            ExceptionVerification.IgnoreErrors();
         }
 
         [Test]
