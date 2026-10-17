@@ -85,7 +85,10 @@ namespace NzbDrone.Core.Books
             try
             {
                 var tuple = _bookInfo.GetBookInfo(book.ForeignBookId);
-                var author = _authorInfo.GetAuthorInfo(tuple.Item1);
+
+                // The metadata source's author object is cached and shared with the next author refresh. Setting its
+                // Books to this one book left that refresh a works list of one, so every other book looked missing.
+                var author = _authorInfo.GetAuthorInfo(tuple.Item1).ShallowCopy();
                 var newbook = tuple.Item2;
 
                 newbook.Author = author;

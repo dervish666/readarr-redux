@@ -961,6 +961,37 @@ namespace NzbDrone.Core.Test.MusicTests
         }
 
         [Test]
+        public void should_not_cut_down_the_cached_authors_works_list_when_refreshing_one_book()
+        {
+            var remoteAuthor = Builder<Author>.CreateNew()
+                .With(a => a.Metadata = Builder<AuthorMetadata>.CreateNew().Build())
+                .With(a => a.Books = Builder<Book>.CreateListOfSize(3).BuildList())
+                .Build();
+
+            var remoteBook = Builder<Book>.CreateNew()
+                .With(b => b.Id = 0)
+                .With(b => b.ForeignBookId = _book.ForeignBookId)
+                .With(b => b.Editions = new List<Edition>())
+                .Build();
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Setup(s => s.GetBookInfo(_book.ForeignBookId))
+                .Returns(Tuple.Create(remoteAuthor.ForeignAuthorId, remoteBook, new List<AuthorMetadata> { remoteAuthor.Metadata.Value }));
+
+            Mocker.GetMock<IProvideAuthorInfo>()
+                .Setup(s => s.GetAuthorInfo(remoteAuthor.ForeignAuthorId, It.IsAny<bool>()))
+                .Returns(remoteAuthor);
+
+            Mocker.GetMock<IBookService>()
+                .Setup(s => s.GetBook(_book.Id))
+                .Returns(_book);
+
+            Subject.Execute(new RefreshBookCommand(_book.Id));
+
+            remoteAuthor.Books.Value.Should().HaveCount(3);
+        }
+
+        [Test]
         public void should_keep_book_when_refresh_book_lookup_returns_not_found()
         {
             Mocker.GetMock<IBookService>()
