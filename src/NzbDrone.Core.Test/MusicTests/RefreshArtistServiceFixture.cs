@@ -366,9 +366,10 @@ namespace NzbDrone.Core.Test.MusicTests
                 .Setup(x => x.FindById(newAuthorInfo.ForeignAuthorId))
                 .Returns(default(Author));
 
-            Mocker.GetMock<IBookService>(MockBehavior.Strict)
-                .Setup(x => x.GetBooksByAuthorMetadataId(_author.AuthorMetadataId))
-                .Returns(new List<Book>());
+            Mocker.GetMock<IAuthorService>(MockBehavior.Strict)
+                .Setup(x => x.MoveToAuthorMetadata(It.IsAny<Author>(), 100))
+                .Callback((Author a, int id) => a.AuthorMetadataId = id)
+                .Returns(0);
 
             // Make sure that the author is updated before we refresh the books
             Mocker.GetMock<IAuthorService>(MockBehavior.Strict)
@@ -395,7 +396,7 @@ namespace NzbDrone.Core.Test.MusicTests
         }
 
         [Test]
-        public void should_take_every_book_along_when_author_moves_to_a_new_metadata_id()
+        public void should_move_the_author_and_all_its_books_together_before_refreshing_books()
         {
             var oldMetadataId = _author.AuthorMetadataId;
 
@@ -407,38 +408,33 @@ namespace NzbDrone.Core.Test.MusicTests
 
             GivenNewAuthorInfo(newAuthorInfo);
             AllowAuthorUpdate();
-            GivenBooksForRefresh(new List<Book>());
 
             Mocker.GetMock<IAuthorService>(MockBehavior.Strict)
                 .Setup(x => x.FindById(newAuthorInfo.ForeignAuthorId))
                 .Returns(default(Author));
 
-            // A book with files that the canonical author's list leaves out
-            var leftOut = Builder<Book>.CreateNew()
-                .With(b => b.ForeignBookId = "not-in-the-new-list")
-                .With(b => b.AuthorMetadataId = oldMetadataId)
-                .Build();
+            var order = new List<string>();
 
-            var stillOnOldId = new List<Book>();
+            Mocker.GetMock<IAuthorService>(MockBehavior.Strict)
+                .Setup(x => x.MoveToAuthorMetadata(It.IsAny<Author>(), 100))
+                .Callback((Author a, int id) =>
+                {
+                    order.Add($"move {a.AuthorMetadataId}");
+                    a.AuthorMetadataId = id;
+                })
+                .Returns(2);
 
             Mocker.GetMock<IBookService>(MockBehavior.Strict)
-                .Setup(x => x.GetBooksByAuthorMetadataId(oldMetadataId))
-                .Returns(new List<Book> { leftOut, _book1 });
-
-            Mocker.GetMock<IBookService>(MockBehavior.Strict)
-                .Setup(x => x.UpdateMany(It.IsAny<List<Book>>()))
-                .Callback((List<Book> books) => stillOnOldId.AddRange(books.Where(b => b.AuthorMetadataId != 100)));
+                .Setup(s => s.GetBooksForRefresh(It.IsAny<int>(), It.IsAny<List<string>>()))
+                .Callback((int id, List<string> ids) => order.Add($"books {id}"))
+                .Returns(new List<Book>());
 
             Subject.Execute(new RefreshAuthorCommand(_author.Id));
 
+            order.Should().Equal($"move {oldMetadataId}", "books 100");
+
             Mocker.GetMock<IBookService>()
-                .Verify(v => v.UpdateMany(It.Is<List<Book>>(l => l.Contains(leftOut) && l.Contains(_book1))), Times.Once());
-
-            leftOut.AuthorMetadataId.Should().Be(100);
-            stillOnOldId.Should().BeEmpty();
-
-            Mocker.GetMock<IAuthorService>()
-                .Verify(v => v.UpdateAuthor(It.Is<Author>(a => a.AuthorMetadataId == 100)), Times.AtLeastOnce());
+                .Verify(v => v.UpdateMany(It.IsAny<List<Book>>()), Times.Never());
         }
 
         [Test]

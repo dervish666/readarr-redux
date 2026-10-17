@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data.SQLite;
+using System.Linq;
 using FizzWare.NBuilder;
 using FluentAssertions;
 using Npgsql;
@@ -8,6 +9,7 @@ using NUnit.Framework;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Datastore;
+using NzbDrone.Core.Housekeeping.Housekeepers;
 using NzbDrone.Core.Profiles.Metadata;
 using NzbDrone.Core.Profiles.Qualities;
 using NzbDrone.Core.Qualities;
@@ -52,6 +54,36 @@ namespace NzbDrone.Core.Test.MusicTests.AuthorRepositoryTests
             _authorMetadataRepo.Insert(metadata);
             author.AuthorMetadataId = metadata.Id;
             _authorRepo.Insert(author);
+        }
+
+        [Test]
+        public void should_move_author_and_every_book_to_new_metadata_so_housekeeping_keeps_them()
+        {
+            AddAuthor("Brian McClellan", "old-id");
+            var author = _authorRepo.All().Single();
+            var oldMetadataId = author.AuthorMetadataId;
+
+            var canonical = Builder<AuthorMetadata>.CreateNew()
+                .With(a => a.Id = 0)
+                .With(a => a.ForeignAuthorId = "canonical-id")
+                .With(a => a.TitleSlug = "canonical-id")
+                .BuildNew();
+            _authorMetadataRepo.Insert(canonical);
+
+            var books = Builder<Book>.CreateListOfSize(3)
+                .All()
+                .With(b => b.Id = 0)
+                .With(b => b.AuthorMetadataId = oldMetadataId)
+                .With(b => b.AddOptions = new AddBookOptions())
+                .BuildListOfNew();
+            Db.InsertMany(books);
+
+            _authorRepo.MoveToAuthorMetadata(author.Id, oldMetadataId, canonical.Id).Should().Be(3);
+
+            Mocker.Resolve<CleanupOrphanedBooks>().Clean();
+
+            _authorRepo.Get(author.Id).AuthorMetadataId.Should().Be(canonical.Id);
+            Db.All<Book>().Should().HaveCount(3).And.OnlyContain(b => b.AuthorMetadataId == canonical.Id);
         }
 
         private void GivenAuthors()
