@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using Dapper;
 using NLog;
@@ -38,12 +40,8 @@ namespace NzbDrone.Core.Housekeeping.Housekeepers
                              WHERE ""Authors"".""Id"" IS NULL").ToList();
 
             var kept = orphans.Where(x => x.HasFiles != 0 || IsManual(x.AddOptions)).ToList();
-            var ids = orphans.Except(kept).Select(x => x.Id).ToList();
 
-            foreach (var batch in ids.Chunk(500))
-            {
-                mapper.Execute(@"DELETE FROM ""Books"" WHERE ""Id"" IN @Ids", new { Ids = batch });
-            }
+            DeleteIfStillOrphaned(mapper, orphans.Except(kept).ToList());
 
             if (kept.Any())
             {
@@ -51,6 +49,38 @@ namespace NzbDrone.Core.Housekeeping.Housekeepers
                     kept.Count,
                     string.Join(", ", kept.Select(x => $"{x.Title} ({x.Id})")));
             }
+        }
+
+        // An import can attach a file, a refresh can give the book an author back, or the user can add it by
+        // hand between the query above and here. So the delete itself repeats every condition: still no
+        // author, still no file, and AddOptions unchanged from the value judged automatic.
+        internal int DeleteIfStillOrphaned(IDbConnection mapper, List<OrphanedBook> candidates)
+        {
+            const string stillOrphaned = @"
+                AND NOT EXISTS (SELECT 1 FROM ""Authors"" WHERE ""Authors"".""AuthorMetadataId"" = ""Books"".""AuthorMetadataId"")
+                AND NOT EXISTS (
+                    SELECT 1 FROM ""Editions""
+                    INNER JOIN ""BookFiles"" ON ""BookFiles"".""EditionId"" = ""Editions"".""Id""
+                    WHERE ""Editions"".""BookId"" = ""Books"".""Id"")";
+
+            var deleted = 0;
+
+            var withOptions = candidates.Where(x => x.AddOptions != null).ToList();
+            var withoutOptions = candidates.Where(x => x.AddOptions == null).ToList();
+
+            if (withOptions.Any())
+            {
+                deleted += mapper.Execute(@"DELETE FROM ""Books"" WHERE ""Id"" = @Id AND ""AddOptions"" = @AddOptions" + stillOrphaned,
+                    withOptions.Select(x => new { x.Id, x.AddOptions }));
+            }
+
+            if (withoutOptions.Any())
+            {
+                deleted += mapper.Execute(@"DELETE FROM ""Books"" WHERE ""Id"" = @Id AND ""AddOptions"" IS NULL" + stillOrphaned,
+                    withoutOptions.Select(x => new { x.Id }));
+            }
+
+            return deleted;
         }
 
         private bool IsManual(string addOptions)
@@ -72,7 +102,7 @@ namespace NzbDrone.Core.Housekeeping.Housekeepers
             }
         }
 
-        private class OrphanedBook
+        internal class OrphanedBook
         {
             public int Id { get; set; }
             public string Title { get; set; }
