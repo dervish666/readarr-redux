@@ -613,21 +613,25 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             ExceptionVerification.ExpectedWarns(1);
         }
 
+        // CD1/01.mp3 is in the library; CD2/01.mp3 has the same name and size but never imported
         [Test]
-        public void should_mark_as_imported_when_the_other_file_was_turned_down_and_the_library_holds_it()
+        public void should_not_mark_as_imported_when_a_library_file_only_shares_the_name_and_size()
         {
-            var duplicate = Part(3);
-            duplicate.Size = 1234;
-            duplicate.Book.BookFiles = new List<BookFile> { new BookFile { Path = @"C:\Books\The Autumn Republic\Part 03.mp3".AsOsAgnostic(), Size = 1234 } };
+            var book = _trackedDownload.RemoteBook.Books[0];
+            book.BookFiles = new List<BookFile> { new BookFile { Path = @"C:\Books\The Autumn Republic\01.mp3".AsOsAgnostic(), Size = 1234 } };
 
+            var cd1 = new LocalBook { Path = @"C:\TestPath\The Autumn Republic\CD1\01.mp3".AsOsAgnostic(), Size = 1234, Part = 1, Book = book, Author = _author };
+            var cd2 = new LocalBook { Path = @"C:\TestPath\The Autumn Republic\CD2\01.mp3".AsOsAgnostic(), Size = 1234, Part = 2, Book = book, Author = _author };
+
+            GivenDownloadHistory(Imported(cd1));
             GivenPartResults(
-                new ImportResult(new ImportDecision<LocalBook>(Part(1))),
-                new ImportResult(new ImportDecision<LocalBook>(Part(2))),
-                new ImportResult(new ImportDecision<LocalBook>(duplicate, new DeliberateRejection("Has the same filesize as existing file")), "Has the same filesize as existing file"));
+                new ImportResult(new ImportDecision<LocalBook>(cd1, new DeliberateRejection("Book already imported")), "Book already imported"),
+                new ImportResult(new ImportDecision<LocalBook>(cd2, new DeliberateRejection("Has the same filesize as existing file")), "Has the same filesize as existing file"));
 
             Subject.Import(_trackedDownload);
 
-            AssertImported();
+            AssertNotImported();
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]

@@ -11,9 +11,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
     {
         // Audio files an import pass neither imported nor deliberately turned down. A file counts as turned down
         // only when every rejection on it is a DeliberateRejection (not an upgrade, already in the library or
-        // imported, tagged for another book, a macOS "._" resource file) and there is evidence about this very
-        // file: a history row saying it was imported from this download, or a book file of the same name and
-        // size. Several of those checks judge the whole book, so on a retry a part that never imported carries
+        // imported, tagged for another book, a macOS "._" resource file) and history shows this very file was
+        // imported from this download. Several of those checks judge the whole book, so on a retry a part that never imported carries
         // "already imported" because its sibling did; without the evidence it is still left behind. So is a file
         // approved but not imported (a second file claiming the same part, a destination that exists, an error
         // while moving it), a parse failure, an error, a match that wasn't close enough, a temporary rejection,
@@ -60,19 +59,12 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                    !HasBeenDealtWith(result.ImportDecision.Item, importedFromDownload);
         }
 
+        // The only evidence is a history row from this download naming this file as its source. Matching on
+        // anything looser (a library file of the same name and size) clears CD2/01.mp3 because CD1/01.mp3 is in.
+        // A miss keeps the download: it stays Import Failed and nothing is deleted.
         private static bool HasBeenDealtWith(LocalBook file, ISet<string> importedFromDownload)
         {
-            if (importedFromDownload != null && importedFromDownload.Contains(file.Path))
-            {
-                return true;
-            }
-
-            var bookFiles = file.Book?.BookFiles?.Value;
-
-            return bookFiles != null &&
-                   bookFiles.Any(f => f != null &&
-                                      f.Size == file.Size &&
-                                      string.Equals(Path.GetFileName(f.Path), Path.GetFileName(file.Path), System.StringComparison.OrdinalIgnoreCase));
+            return importedFromDownload != null && importedFromDownload.Contains(file.Path);
         }
     }
 }
