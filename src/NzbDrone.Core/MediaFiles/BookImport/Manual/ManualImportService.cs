@@ -415,10 +415,25 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                     }
                 }
 
-                var importedCount = groupedTrackedDownload.Select(c => c.ImportResult)
-                    .Count(c => c.Result == ImportResultType.Imported);
+                var results = groupedTrackedDownload.Select(c => c.ImportResult).ToList();
+                var importedCount = results.Count(c => c.Result == ImportResultType.Imported);
                 var downloadItemCount = Math.Max(1, trackedDownload.RemoteBook?.Books.Count ?? 1);
                 var allItemsImported = importedCount >= downloadItemCount;
+
+                // Same rule as an automatic import, plus the audio files the user didn't pick: they are still in
+                // the download, and calling it imported lets Remove Completed delete them.
+                var leftBehind = results.AudioFilesLeftBehind();
+                leftBehind.AddRange(GetUnchosenAudioFiles(outputPath, results));
+
+                if (allItemsImported && leftBehind.Any())
+                {
+                    _logger.Warn("Not marking {0} imported, {1} audio file(s) in it were not imported: {2}",
+                        trackedDownload.DownloadItem.Title,
+                        leftBehind.Count,
+                        string.Join(", ", leftBehind.Select(Path.GetFileName)));
+
+                    allItemsImported = false;
+                }
 
                 if (allItemsImported)
                 {
@@ -426,6 +441,25 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                     _eventAggregator.PublishEvent(new DownloadCompletedEvent(trackedDownload, imported.First().ImportDecision.Item.Author.Id));
                 }
             }
+        }
+
+        // Audio files still in the download folder that this import didn't touch, listed the way an automatic
+        // import lists them. Files copied or hard linked out of it carry an Imported result and don't count.
+        private List<string> GetUnchosenAudioFiles(string outputPath, List<ImportResult> results)
+        {
+            if (!_diskProvider.FolderExists(outputPath))
+            {
+                return new List<string>();
+            }
+
+            var handled = results.Where(r => r.ImportDecision.Item?.Path != null)
+                .Select(r => r.ImportDecision.Item.Path)
+                .ToHashSet(PathEqualityComparer.Instance);
+
+            return _diskScanService.FilterFiles(outputPath, _diskScanService.GetBookFiles(outputPath))
+                .Select(f => f.FullName)
+                .Where(p => ImportResultExtensions.IsAudio(p) && !handled.Contains(p))
+                .ToList();
         }
     }
 }

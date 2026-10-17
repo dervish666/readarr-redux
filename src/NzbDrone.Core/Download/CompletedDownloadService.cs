@@ -195,6 +195,21 @@ namespace NzbDrone.Core.Download
 
         public bool VerifyImport(TrackedDownload trackedDownload, List<ImportResult> importResults)
         {
+            // Counting imported files against grabbed books calls a one-book download done after its first part,
+            // and Remove Completed then deletes the parts that didn't import. So whatever the counts or history
+            // say, a download is not imported while any of its audio files was left behind on this pass.
+            var leftBehind = importResults.AudioFilesLeftBehind();
+
+            if (leftBehind.Any())
+            {
+                _logger.Warn("Not marking {0} imported, {1} audio file(s) were not imported: {2}",
+                    trackedDownload.DownloadItem.Title,
+                    leftBehind.Count,
+                    string.Join(", ", leftBehind.Select(Path.GetFileName)));
+
+                return false;
+            }
+
             var allItemsImported = importResults.Where(c => c.Result == ImportResultType.Imported)
                                                    .Select(c => c.ImportDecision.Item.Book)
                                                    .Count() >= Math.Max(1, trackedDownload.RemoteBook?.Books.Count ?? 1);

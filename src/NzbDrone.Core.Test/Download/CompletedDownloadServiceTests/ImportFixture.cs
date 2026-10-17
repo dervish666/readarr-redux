@@ -522,6 +522,93 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             ImportAndGetPinnedBook().Should().BeNull();
         }
 
+        private void GivenPartResults(params ImportResult[] results)
+        {
+            GivenAuthorMatch();
+
+            Mocker.GetMock<IDownloadedBooksImportService>()
+                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>(), It.IsAny<Book>(), It.IsAny<DownloadImportOptions>()))
+                  .Returns(results.ToList());
+        }
+
+        private LocalBook Part(int part)
+        {
+            return new LocalBook { Path = $@"C:\TestPath\The Autumn Republic\Part {part:00}.mp3".AsOsAgnostic(), Part = part, Book = _trackedDownload.RemoteBook.Books[0], Author = _author };
+        }
+
+        // One book in many parts: one part importing used to be enough, and Remove Completed then deleted the rest
+        [Test]
+        public void should_not_mark_as_imported_when_a_part_was_approved_but_not_imported()
+        {
+            GivenPartResults(
+                new ImportResult(new ImportDecision<LocalBook>(Part(1))),
+                new ImportResult(new ImportDecision<LocalBook>(Part(2)), "Book has already been imported"));
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_not_mark_as_imported_from_history_when_a_part_was_left_behind()
+        {
+            GivenPartResults(
+                new ImportResult(new ImportDecision<LocalBook>(Part(1), new Rejection("Book already imported")), "Book already imported"),
+                new ImportResult(new ImportDecision<LocalBook>(Part(2)), "Failed to import book, destination already exists."));
+
+            Mocker.GetMock<IHistoryService>()
+                  .Setup(s => s.FindByDownloadId(It.IsAny<string>()))
+                  .Returns(Builder<EntityHistory>.CreateListOfSize(1).All().With(x => x.EventType = EntityHistoryEventType.BookFileImported).BuildList());
+
+            Mocker.GetMock<ITrackedDownloadAlreadyImported>()
+                  .Setup(s => s.IsImported(It.IsAny<TrackedDownload>(), It.IsAny<List<EntityHistory>>()))
+                  .Returns(true);
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_not_mark_as_imported_when_a_part_was_rejected_only_for_now()
+        {
+            GivenPartResults(
+                new ImportResult(new ImportDecision<LocalBook>(Part(1))),
+                new ImportResult(new ImportDecision<LocalBook>(Part(2), new Rejection("Failed to add missing book", RejectionType.Temporary)), "Failed to add missing book"));
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_mark_as_imported_when_the_other_files_were_rejected_for_good()
+        {
+            GivenPartResults(
+                new ImportResult(new ImportDecision<LocalBook>(Part(1))),
+                new ImportResult(new ImportDecision<LocalBook>(Part(2))),
+                new ImportResult(new ImportDecision<LocalBook>(Part(3), new Rejection("Not an upgrade for existing book file(s)")), "Not an upgrade for existing book file(s)"));
+
+            Subject.Import(_trackedDownload);
+
+            AssertImported();
+        }
+
+        [Test]
+        public void should_mark_as_imported_when_a_file_listed_twice_was_imported_once()
+        {
+            GivenPartResults(
+                new ImportResult(new ImportDecision<LocalBook>(Part(1))),
+                new ImportResult(new ImportDecision<LocalBook>(Part(1)), "Book has already been imported"));
+
+            Subject.Import(_trackedDownload);
+
+            AssertImported();
+        }
+
         private void AssertNotImported()
         {
             Mocker.GetMock<IEventAggregator>()
