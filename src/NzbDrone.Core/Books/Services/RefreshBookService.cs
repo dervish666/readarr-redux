@@ -44,6 +44,7 @@ namespace NzbDrone.Core.Books
         private readonly ICheckIfBookShouldBeRefreshed _checkIfBookShouldBeRefreshed;
         private readonly IMapCoversToLocal _mediaCoverService;
         private readonly ISeriesBookLinkService _seriesBookLinkService;
+        private readonly IMissingBookTracker _missingBookTracker;
         private readonly Logger _logger;
 
         public RefreshBookService(IBookService bookService,
@@ -59,6 +60,7 @@ namespace NzbDrone.Core.Books
                                   ICheckIfBookShouldBeRefreshed checkIfBookShouldBeRefreshed,
                                   IMapCoversToLocal mediaCoverService,
                                   ISeriesBookLinkService seriesBookLinkService,
+                                  IMissingBookTracker missingBookTracker,
                                   Logger logger)
         : base(logger, authorMetadataService)
         {
@@ -74,6 +76,7 @@ namespace NzbDrone.Core.Books
             _checkIfBookShouldBeRefreshed = checkIfBookShouldBeRefreshed;
             _mediaCoverService = mediaCoverService;
             _seriesBookLinkService = seriesBookLinkService;
+            _missingBookTracker = missingBookTracker;
             _logger = logger;
         }
 
@@ -134,9 +137,25 @@ namespace NzbDrone.Core.Books
             if (result.Entity != null)
             {
                 result.Entity.Id = local.Id;
+                _missingBookTracker.Found(local);
             }
 
             return result;
+        }
+
+        // True to go ahead with deleting a book the metadata no longer has. The first time, the book is kept, and only
+        // a refresh at least MissingBookTracker.Grace later that still can't find it deletes it.
+        private bool PastDeleteGrace(Book local, RemoteData result)
+        {
+            if (_missingBookTracker.MissingLongEnough(local, DateTime.UtcNow))
+            {
+                return true;
+            }
+
+            KeptBooks.Pending(local, _missingBookTracker.DeleteAfter(local), _logger);
+            result.Keep = true;
+
+            return false;
         }
 
         // The work 404'd. Goodreads merges works without leaving a redirect, so before the book is deleted ask where
@@ -159,6 +178,7 @@ namespace NzbDrone.Core.Books
 
             if (edition == null)
             {
+                PastDeleteGrace(local, result);
                 return result;
             }
 
@@ -171,6 +191,7 @@ namespace NzbDrone.Core.Books
             catch (EditionNotFoundException)
             {
                 _logger.Debug("Edition {0} of {1} is gone too", edition.ForeignEditionId, local);
+                PastDeleteGrace(local, result);
                 return result;
             }
 
@@ -185,6 +206,11 @@ namespace NzbDrone.Core.Books
 
             if (existing != null)
             {
+                if (!PastDeleteGrace(local, result))
+                {
+                    return result;
+                }
+
                 // A duplicate now with no files to move, so the base class deletes it. If it was the wanted copy,
                 // pass that on first, with its edition, which would otherwise be deleted along with it.
                 if (local.Monitored && !existing.Monitored)

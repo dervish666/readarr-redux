@@ -58,6 +58,11 @@ namespace NzbDrone.Core.Test.MusicTests
             Mocker.GetMock<IEditionService>()
                 .Setup(s => s.GetEditionsByBook(It.IsAny<int>()))
                 .Returns(new List<Edition>());
+
+            // As on a second refresh past the grace period, so a book the metadata lost can be deleted
+            Mocker.GetMock<IMissingBookTracker>()
+                .Setup(s => s.MissingLongEnough(It.IsAny<Book>(), It.IsAny<DateTime>()))
+                .Returns(true);
         }
 
         private void GivenBookLookupReturnsBook(string foreignBookId = null)
@@ -778,6 +783,52 @@ namespace NzbDrone.Core.Test.MusicTests
 
             VerifyEditionLookups(1);
             VerifyBookDeleted(Times.Once());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_keep_book_whose_work_and_edition_are_gone_the_first_time_it_is_missing()
+        {
+            GivenMergedWork(HttpStatusCode.NotFound);
+            GivenMonitoredEdition();
+
+            Mocker.GetMock<IMissingBookTracker>()
+                .Setup(s => s.MissingLongEnough(It.IsAny<Book>(), It.IsAny<DateTime>()))
+                .Returns(false);
+
+            RefreshWithBookMissingFromAuthorList();
+
+            VerifyBookDeleted(Times.Never());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_not_hand_monitoring_to_the_library_copy_the_first_time_a_duplicate_is_missing()
+        {
+            GivenMergedWork(HttpStatusCode.SeeOther);
+            GivenMonitoredEdition();
+
+            _book.Monitored = true;
+
+            Mocker.GetMock<IMissingBookTracker>()
+                .Setup(s => s.MissingLongEnough(It.IsAny<Book>(), It.IsAny<DateTime>()))
+                .Returns(false);
+
+            Mocker.GetMock<IBookService>()
+                .Setup(s => s.FindById("2"))
+                .Returns(Builder<Book>.CreateNew().With(b => b.Id = 2).With(b => b.ForeignBookId = "2").With(b => b.Monitored = false).Build());
+
+            RefreshWithBookMissingFromAuthorList();
+
+            VerifyBookDeleted(Times.Never());
+
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.SetBookMonitored(It.IsAny<int>(), It.IsAny<bool>()), Times.Never());
+
+            Mocker.GetMock<IEditionService>()
+                .Verify(v => v.UpdateMany(It.IsAny<List<Edition>>()), Times.Never());
 
             ExceptionVerification.ExpectedWarns(1);
         }
