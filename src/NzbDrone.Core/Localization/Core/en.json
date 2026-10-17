@@ -76,6 +76,7 @@
   "AuthorIndex": "Author Index",
   "AuthorNameHelpText": "The name of the author/book to exclude (can be anything meaningful)",
   "AuthorOverviewOverrideHelpText": "Kept over the metadata source's overview on refresh. Leave empty to use the source's.",
+  "AuthorOverviewLoadError": "Unable to load the overview",
   "AuthorOverviewSaveError": "Unable to save the overview",
   "AuthorProgressBarText": "{availableBookCount} / {bookCount} (Total: {totalBookCount}, Files: {bookFileCount})",
   "Authors": "Authors",

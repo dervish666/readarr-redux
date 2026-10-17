@@ -7,3 +7,9 @@
 .labelIcon {
   margin-left: 8px;
 }
+
+.retryButton {
+  composes: button from '~Components/Link/Button.css';
+
+  margin-left: 10px;
+}

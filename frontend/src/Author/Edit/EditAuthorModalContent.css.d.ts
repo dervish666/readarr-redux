@@ -3,6 +3,7 @@
 interface CssExports {
   'deleteButton': string;
   'labelIcon': string;
+  'retryButton': string;
 }
 export const cssExports: CssExports;
 export default cssExports;
