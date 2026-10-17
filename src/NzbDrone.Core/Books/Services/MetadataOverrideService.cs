@@ -128,10 +128,13 @@ namespace NzbDrone.Core.Books
 
         public void UpdateBookMetadata(int bookId, BookMetadataEdit edit)
         {
+            var wanted = edit.Series ?? new List<BookSeriesEdit>();
+
+            ValidateSeriesRows(wanted);
+
             bool cleared;
             string foreignAuthorId;
 
-            // A refresh of this book waits until the edit is saved, and an edit waits for a running refresh
             using (BookEditLock.Take(bookId))
             {
                 var book = _bookService.GetBook(bookId);
@@ -159,14 +162,19 @@ namespace NzbDrone.Core.Books
                     editions.ForEach(x => x.Overview = string.Empty);
                 }
 
-                UpdateSeries(book, overrides, edit.Series ?? new List<BookSeriesEdit>());
+                // Works out every series change, and fails on a bad row, before anything is written
+                var plan = PlanSeries(book, overrides, wanted);
 
                 overrides.ApplyTo(book);
                 editions.ForEach(overrides.ApplyTo);
                 book.MetadataOverrides = overrides;
 
+                // The overrides go first: they hold the suppressions for the source links removed below, so if a
+                // later write fails, a refresh still leaves those links out instead of bringing them back
                 _bookService.UpdateMany(new List<Book> { book });
                 _editionService.UpdateMany(editions);
+
+                ApplySeries(book, plan);
 
                 foreignAuthorId = book.AuthorMetadata?.Value?.ForeignAuthorId;
 
@@ -217,19 +225,95 @@ namespace NzbDrone.Core.Books
             _eventAggregator.PublishEvent(new AuthorUpdatedEvent(_authorService.GetAuthor(authorId)));
         }
 
-        private void UpdateSeries(Book book, BookMetadataOverrides overrides, List<BookSeriesEdit> wanted)
+        // A row is an existing series, or 0 with a title for a new one. Anything else used to drop out of the wanted
+        // list unnoticed, and the book's existing links were deleted as if the user had removed them.
+        private static void ValidateSeriesRows(List<BookSeriesEdit> wanted)
         {
+            foreach (var row in wanted)
+            {
+                if (row == null || row.SeriesId < 0 || (row.SeriesId == 0 && row.NewSeriesTitle.IsNullOrWhiteSpace()))
+                {
+                    throw new NzbDroneClientException(System.Net.HttpStatusCode.BadRequest, "Each series needs an existing series id, or 0 and a title for a new series");
+                }
+            }
+        }
+
+        private class SeriesPlan
+        {
+            public List<SeriesBookLink> Removed { get; } = new List<SeriesBookLink>();
+            public List<SeriesBookLink> ToAdd { get; } = new List<SeriesBookLink>();
+            public List<SeriesBookLink> ToUpdate { get; } = new List<SeriesBookLink>();
+            public List<Tuple<Series, SeriesBookLink>> ToCreate { get; } = new List<Tuple<Series, SeriesBookLink>>();
+            public Dictionary<int, Series> Series { get; set; }
+        }
+
+        private SeriesPlan PlanSeries(Book book, BookMetadataOverrides overrides, List<BookSeriesEdit> wanted)
+        {
+            var plan = new SeriesPlan();
             var current = _linkService.GetLinksByBook(new List<int> { book.Id });
             var series = GetAvailableSeries(book.Id).ToDictionary(x => x.Id);
 
-            var unknown = wanted.Where(x => x.SeriesId > 0 && !series.ContainsKey(x.SeriesId)).Select(x => x.SeriesId).ToList();
+            var unknown = wanted.Where(x => x.SeriesId > 0 && !series.ContainsKey(x.SeriesId)).Select(x => x.SeriesId).Distinct().ToList();
 
-            foreach (var s in unknown.Any() ? _seriesService.GetSeries(unknown) : new List<Series>())
+            if (unknown.Any())
             {
-                series[s.Id] = s;
+                List<Series> found;
+
+                try
+                {
+                    found = _seriesService.GetSeries(unknown);
+                }
+                catch (ApplicationException)
+                {
+                    // The repository throws when any id has no row
+                    throw new NzbDroneClientException(System.Net.HttpStatusCode.BadRequest, "Series {0} doesn't exist", string.Join(", ", unknown));
+                }
+
+                foreach (var s in found)
+                {
+                    series[s.Id] = s;
+                }
             }
 
-            foreach (var edit in wanted.Where(x => x.SeriesId == 0 && x.NewSeriesTitle.IsNotNullOrWhiteSpace()))
+            plan.Series = series;
+
+            var wantedIds = wanted.Where(x => x.SeriesId > 0).Select(x => x.SeriesId).ToHashSet();
+
+            // Taken out of a series. A link from the metadata source would come back on refresh, so remember it.
+            plan.Removed.AddRange(current.Where(x => !wantedIds.Contains(x.SeriesId)));
+
+            foreach (var link in plan.Removed.Where(x => !x.IsManual))
+            {
+                if (series.TryGetValue(link.SeriesId, out var s) && !overrides.RemovedFromSeries.Contains(s.ForeignSeriesId))
+                {
+                    overrides.RemovedFromSeries.Add(s.ForeignSeriesId);
+                }
+            }
+
+            var kept = current.Except(plan.Removed).Any();
+
+            foreach (var edit in wanted.Where(x => x.SeriesId > 0).DistinctBy(x => x.SeriesId))
+            {
+                var s = series[edit.SeriesId];
+                var position = edit.Position.IsNullOrWhiteSpace() ? null : edit.Position.Trim();
+                var existing = current.SingleOrDefault(x => x.SeriesId == edit.SeriesId);
+
+                if (existing == null)
+                {
+                    plan.ToAdd.Add(NewLink(book, s.Id, position, !kept && !plan.ToAdd.Any()));
+                    overrides.RemovedFromSeries.Remove(s.ForeignSeriesId);
+                }
+                else if (existing.Position != position)
+                {
+                    // Repositioned by hand, so the metadata source's position no longer applies to it
+                    existing.Position = position;
+                    existing.SeriesPosition = ParsePosition(position);
+                    existing.IsManual = true;
+                    plan.ToUpdate.Add(existing);
+                }
+            }
+
+            foreach (var edit in wanted.Where(x => x.SeriesId == 0))
             {
                 var created = new Series
                 {
@@ -239,72 +323,47 @@ namespace NzbDrone.Core.Books
                     Numbered = true
                 };
 
+                var position = edit.Position.IsNullOrWhiteSpace() ? null : edit.Position.Trim();
+
+                plan.ToCreate.Add(Tuple.Create(created, NewLink(book, 0, position, !kept && !plan.ToAdd.Any() && !plan.ToCreate.Any())));
+            }
+
+            return plan;
+        }
+
+        private static SeriesBookLink NewLink(Book book, int seriesId, string position, bool isPrimary)
+        {
+            return new SeriesBookLink
+            {
+                SeriesId = seriesId,
+                BookId = book.Id,
+                Position = position,
+                SeriesPosition = ParsePosition(position),
+                IsPrimary = isPrimary,
+                IsManual = true
+            };
+        }
+
+        private void ApplySeries(Book book, SeriesPlan plan)
+        {
+            foreach (var (created, link) in plan.ToCreate)
+            {
                 _seriesService.InsertMany(new List<Series> { created });
-                series[created.Id] = created;
-                edit.SeriesId = created.Id;
+                plan.Series[created.Id] = created;
+                link.SeriesId = created.Id;
+                plan.ToAdd.Add(link);
 
                 _logger.Info("Started series {0} for {1}", created.Title, book);
             }
 
-            var wantedIds = wanted.Where(x => x.SeriesId > 0).Select(x => x.SeriesId).ToHashSet();
-
-            // Taken out of a series. A link from the metadata source would come back on refresh, so remember it.
-            var removed = current.Where(x => !wantedIds.Contains(x.SeriesId)).ToList();
-
-            foreach (var link in removed.Where(x => !x.IsManual))
-            {
-                if (series.TryGetValue(link.SeriesId, out var s) && !overrides.RemovedFromSeries.Contains(s.ForeignSeriesId))
-                {
-                    overrides.RemovedFromSeries.Add(s.ForeignSeriesId);
-                }
-            }
-
-            _linkService.DeleteMany(removed);
-
-            var toAdd = new List<SeriesBookLink>();
-            var toUpdate = new List<SeriesBookLink>();
-
-            foreach (var edit in wanted.Where(x => x.SeriesId > 0).DistinctBy(x => x.SeriesId))
-            {
-                if (!series.TryGetValue(edit.SeriesId, out var s))
-                {
-                    throw new NzbDroneClientException(System.Net.HttpStatusCode.BadRequest, "Series {0} doesn't exist", edit.SeriesId);
-                }
-
-                var position = edit.Position.IsNullOrWhiteSpace() ? null : edit.Position.Trim();
-                var existing = current.SingleOrDefault(x => x.SeriesId == edit.SeriesId);
-
-                if (existing == null)
-                {
-                    toAdd.Add(new SeriesBookLink
-                    {
-                        SeriesId = s.Id,
-                        BookId = book.Id,
-                        Position = position,
-                        SeriesPosition = ParsePosition(position),
-                        IsPrimary = !current.Except(removed).Any() && !toAdd.Any(),
-                        IsManual = true
-                    });
-
-                    overrides.RemovedFromSeries.Remove(s.ForeignSeriesId);
-                }
-                else if (existing.Position != position)
-                {
-                    // Repositioned by hand, so the metadata source's position no longer applies to it
-                    existing.Position = position;
-                    existing.SeriesPosition = ParsePosition(position);
-                    existing.IsManual = true;
-                    toUpdate.Add(existing);
-                }
-            }
-
-            _linkService.InsertMany(toAdd);
-            _linkService.UpdateMany(toUpdate);
+            _linkService.DeleteMany(plan.Removed);
+            _linkService.InsertMany(plan.ToAdd);
+            _linkService.UpdateMany(plan.ToUpdate);
 
             // A series the user started and has now emptied has nothing left to show
-            foreach (var link in removed)
+            foreach (var link in plan.Removed)
             {
-                if (series.TryGetValue(link.SeriesId, out var s) &&
+                if (plan.Series.TryGetValue(link.SeriesId, out var s) &&
                     s.ForeignSeriesId.StartsWith(LocalSeriesPrefix) &&
                     !_linkService.GetLinksBySeries(s.Id).Any())
                 {
