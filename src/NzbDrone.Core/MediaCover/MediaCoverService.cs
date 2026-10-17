@@ -246,6 +246,11 @@ namespace NzbDrone.Core.MediaCover
             _logger.Info("Downloading {0} for {1} {2}", cover.CoverType, author, cover.Url);
             _httpClient.DownloadFile(cover.Url, fileName, USER_AGENT);
 
+            if (!DiscardIfNotImage(fileName, cover.Url))
+            {
+                return;
+            }
+
             try
             {
                 _diskProvider.FileSetLastWriteTime(fileName, lastModified);
@@ -263,6 +268,11 @@ namespace NzbDrone.Core.MediaCover
             _logger.Info("Downloading {0} for {1} {2}", cover.CoverType, book, cover.Url);
             _httpClient.DownloadFile(cover.Url, fileName, USER_AGENT);
 
+            if (!DiscardIfNotImage(fileName, cover.Url))
+            {
+                return;
+            }
+
             try
             {
                 _diskProvider.FileSetLastWriteTime(fileName, lastModified);
@@ -271,6 +281,44 @@ namespace NzbDrone.Core.MediaCover
             {
                 _logger.Debug(ex, "Unable to set modified date for {0} image for book {1}", cover.CoverType, book);
             }
+        }
+
+        // Returns true when the downloaded file is a raster image. Anything else is deleted so it is
+        // never served from Readarr's origin, whatever its bytes are.
+        private bool DiscardIfNotImage(string fileName, string url)
+        {
+            bool isImage;
+
+            try
+            {
+                using (var stream = _diskProvider.OpenReadStream(fileName))
+                {
+                    isImage = CoverImageFormat.IsImage(stream);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "Unable to read downloaded cover {0}", fileName);
+                isImage = false;
+            }
+
+            if (isImage)
+            {
+                return true;
+            }
+
+            _logger.Warn("Cover from {0} is not a JPEG, PNG, GIF, WebP or AVIF image, discarding it", url);
+
+            try
+            {
+                _diskProvider.DeleteFile(fileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "Unable to delete rejected cover {0}", fileName);
+            }
+
+            return false;
         }
 
         private void EnsureResizedCovers(Author author, MediaCover cover, bool forceResize, Book book = null)
@@ -326,7 +374,7 @@ namespace NzbDrone.Core.MediaCover
             return coverType switch
             {
                 MediaCoverTypes.Clearlogo => ".png",
-                _ => defaultExtension
+                _ => CoverImageFormat.NormalizeExtension(defaultExtension)
             };
         }
 

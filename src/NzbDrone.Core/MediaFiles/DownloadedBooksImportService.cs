@@ -114,6 +114,25 @@ namespace NzbDrone.Core.MediaFiles
         {
             try
             {
+                // The book file scan below skips extras, @eaDir, dot-folders and hidden files. Audio left in any of
+                // them would go with the folder, so check with the same unfiltered listing completion uses.
+                var audioLeft = _diskProvider.AudioFilesOnDisk(directoryInfo.FullName, new List<ImportResult>());
+
+                if (audioLeft.Any())
+                {
+                    _logger.Warn("Not deleting {0}, audio files are still in it: {1}", directoryInfo.FullName, string.Join(", ", audioLeft.Select(Path.GetFileName)));
+                    return false;
+                }
+
+                // The listing above doesn't enter directory links, so it can't vouch for what is behind one
+                var links = _diskProvider.GetDirectoryLinks(directoryInfo.FullName);
+
+                if (links.Any())
+                {
+                    _logger.Warn("Not deleting {0}, it holds links to other folders: {1}", directoryInfo.FullName, string.Join(", ", links));
+                    return false;
+                }
+
                 var bookFiles = _diskScanService.GetBookFiles(directoryInfo.FullName);
                 var rarFiles = _diskProvider.GetFiles(directoryInfo.FullName, true).Where(f =>
                     Path.GetExtension(f).Equals(".rar",
@@ -246,6 +265,9 @@ namespace NzbDrone.Core.MediaFiles
                 try
                 {
                     _diskProvider.DeleteFolder(directoryInfo.FullName, true);
+
+                    // Lets completion tell this folder going from a share dropping or a client cleaning up
+                    importResults.ForEach(r => r.RemovedFolder = directoryInfo.FullName);
                 }
                 catch (IOException e)
                 {
@@ -281,7 +303,7 @@ namespace NzbDrone.Core.MediaFiles
 
                 return new List<ImportResult>
                        {
-                           new ImportResult(new ImportDecision<LocalBook>(new LocalBook { Path = fileInfo.FullName }, new Rejection("Invalid music file, filename starts with '._'")), "Invalid music file, filename starts with '._'")
+                           new ImportResult(new ImportDecision<LocalBook>(new LocalBook { Path = fileInfo.FullName }, new DeliberateRejection("Invalid music file, filename starts with '._'")), "Invalid music file, filename starts with '._'")
                        };
             }
 

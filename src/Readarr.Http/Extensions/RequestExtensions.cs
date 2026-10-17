@@ -101,6 +101,15 @@ namespace Readarr.Http.Extensions
             headers["Pragma"] = "no-cache";
         }
 
+        // Covers come from third-party hosts and are served from Readarr's own origin. Stop the
+        // browser guessing a type, and if one is ever opened directly as a page, give it no script,
+        // no plugins and an opaque origin, so it cannot reach the API with the user's session.
+        public static void AddImageSecurityHeaders(this IHeaderDictionary headers)
+        {
+            headers["X-Content-Type-Options"] = "nosniff";
+            headers["Content-Security-Policy"] = "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox";
+        }
+
         public static void EnableCache(this IHeaderDictionary headers)
         {
             headers["Cache-Control"] = "max-age=31536000, public";

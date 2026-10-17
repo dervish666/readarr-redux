@@ -70,7 +70,11 @@ namespace NzbDrone.Core.MediaFiles
 
                     var importResults = _downloadedTracksImportService.ProcessPath(message.Path, message.ImportMode, trackedDownload.RemoteBook?.Author, trackedDownload.DownloadItem, grabbedBook);
 
-                    _completedDownloadService.VerifyImport(trackedDownload, importResults);
+                    // The scan may cover only part of the download (CD1 of CD1 and CD2). Checking just that part would
+                    // call the whole download imported and let Remove Completed delete the rest, so check its own path.
+                    var downloadPath = (trackedDownload.ImportItem ?? trackedDownload.DownloadItem).OutputPath.FullPath;
+
+                    _completedDownloadService.VerifyImport(trackedDownload, importResults, downloadPath);
 
                     return importResults;
                 }

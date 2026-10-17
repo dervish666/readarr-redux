@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 using FizzWare.NBuilder;
 using Moq;
 using NUnit.Framework;
+using NzbDrone.Common.Disk;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.TrackedDownloads;
@@ -107,6 +109,26 @@ namespace NzbDrone.Core.Test.MediaFiles
             Subject.Execute(new DownloadedBooksScanCommand() { Path = _downloadFolder, DownloadClientId = "sab1" });
 
             Mocker.GetMock<IDownloadedBooksImportService>().Verify(c => c.ProcessPath(_downloadFolder, ImportMode.Auto, _trackedDownload.RemoteBook.Author, _trackedDownload.DownloadItem, It.IsAny<Book>(), It.IsAny<DownloadImportOptions>()), Times.Once());
+        }
+
+        // A scan of CD1 alone must not stand in for the whole download, which also holds CD2
+        [Test]
+        public void should_verify_the_whole_download_path_when_the_scan_covers_part_of_it()
+        {
+            var downloadRoot = Path.Combine(_downloadFolder, "The Autumn Republic");
+            var cd1 = Path.Combine(downloadRoot, "CD1");
+            GivenExistingFolder(cd1);
+            GivenValidQueueItem();
+
+            _trackedDownload.DownloadItem.OutputPath = new OsPath(downloadRoot);
+
+            Subject.Execute(new DownloadedBooksScanCommand() { Path = cd1, DownloadClientId = "sab1" });
+
+            Mocker.GetMock<ICompletedDownloadService>()
+                  .Verify(v => v.VerifyImport(_trackedDownload, It.IsAny<List<ImportResult>>(), downloadRoot), Times.Once());
+
+            Mocker.GetMock<ICompletedDownloadService>()
+                  .Verify(v => v.VerifyImport(It.IsAny<TrackedDownload>(), It.IsAny<List<ImportResult>>(), cd1), Times.Never());
         }
 
         [Test]

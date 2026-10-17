@@ -65,9 +65,16 @@ namespace Readarr.Http.Frontend
 
                 if (result != null)
                 {
-                    if ((result as FileResult)?.ContentType == "text/html")
+                    var contentType = (result as FileResult)?.ContentType;
+
+                    if (contentType == "text/html")
                     {
                         Response.Headers.DisableCache();
+                    }
+
+                    if (mapper is MediaCoverMapper || mapper is MediaCoverProxyMapper || (contentType != null && contentType.StartsWith("image/")))
+                    {
+                        Response.Headers.AddImageSecurityHeaders();
                     }
 
                     return result;

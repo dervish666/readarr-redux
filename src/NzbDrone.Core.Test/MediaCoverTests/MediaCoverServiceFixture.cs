@@ -15,6 +15,7 @@ using NzbDrone.Core.Books.Events;
 using NzbDrone.Core.MediaCover;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Test.Framework;
+using NzbDrone.Test.Common;
 
 namespace NzbDrone.Core.Test.MediaCoverTests
 {
@@ -49,6 +50,97 @@ namespace NzbDrone.Core.Test.MediaCoverTests
 
             _httpResponse = new HttpResponse(null, new HttpHeader(), "");
             Mocker.GetMock<IHttpClient>().Setup(c => c.Get(It.IsAny<HttpRequest>())).Returns(_httpResponse);
+
+            GivenDownloadedCoverBytes(new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0, 0x10, 0x4A, 0x46, 0x49, 0x46, 0, 1 });
+        }
+
+        private void GivenDownloadedCoverBytes(byte[] bytes)
+        {
+            var path = GetTempFilePath();
+            File.WriteAllBytes(path, bytes);
+
+            Mocker.GetMock<IDiskProvider>()
+                  .Setup(v => v.OpenReadStream(It.IsAny<string>()))
+                  .Returns(() => File.OpenRead(path));
+        }
+
+        [TestCase(".html")]
+        [TestCase(".svg")]
+        [TestCase(".htm")]
+        [TestCase("")]
+        [TestCase(".jpg?width=300")]
+        public void should_store_and_serve_non_image_extensions_as_jpg(string extension)
+        {
+            var covers = new List<MediaCover.MediaCover>
+                {
+                    new MediaCover.MediaCover
+                    {
+                        Url = "http://dummy.com/test" + extension,
+                        CoverType = MediaCoverTypes.Cover
+                    }
+                };
+
+            Subject.ConvertToLocalUrls(6, MediaCoverEntity.Book, covers);
+
+            covers.Single().Url.Should().Be("/MediaCover/Books/6/cover.jpg");
+            Subject.GetCoverPath(6, MediaCoverEntity.Book, MediaCoverTypes.Cover, extension).Should().EndWith("cover.jpg");
+        }
+
+        [TestCase(".jpg")]
+        [TestCase(".JPG")]
+        [TestCase(".jpeg")]
+        [TestCase(".png")]
+        [TestCase(".gif")]
+        [TestCase(".webp")]
+        public void should_keep_image_extensions_so_cached_covers_still_match(string extension)
+        {
+            Subject.GetCoverPath(6, MediaCoverEntity.Book, MediaCoverTypes.Cover, extension).Should().EndWith("cover" + extension);
+        }
+
+        [Test]
+        public void should_discard_downloaded_cover_that_is_not_an_image()
+        {
+            _author.Metadata.Value.Images = new List<MediaCover.MediaCover> { new MediaCover.MediaCover(MediaCoverTypes.Poster, "http://dummy.com/poster.html") };
+
+            GivenDownloadedCoverBytes(System.Text.Encoding.UTF8.GetBytes("<html><script>fetch('/initialize.json')</script></html>"));
+
+            Mocker.GetMock<ICoverExistsSpecification>()
+                  .Setup(v => v.AlreadyExists(It.IsAny<DateTime?>(), It.IsAny<long?>(), It.IsAny<string>()))
+                  .Returns(false);
+
+            Mocker.GetMock<IBookService>()
+                  .Setup(v => v.GetBooksByAuthor(It.IsAny<int>()))
+                  .Returns(new List<Book>());
+
+            Subject.HandleAsync(new AuthorRefreshCompleteEvent(_author));
+
+            Mocker.GetMock<IHttpClient>()
+                  .Verify(v => v.DownloadFile("http://dummy.com/poster.html", It.Is<string>(f => f.EndsWith("poster.jpg")), It.IsAny<string>()), Times.Once());
+
+            Mocker.GetMock<IDiskProvider>()
+                  .Verify(v => v.DeleteFile(It.Is<string>(f => f.EndsWith("poster.jpg"))), Times.Once());
+
+            Mocker.GetMock<IDiskProvider>()
+                  .Verify(v => v.FileSetLastWriteTime(It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [TestCase(new byte[] { 0xFF, 0xD8, 0xFF, 0xDB })]
+        [TestCase(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A })]
+        [TestCase(new byte[] { 0x47, 0x49, 0x46, 0x38, 0x39, 0x61 })]
+        [TestCase(new byte[] { 0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50 })]
+        public void should_recognise_raster_image_signatures(byte[] header)
+        {
+            CoverImageFormat.IsImage(header).Should().BeTrue();
+        }
+
+        [TestCase("<svg xmlns=\"http://www.w3.org/2000/svg\">")]
+        [TestCase("<!DOCTYPE html>")]
+        [TestCase("GIF")]
+        public void should_not_recognise_markup_as_an_image(string content)
+        {
+            CoverImageFormat.IsImage(System.Text.Encoding.UTF8.GetBytes(content)).Should().BeFalse();
         }
 
         [TestCase(".png")]

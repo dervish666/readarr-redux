@@ -182,6 +182,93 @@ namespace NzbDrone.Common.Disk
             });
         }
 
+        // Every file under path, hidden and dot-folders included, throwing on a folder that can't be read or that
+        // disappears while it is listed. GetFiles skips hidden entries and unreadable folders, which is right for
+        // scanning and wrong for proving nothing was left behind.
+        public List<string> GetAllFilesOrThrow(string path)
+        {
+            Ensure.That(path, () => path).IsValidPath(PathValidationType.CurrentOs);
+
+            return WalkFiles(path, true, new List<string>());
+        }
+
+        // Directory symlinks and junctions anywhere under path, which GetAllFilesOrThrow and DeleteFolder never enter
+        public List<string> GetDirectoryLinks(string path)
+        {
+            Ensure.That(path, () => path).IsValidPath(PathValidationType.CurrentOs);
+
+            var links = new List<string>();
+            WalkFiles(path, true, links);
+
+            return links;
+        }
+
+        // Lists files one folder at a time. The built-in recursion follows directory symlinks (a loop lists the
+        // same files over and over) and skips a subfolder that vanishes mid-listing. A directory link is recorded
+        // in links and not entered. With throwOnError a folder that is gone or unreadable throws; without, it is
+        // passed over, as GetFiles does.
+        private List<string> WalkFiles(string path, bool throwOnError, List<string> links)
+        {
+            var options = new EnumerationOptions
+            {
+                RecurseSubdirectories = false,
+                IgnoreInaccessible = !throwOnError,
+                AttributesToSkip = 0
+            };
+
+            var files = new List<string>();
+            var folders = new Stack<string>();
+            folders.Push(path);
+
+            while (folders.Count > 0)
+            {
+                var folder = folders.Pop();
+
+                if (!_fileSystem.Directory.Exists(folder))
+                {
+                    if (throwOnError)
+                    {
+                        throw new DirectoryNotFoundException($"{folder} disappeared while it was being listed");
+                    }
+
+                    continue;
+                }
+
+                files.AddRange(_fileSystem.Directory.EnumerateFiles(folder, "*", options));
+
+                foreach (var child in _fileSystem.Directory.EnumerateDirectories(folder, "*", options))
+                {
+                    if (IsDirectoryLink(child))
+                    {
+                        links.Add(child);
+                        continue;
+                    }
+
+                    folders.Push(child);
+                }
+            }
+
+            return files;
+        }
+
+        private bool IsDirectoryLink(string path)
+        {
+            return _fileSystem.DirectoryInfo.FromDirectoryName(path).Attributes.HasFlag(FileAttributes.ReparsePoint);
+        }
+
+        // Removes the link itself. Its target, outside the folder being deleted, is never touched.
+        private void DeleteDirectoryLink(string path)
+        {
+            if (OsInfo.IsWindows)
+            {
+                _fileSystem.Directory.Delete(path, false);
+            }
+            else
+            {
+                _fileSystem.File.Delete(path);
+            }
+        }
+
         public long GetFolderSize(string path)
         {
             Ensure.That(path, () => path).IsValidPath(PathValidationType.CurrentOs);
@@ -307,9 +394,19 @@ namespace NzbDrone.Common.Disk
         {
             Ensure.That(path, () => path).IsValidPath(PathValidationType.CurrentOs);
 
-            var files = GetFiles(path, recursive).ToList();
+            // A directory symlink or junction is removed as a link. Deleting through it would empty its target,
+            // which can be anywhere: a hidden .extras pointing at the library, for one.
+            if (IsDirectoryLink(path))
+            {
+                DeleteDirectoryLink(path);
+                return;
+            }
+
+            var links = new List<string>();
+            var files = ListFilesForDelete(path, recursive, links);
 
             files.ForEach(RemoveReadOnly);
+            links.ForEach(DeleteDirectoryLink);
 
             var attempts = 0;
 
@@ -317,7 +414,7 @@ namespace NzbDrone.Common.Disk
             {
                 EmptyFolder(path);
 
-                if (GetFiles(path, recursive).Any())
+                if (ListFilesForDelete(path, recursive, new List<string>()).Any())
                 {
                     // Wait for IO operations to complete  after emptying the folder since they aren't always
                     // instantly removed and it can lead to false positives that files are still present.
@@ -325,7 +422,7 @@ namespace NzbDrone.Common.Disk
                 }
 
                 attempts++;
-                files = GetFiles(path, recursive).ToList();
+                files = ListFilesForDelete(path, recursive, new List<string>());
             }
 
             _fileSystem.Directory.Delete(path, recursive);
@@ -333,6 +430,11 @@ namespace NzbDrone.Common.Disk
 
         // Removes the folder only if it holds nothing. Unlike DeleteFolder, it never deletes what's inside: the OS
         // refuses a folder that isn't empty, so a file that arrives after any earlier check is safe.
+        private List<string> ListFilesForDelete(string path, bool recursive, List<string> links)
+        {
+            return recursive ? WalkFiles(path, false, links) : GetFiles(path, false).ToList();
+        }
+
         public void DeleteEmptyFolder(string path)
         {
             Ensure.That(path, () => path).IsValidPath(PathValidationType.CurrentOs);
@@ -443,6 +545,7 @@ namespace NzbDrone.Common.Disk
 
             foreach (var directory in GetDirectories(path))
             {
+                // DeleteFolder removes a directory link as a link, without entering it
                 DeleteFolder(directory, true);
             }
         }

@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.IO.Abstractions;
+using System.Linq;
 using FluentAssertions;
 using NUnit.Framework;
 using NzbDrone.Common.Disk;
@@ -75,6 +76,133 @@ namespace NzbDrone.Common.Test.DiskTests
             Assert.Throws<IOException>(() => Subject.CopyFile(source, destination, false));
 
             File.ReadAllText(destination).Should().Be("new");
+        }
+
+        [Test]
+        public void GetAllFilesOrThrow_should_list_hidden_and_dot_folders_that_GetFiles_skips()
+        {
+            var folder = GetTempFilePath();
+            var dotFolder = Path.Combine(folder, ".@__thumb", "Part 02.mp3");
+            var nested = Path.Combine(folder, "@eaDir", "extras", "Part 03.mp3");
+            var top = Path.Combine(folder, "Part 01.mp3");
+
+            foreach (var file in new[] { dotFolder, nested, top })
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(file));
+                File.WriteAllText(file, "audio");
+            }
+
+            Subject.GetAllFilesOrThrow(folder).Should().BeEquivalentTo(new[] { top, dotFolder, nested });
+        }
+
+        [Test]
+        public void GetAllFilesOrThrow_should_not_follow_directory_links()
+        {
+            PosixOnly();
+
+            var folder = GetTempFilePath();
+            var outside = GetTempFilePath();
+            var part = Path.Combine(folder, "Part 01.mp3");
+            var elsewhere = Path.Combine(outside, "Part 09.mp3");
+
+            Directory.CreateDirectory(folder);
+            Directory.CreateDirectory(outside);
+            File.WriteAllText(part, "audio");
+            File.WriteAllText(elsewhere, "audio");
+
+            // A loop back to the download folder, and a link out to another folder
+            Directory.CreateSymbolicLink(Path.Combine(folder, "loop"), folder);
+            Directory.CreateSymbolicLink(Path.Combine(folder, "linked"), outside);
+
+            Subject.GetAllFilesOrThrow(folder).Should().BeEquivalentTo(new[] { part });
+        }
+
+        // A hidden .extras linking to audio elsewhere: deleting the download folder must remove the link, not empty
+        // what it points at
+        [TestCase(true)]
+        [TestCase(false)]
+        public void DeleteFolder_should_remove_a_directory_link_without_touching_its_target(bool withOtherFiles)
+        {
+            PosixOnly();
+
+            var folder = GetTempFilePath();
+            var outside = GetTempFilePath();
+            var kept = Path.Combine(outside, "Part 02.mp3");
+
+            Directory.CreateDirectory(Path.Combine(outside, "nested"));
+            File.WriteAllText(kept, "audio");
+            File.WriteAllText(Path.Combine(outside, "nested", "Part 03.mp3"), "audio");
+
+            Directory.CreateDirectory(folder);
+
+            if (withOtherFiles)
+            {
+                File.WriteAllText(Path.Combine(folder, "Part 01.nfo"), "info");
+                Directory.CreateDirectory(Path.Combine(folder, "sub"));
+                Directory.CreateSymbolicLink(Path.Combine(folder, "sub", ".deeper"), outside);
+            }
+
+            Directory.CreateSymbolicLink(Path.Combine(folder, ".extras"), outside);
+
+            Subject.GetDirectoryLinks(folder).Should().HaveCount(withOtherFiles ? 2 : 1);
+
+            Subject.DeleteFolder(folder, true);
+
+            Directory.Exists(folder).Should().BeFalse();
+            File.Exists(kept).Should().BeTrue();
+            File.Exists(Path.Combine(outside, "nested", "Part 03.mp3")).Should().BeTrue();
+        }
+
+        [Test]
+        public void DeleteFolder_on_a_directory_link_should_remove_only_the_link()
+        {
+            PosixOnly();
+
+            var outside = GetTempFilePath();
+            var link = GetTempFilePath();
+            var kept = Path.Combine(outside, "Part 02.mp3");
+
+            Directory.CreateDirectory(outside);
+            File.WriteAllText(kept, "audio");
+            Directory.CreateSymbolicLink(link, outside);
+
+            Subject.DeleteFolder(link, true);
+
+            Directory.Exists(link).Should().BeFalse();
+            File.Exists(kept).Should().BeTrue();
+        }
+
+        [Test]
+        public void GetAllFilesOrThrow_should_throw_on_a_folder_it_cannot_read()
+        {
+            PosixOnly();
+
+            var folder = GetTempFilePath();
+            var locked = Path.Combine(folder, "locked");
+            Directory.CreateDirectory(locked);
+            File.WriteAllText(Path.Combine(locked, "Part 02.mp3"), "audio");
+
+            File.SetUnixFileMode(locked, UnixFileMode.None);
+
+            try
+            {
+                if (Directory.EnumerateFileSystemEntries(locked).Any())
+                {
+                    Assert.Ignore("Running with rights that read a folder with no permissions");
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+
+            try
+            {
+                Assert.Throws<UnauthorizedAccessException>(() => Subject.GetAllFilesOrThrow(folder));
+            }
+            finally
+            {
+                File.SetUnixFileMode(locked, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            }
         }
 
         [Test]

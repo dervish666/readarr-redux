@@ -11,7 +11,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Specifications
     // A rescan has nothing but the files' tags to go on, and the book it picks gets written into those tags. So it
     // takes a book only on an identifier the edition shares, or on a title that names that book and no other. Left
     // alone, an untracked file stays unmapped and a tracked one keeps its book.
-    public class RescanMatchSpecification : IImportDecisionEngineSpecification<LocalEdition>
+    public class RescanMatchSpecification : IImportDecisionEngineSpecification<LocalEdition>, IRejectsDeliberately
     {
         // The bar CloseBookMatchSpecification sets for a whole match, here for the title alone. In a whole match a
         // matching author at least halves the title's weight, so "Foundation and Earth" passed for Foundation and Empire.

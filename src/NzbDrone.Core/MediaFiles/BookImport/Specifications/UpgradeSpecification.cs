@@ -9,7 +9,7 @@ using NzbDrone.Core.Qualities;
 
 namespace NzbDrone.Core.MediaFiles.BookImport.Specifications
 {
-    public class UpgradeSpecification : IImportDecisionEngineSpecification<LocalBook>
+    public class UpgradeSpecification : IImportDecisionEngineSpecification<LocalBook>, IRejectsDeliberately
     {
         private readonly IConfigService _configService;
         private readonly ICustomFormatCalculationService _customFormatCalculationService;

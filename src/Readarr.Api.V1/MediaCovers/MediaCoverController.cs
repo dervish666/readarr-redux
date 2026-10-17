@@ -7,13 +7,14 @@ using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
 using Readarr.Http;
+using Readarr.Http.Extensions;
 
 namespace Readarr.Api.V1.MediaCovers
 {
     [V1ApiController]
     public class MediaCoverController : Controller
     {
-        private static readonly Regex RegexResizedImage = new Regex(@"-\d+(?=\.(jpg|png|gif)$)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex RegexResizedImage = new Regex(@"-\d+(?=\.(jpg|jpeg|png|gif|webp)$)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         private readonly IAppFolderInfo _appFolderInfo;
         private readonly IDiskProvider _diskProvider;
@@ -26,7 +27,7 @@ namespace Readarr.Api.V1.MediaCovers
             _mimeTypeProvider = new FileExtensionContentTypeProvider();
         }
 
-        [HttpGet(@"author/{authorId:int}/{filename:regex(^[[^/\\]]+\.(jpg|png|gif)$)}")]
+        [HttpGet(@"author/{authorId:int}/{filename:regex(^[[^/\\]]+\.(jpg|jpeg|png|gif|webp)$)}")]
         public IActionResult GetAuthorMediaCover(int authorId, string filename)
         {
             var filePath = GetCoverPath(Path.Combine(_appFolderInfo.GetAppDataPath(), "MediaCover", authorId.ToString()), filename);
@@ -49,10 +50,12 @@ namespace Readarr.Api.V1.MediaCovers
                 filePath = basefilePath;
             }
 
+            Response.Headers.AddImageSecurityHeaders();
+
             return PhysicalFile(filePath, GetContentType(filePath));
         }
 
-        [HttpGet(@"book/{bookId:int}/{filename:regex(^[[^/\\]]+\.(jpg|png|gif)$)}")]
+        [HttpGet(@"book/{bookId:int}/{filename:regex(^[[^/\\]]+\.(jpg|jpeg|png|gif|webp)$)}")]
         public IActionResult GetBookMediaCover(int bookId, string filename)
         {
             var filePath = GetCoverPath(Path.Combine(_appFolderInfo.GetAppDataPath(), "MediaCover", "Books", bookId.ToString()), filename);
@@ -74,6 +77,8 @@ namespace Readarr.Api.V1.MediaCovers
 
                 filePath = basefilePath;
             }
+
+            Response.Headers.AddImageSecurityHeaders();
 
             return PhysicalFile(filePath, GetContentType(filePath));
         }

@@ -14,6 +14,7 @@ using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.TrackedDownloads;
+using NzbDrone.Core.History;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.MetadataSource;
@@ -48,6 +49,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
         private readonly IDownloadedBooksImportService _downloadedTracksImportService;
         private readonly IProvideImportItemService _provideImportItemService;
         private readonly IEventAggregator _eventAggregator;
+        private readonly IHistoryService _historyService;
         private readonly Logger _logger;
 
         public ManualImportService(IDiskProvider diskProvider,
@@ -66,6 +68,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                                    IDownloadedBooksImportService downloadedTracksImportService,
                                    IProvideImportItemService provideImportItemService,
                                    IEventAggregator eventAggregator,
+                                   IHistoryService historyService,
                                    Logger logger)
         {
             _diskProvider = diskProvider;
@@ -84,6 +87,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
             _downloadedTracksImportService = downloadedTracksImportService;
             _provideImportItemService = provideImportItemService;
             _eventAggregator = eventAggregator;
+            _historyService = historyService;
             _logger = logger;
         }
 
@@ -405,6 +409,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
             {
                 var trackedDownload = groupedTrackedDownload.First().TrackedDownload;
                 var outputPath = trackedDownload.ImportItem.OutputPath.FullPath;
+                var results = groupedTrackedDownload.Select(c => c.ImportResult).ToList();
 
                 if (_diskProvider.FolderExists(outputPath))
                 {
@@ -412,13 +417,59 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                         trackedDownload.DownloadItem.CanMoveFiles)
                     {
                         _diskProvider.DeleteFolder(outputPath, true);
+                        results.ForEach(r => r.RemovedFolder = outputPath);
                     }
                 }
 
-                var importedCount = groupedTrackedDownload.Select(c => c.ImportResult)
-                    .Count(c => c.Result == ImportResultType.Imported);
+                var importedCount = results.Count(c => c.Result == ImportResultType.Imported);
                 var downloadItemCount = Math.Max(1, trackedDownload.RemoteBook?.Books.Count ?? 1);
                 var allItemsImported = importedCount >= downloadItemCount;
+
+                // Same rule as an automatic import. The files on disk include the audio files the user didn't pick:
+                // they are still in the download, and calling it imported lets Remove Completed delete them. Parts
+                // imported from this download in an earlier pass, copied or hard linked, are still there too.
+                var importedBefore = _historyService.FindByDownloadId(trackedDownload.DownloadItem.DownloadId).ImportedSourcePaths();
+
+                // The files were picked in the UI, perhaps from an older listing. Importing files that aren't in the
+                // download's own path says nothing about what is left in it.
+                var outsideDownload = results.Where(r => r.Result == ImportResultType.Imported && r.ImportDecision.Item?.Path != null)
+                    .Select(r => r.ImportDecision.Item.Path)
+                    .Where(p => !PathEqualityComparer.Instance.Equals(p, outputPath) && !outputPath.IsParentPath(p))
+                    .ToList();
+
+                if (allItemsImported && outsideDownload.Any())
+                {
+                    _logger.Warn("Not marking {0} imported, files imported for it aren't in its path {1}: {2}",
+                        trackedDownload.DownloadItem.Title,
+                        outputPath,
+                        string.Join(", ", outsideDownload));
+
+                    allItemsImported = false;
+                }
+
+                if (allItemsImported)
+                {
+                    try
+                    {
+                        var leftBehind = results.AudioFilesLeftBehind(importedBefore, _diskProvider.AudioFilesOnDisk(outputPath, results));
+
+                        if (leftBehind.Any())
+                        {
+                            _logger.Warn("Not marking {0} imported, {1} audio file(s) in it were not imported: {2}",
+                                trackedDownload.DownloadItem.Title,
+                                leftBehind.Count,
+                                string.Join(", ", leftBehind.Select(Path.GetFileName)));
+
+                            allItemsImported = false;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Warn(ex, "Not marking {0} imported, unable to list the files in {1} to check none were left behind", trackedDownload.DownloadItem.Title, outputPath);
+
+                        allItemsImported = false;
+                    }
+                }
 
                 if (allItemsImported)
                 {

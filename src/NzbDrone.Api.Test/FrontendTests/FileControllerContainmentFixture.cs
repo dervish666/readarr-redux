@@ -1,5 +1,6 @@
 using System.IO;
 using FluentAssertions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using NUnit.Framework;
@@ -37,10 +38,16 @@ namespace NzbDrone.Api.Test.FrontendTests
         [Test]
         public void should_serve_author_cover_inside_cover_folder()
         {
-            var result = Mocker.Resolve<MediaCoverController>().GetAuthorMediaCover(1, "poster.jpg");
+            var controller = Mocker.Resolve<MediaCoverController>();
+            controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+
+            var result = controller.GetAuthorMediaCover(1, "poster.jpg");
 
             result.Should().BeOfType<PhysicalFileResult>()
                 .Which.FileName.Should().Be(Path.Combine(_appDataFolder, "MediaCover", "1", "poster.jpg"));
+
+            controller.Response.Headers["X-Content-Type-Options"].ToString().Should().Be("nosniff");
+            controller.Response.Headers["Content-Security-Policy"].ToString().Should().Contain("sandbox");
         }
 
         [TestCase("../../readarr.db.jpg")]

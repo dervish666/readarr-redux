@@ -40,21 +40,26 @@ namespace NzbDrone.Http.Authentication
 
         protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, BypassableDenyAnonymousAuthorizationRequirement requirement)
         {
-            if (_authenticationRequired == AuthenticationRequiredType.DisabledForLocalAddresses)
+            if (_authenticationRequired == AuthenticationRequiredType.DisabledForLocalAddresses &&
+                context.Resource is HttpContext httpContext &&
+                IsLocalRequest(httpContext, _configService.TrustCgnatIpAddresses))
             {
-                if (context.Resource is HttpContext httpContext &&
-                    IsClientAddressKnown(httpContext) &&
-                    IPAddress.TryParse(httpContext.GetRemoteIP(), out var ipAddress))
-                {
-                    if (ipAddress.IsLocalAddress() ||
-                        (_configService.TrustCgnatIpAddresses && ipAddress.IsCgnatIpAddress()))
-                    {
-                        context.Succeed(requirement);
-                    }
-                }
+                context.Succeed(requirement);
             }
 
             return Task.CompletedTask;
+        }
+
+        public static bool IsLocalRequest(HttpContext httpContext, bool trustCgnatIpAddresses)
+        {
+            if (!IsClientAddressKnown(httpContext) ||
+                !IPAddress.TryParse(httpContext.GetRemoteIP(), out var ipAddress))
+            {
+                return false;
+            }
+
+            return ipAddress.IsLocalAddress() ||
+                   (trustCgnatIpAddresses && ipAddress.IsCgnatIpAddress());
         }
 
         private static bool IsClientAddressKnown(HttpContext httpContext)

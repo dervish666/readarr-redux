@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using FluentAssertions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using NLog;
@@ -95,6 +96,37 @@ namespace NzbDrone.Api.Test.FrontendTests
             Mocker.Resolve<StaticResourceMapper>().GetResponse("/Content/../../secret.css").Should().BeNull();
 
             ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [TestCase("/MediaCover/1/poster.html")]
+        [TestCase("/MediaCover/Books/1/cover.svg")]
+        [TestCase("/MediaCover/Books/1/cover.htm?lastWrite=1")]
+        public void should_not_serve_cached_cover_that_is_not_an_image(string resourceUrl)
+        {
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(s => s.FileExists(It.IsAny<string>(), It.IsAny<System.StringComparison>()))
+                .Returns(true);
+
+            Mocker.Resolve<MediaCoverMapper>().GetResponse(resourceUrl).Should().BeNull();
+        }
+
+        [Test]
+        public void controller_should_send_nosniff_and_sandbox_csp_with_images()
+        {
+            var mapper = new Mock<IMapHttpRequestsToDisk>();
+            mapper.Setup(s => s.CanHandle(It.IsAny<string>())).Returns(true);
+            mapper.Setup(s => s.GetResponse(It.IsAny<string>())).Returns(new FileContentResult(new byte[] { 0xFF, 0xD8, 0xFF }, "image/jpeg"));
+
+            var controller = new StaticResourceController(new List<IMapHttpRequestsToDisk> { mapper.Object }, LogManager.GetLogger("test"))
+            {
+                ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+            };
+
+            controller.Index("MediaCover/1/poster.jpg");
+
+            var headers = controller.Response.Headers;
+            headers["X-Content-Type-Options"].ToString().Should().Be("nosniff");
+            headers["Content-Security-Policy"].ToString().Should().Contain("default-src 'none'").And.Contain("sandbox");
         }
 
         [TestCase("Content/../../secret.css")]

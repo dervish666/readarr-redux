@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using Dapper;
 using NzbDrone.Common.Extensions;
@@ -16,6 +17,7 @@ namespace NzbDrone.Core.Books
         Dictionary<int, List<int>> AllAuthorTags();
         Author GetAuthorByMetadataId(int authorMetadataId);
         List<Author> GetAuthorsByMetadataId(IEnumerable<int> authorMetadataId);
+        int MoveToAuthorMetadata(int authorId, int oldMetadataId, int newMetadataId);
     }
 
     public class AuthorRepository : BasicRepository<Author>, IAuthorRepository
@@ -55,6 +57,27 @@ namespace NzbDrone.Core.Books
             cleanName = cleanName.ToLowerInvariant();
 
             return Query(s => s.CleanName == cleanName).ExclusiveOrDefault();
+        }
+
+        // Points the author and every book on its old metadata at the new metadata in one transaction.
+        // Done as two separate saves, either order leaves a moment where the books belong to no author,
+        // and Cleanup Orphaned Books deletes books in that state.
+        public int MoveToAuthorMetadata(int authorId, int oldMetadataId, int newMetadataId)
+        {
+            using var conn = _database.OpenConnection();
+            using var transaction = conn.BeginTransaction(IsolationLevel.ReadCommitted);
+
+            var books = conn.Execute(@"UPDATE ""Books"" SET ""AuthorMetadataId"" = @NewMetadataId WHERE ""AuthorMetadataId"" = @OldMetadataId",
+                new { OldMetadataId = oldMetadataId, NewMetadataId = newMetadataId },
+                transaction);
+
+            conn.Execute(@"UPDATE ""Authors"" SET ""AuthorMetadataId"" = @NewMetadataId WHERE ""Id"" = @AuthorId",
+                new { AuthorId = authorId, NewMetadataId = newMetadataId },
+                transaction);
+
+            transaction.Commit();
+
+            return books;
         }
 
         public Dictionary<int, string> AllAuthorPaths()

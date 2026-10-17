@@ -321,6 +321,52 @@ namespace NzbDrone.Core.Test.MediaFiles
             DiskProvider.FolderExists(_subFolders[0]).Should().BeFalse();
         }
 
+        // The book file scan skips dot-folders; the audio in one must not go when the folder is cleaned up
+        [TestCase(".@__thumb")]
+        [TestCase("extras")]
+        public void should_not_delete_folder_after_a_move_while_audio_is_left_in_a_folder_the_scan_skips(string skipped)
+        {
+            GivenValidAuthor();
+            GivenSuccessfulImport();
+
+            var leftover = System.IO.Path.Combine(_subFolders[0], skipped, "Part 02.mp3");
+            FileSystem.AddFile(leftover, new MockFileData("audio"));
+
+            var results = Subject.ProcessPath(_droneFactory, ImportMode.Move, _trackedDownload.RemoteBook.Author, _trackedDownload.DownloadItem);
+
+            DiskProvider.FileExists(leftover).Should().BeTrue();
+            results.Should().OnlyContain(r => r.RemovedFolder == null);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_not_delete_folder_after_a_move_while_it_holds_a_directory_link()
+        {
+            GivenValidAuthor();
+            GivenSuccessfulImport();
+
+            var link = System.IO.Path.Combine(_subFolders[0], ".extras");
+            FileSystem.AddDirectory(link);
+            FileSystem.DirectoryInfo.FromDirectoryName(link).Attributes |= System.IO.FileAttributes.ReparsePoint;
+
+            var results = Subject.ProcessPath(_droneFactory, ImportMode.Move, _trackedDownload.RemoteBook.Author, _trackedDownload.DownloadItem);
+
+            DiskProvider.FolderExists(_subFolders[0]).Should().BeTrue();
+            results.Should().OnlyContain(r => r.RemovedFolder == null);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_record_the_folder_it_removed_after_a_move()
+        {
+            GivenValidAuthor();
+            GivenSuccessfulImport();
+
+            var results = Subject.ProcessPath(_droneFactory, ImportMode.Move, _trackedDownload.RemoteBook.Author, _trackedDownload.DownloadItem);
+
+            results.Should().OnlyContain(r => r.RemovedFolder != null);
+        }
+
         [Test]
         public void should_not_delete_folder_if_importmode_copy()
         {
@@ -367,6 +413,17 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             Mocker.GetMock<IMakeImportDecision>()
                   .Verify(v => v.GetImportDecisions(It.IsAny<List<IFileInfo>>(), It.Is<IdentificationOverrides>(o => o.Author == author && o.GrabbedBook == ruins), It.IsAny<ImportDecisionMakerInfo>(), It.IsAny<ImportDecisionMakerConfig>()), Times.Once());
+        }
+
+        [Test]
+        public void should_turn_down_a_macos_resource_file_deliberately()
+        {
+            var file = Path.Combine(_droneFactory, "._Part 01.mp3");
+            FileSystem.AddFile(file, new MockFileData(string.Empty));
+
+            var result = Subject.ProcessPath(file, ImportMode.Auto, Builder<Author>.CreateNew().Build(), _trackedDownload.DownloadItem);
+
+            result.Single().ImportDecision.Rejections.Single().Should().BeOfType<DeliberateRejection>();
         }
 
         private void VerifyNoImport()

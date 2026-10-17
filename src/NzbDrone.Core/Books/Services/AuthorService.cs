@@ -31,6 +31,7 @@ namespace NzbDrone.Core.Books
         Dictionary<int, string> AllAuthorPaths();
         bool AuthorPathExists(string folder);
         void RemoveAddOptions(Author author);
+        int MoveToAuthorMetadata(Author author, int newMetadataId);
     }
 
     public class AuthorService : IAuthorService
@@ -215,6 +216,16 @@ namespace NzbDrone.Core.Books
         public List<Author> GetAuthors(IEnumerable<int> authorIds)
         {
             return _authorRepository.Get(authorIds).ToList();
+        }
+
+        public int MoveToAuthorMetadata(Author author, int newMetadataId)
+        {
+            _cache.Clear();
+
+            var books = _authorRepository.MoveToAuthorMetadata(author.Id, author.AuthorMetadataId, newMetadataId);
+            author.AuthorMetadataId = newMetadataId;
+
+            return books;
         }
 
         public void RemoveAddOptions(Author author)

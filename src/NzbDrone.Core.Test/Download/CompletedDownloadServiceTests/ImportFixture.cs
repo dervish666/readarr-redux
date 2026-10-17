@@ -75,6 +75,10 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             Mocker.GetMock<IProvideImportItemService>()
                 .Setup(s => s.ProvideImportItem(It.IsAny<DownloadClientItem>(), It.IsAny<DownloadClientItem>()))
                 .Returns<DownloadClientItem, DownloadClientItem>((i, p) => i);
+
+            // The download folder is there and holds no audio unless a test says otherwise
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FolderExists(completed.OutputPath.FullPath)).Returns(true);
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.GetAllFilesOrThrow(completed.OutputPath.FullPath)).Returns(new List<string>());
         }
 
         private Book CreateBook(int id)
@@ -520,6 +524,326 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             GivenGrabs(Grab(one.Id, now), Grab(two.Id, now.AddMilliseconds(3)));
 
             ImportAndGetPinnedBook().Should().BeNull();
+        }
+
+        private void GivenPartResults(params ImportResult[] results)
+        {
+            GivenAuthorMatch();
+
+            Mocker.GetMock<IDownloadedBooksImportService>()
+                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>(), It.IsAny<Book>(), It.IsAny<DownloadImportOptions>()))
+                  .Returns(results.ToList());
+        }
+
+        private LocalBook Part(int part)
+        {
+            return new LocalBook { Path = $@"C:\TestPath\The Autumn Republic\Part {part:00}.mp3".AsOsAgnostic(), Part = part, Book = _trackedDownload.RemoteBook.Books[0], Author = _author };
+        }
+
+        // One book in many parts: one part importing used to be enough, and Remove Completed then deleted the rest
+        [Test]
+        public void should_not_mark_as_imported_when_a_part_was_approved_but_not_imported()
+        {
+            GivenPartResults(
+                new ImportResult(new ImportDecision<LocalBook>(Part(1))),
+                new ImportResult(new ImportDecision<LocalBook>(Part(2)), "Book has already been imported"));
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_not_mark_as_imported_from_history_when_a_part_was_left_behind()
+        {
+            GivenPartResults(
+                new ImportResult(new ImportDecision<LocalBook>(Part(1), new Rejection("Book already imported")), "Book already imported"),
+                new ImportResult(new ImportDecision<LocalBook>(Part(2)), "Failed to import book, destination already exists."));
+
+            Mocker.GetMock<IHistoryService>()
+                  .Setup(s => s.FindByDownloadId(It.IsAny<string>()))
+                  .Returns(Builder<EntityHistory>.CreateListOfSize(1).All().With(x => x.EventType = EntityHistoryEventType.BookFileImported).BuildList());
+
+            Mocker.GetMock<ITrackedDownloadAlreadyImported>()
+                  .Setup(s => s.IsImported(It.IsAny<TrackedDownload>(), It.IsAny<List<EntityHistory>>()))
+                  .Returns(true);
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_not_mark_as_imported_when_a_part_was_rejected_only_for_now()
+        {
+            GivenPartResults(
+                new ImportResult(new ImportDecision<LocalBook>(Part(1))),
+                new ImportResult(new ImportDecision<LocalBook>(Part(2), new Rejection("Failed to add missing book", RejectionType.Temporary)), "Failed to add missing book"));
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [TestCase("Unable to parse file")]
+        [TestCase("Unexpected error processing file")]
+        [TestCase("Book match is not close enough: 61.4% vs 80%")]
+        [TestCase("UpgradeSpecification: Object reference not set to an instance of an object.")]
+        public void should_not_mark_as_imported_when_a_part_was_rejected_for_a_reason_that_is_not_deliberate(string reason)
+        {
+            GivenPartResults(
+                new ImportResult(new ImportDecision<LocalBook>(Part(1))),
+                new ImportResult(new ImportDecision<LocalBook>(Part(2), new Rejection(reason)), reason));
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_not_mark_as_imported_when_a_part_has_a_deliberate_and_another_rejection()
+        {
+            GivenPartResults(
+                new ImportResult(new ImportDecision<LocalBook>(Part(1))),
+                new ImportResult(new ImportDecision<LocalBook>(Part(2), new DeliberateRejection("Not an upgrade for existing book file(s)"), new Rejection("Not enough free space")), "Not an upgrade"));
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        // CD1/01.mp3 is in the library; CD2/01.mp3 has the same name and size but never imported
+        [Test]
+        public void should_not_mark_as_imported_when_a_library_file_only_shares_the_name_and_size()
+        {
+            var book = _trackedDownload.RemoteBook.Books[0];
+            book.BookFiles = new List<BookFile> { new BookFile { Path = @"C:\Books\The Autumn Republic\01.mp3".AsOsAgnostic(), Size = 1234 } };
+
+            var cd1 = new LocalBook { Path = @"C:\TestPath\The Autumn Republic\CD1\01.mp3".AsOsAgnostic(), Size = 1234, Part = 1, Book = book, Author = _author };
+            var cd2 = new LocalBook { Path = @"C:\TestPath\The Autumn Republic\CD2\01.mp3".AsOsAgnostic(), Size = 1234, Part = 2, Book = book, Author = _author };
+
+            GivenDownloadHistory(Imported(cd1));
+            GivenPartResults(
+                new ImportResult(new ImportDecision<LocalBook>(cd1, new DeliberateRejection("Book already imported")), "Book already imported"),
+                new ImportResult(new ImportDecision<LocalBook>(cd2, new DeliberateRejection("Has the same filesize as existing file")), "Has the same filesize as existing file"));
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_not_mark_as_imported_when_a_file_was_turned_down_with_no_evidence_about_that_file()
+        {
+            GivenPartResults(
+                new ImportResult(new ImportDecision<LocalBook>(Part(1))),
+                new ImportResult(new ImportDecision<LocalBook>(Part(2), new DeliberateRejection("Not an upgrade for existing book file(s)")), "Not an upgrade for existing book file(s)"));
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        private EntityHistory Imported(LocalBook part, string key = "DroppedPath")
+        {
+            return new EntityHistory
+            {
+                EventType = EntityHistoryEventType.BookFileImported,
+                BookId = part.Book.Id,
+                Date = DateTime.UtcNow,
+                Data = new Dictionary<string, string> { { key, part.Path } }
+            };
+        }
+
+        private void GivenDownloadHistory(params EntityHistory[] history)
+        {
+            Mocker.GetMock<IHistoryService>()
+                  .Setup(s => s.FindByDownloadId(It.IsAny<string>()))
+                  .Returns(history.ToList());
+
+            Mocker.GetMock<ITrackedDownloadAlreadyImported>()
+                  .Setup(s => s.IsImported(It.IsAny<TrackedDownload>(), It.IsAny<List<EntityHistory>>()))
+                  .Returns(true);
+        }
+
+        // Part 1 imports and part 2 doesn't. On the retry every file of the book carries "already imported",
+        // judged from part 1's history, and history says the book is in. Part 2 must still keep the download.
+        [Test]
+        public void should_not_mark_as_imported_on_a_retry_when_only_a_sibling_part_was_imported()
+        {
+            GivenPartResults(
+                new ImportResult(new ImportDecision<LocalBook>(Part(1))),
+                new ImportResult(new ImportDecision<LocalBook>(Part(2)), "Book has already been imported"));
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+
+            GivenDownloadHistory(Imported(Part(1)));
+            GivenPartResults(
+                new ImportResult(new ImportDecision<LocalBook>(Part(1), new DeliberateRejection("Book already imported")), "Book already imported"),
+                new ImportResult(new ImportDecision<LocalBook>(Part(2), new DeliberateRejection("Book already imported")), "Book already imported"));
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+            ExceptionVerification.ExpectedWarns(2);
+        }
+
+        [TestCase("DroppedPath")]
+        [TestCase("droppedPath")]
+        public void should_mark_as_imported_on_a_retry_once_history_shows_every_part_was_imported(string key)
+        {
+            GivenDownloadHistory(Imported(Part(1), key), Imported(Part(2), key));
+            GivenPartResults(
+                new ImportResult(new ImportDecision<LocalBook>(Part(1), new DeliberateRejection("Book already imported")), "Book already imported"),
+                new ImportResult(new ImportDecision<LocalBook>(Part(2), new DeliberateRejection("Book already imported")), "Book already imported"));
+
+            Subject.Import(_trackedDownload);
+
+            Mocker.GetMock<IEventAggregator>()
+                  .Verify(v => v.PublishEvent(It.IsAny<DownloadCompletedEvent>()), Times.Once());
+
+            _trackedDownload.State.Should().Be(TrackedDownloadState.Imported);
+        }
+
+        [Test]
+        public void should_mark_as_imported_when_a_file_listed_twice_was_imported_once()
+        {
+            GivenPartResults(
+                new ImportResult(new ImportDecision<LocalBook>(Part(1))),
+                new ImportResult(new ImportDecision<LocalBook>(Part(1)), "Book has already been imported"));
+
+            Subject.Import(_trackedDownload);
+
+            AssertImported();
+        }
+
+        private string DownloadFolder => _trackedDownload.DownloadItem.OutputPath.FullPath;
+
+        private void GivenAudioOnDisk(params string[] relativePaths)
+        {
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FolderExists(DownloadFolder)).Returns(true);
+            Mocker.GetMock<IDiskProvider>()
+                  .Setup(s => s.GetAllFilesOrThrow(DownloadFolder))
+                  .Returns(relativePaths.Select(p => System.IO.Path.Combine(DownloadFolder, p)).ToList());
+        }
+
+        private LocalBook OnDisk(string relativePath)
+        {
+            return new LocalBook { Path = System.IO.Path.Combine(DownloadFolder, relativePath), Book = _trackedDownload.RemoteBook.Books[0], Author = _author };
+        }
+
+        // The import scan skips extras/, a dot-folder and the like, so the file there never gets a result
+        [TestCase("extras")]
+        [TestCase(".@__thumb")]
+        [TestCase("@eaDir")]
+        public void should_not_mark_as_imported_with_audio_in_a_folder_the_scan_skips(string folder)
+        {
+            GivenAudioOnDisk("Part 01.mp3", System.IO.Path.Combine(folder, "Part 02.mp3"));
+            GivenPartResults(new ImportResult(new ImportDecision<LocalBook>(OnDisk("Part 01.mp3"))));
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+            _trackedDownload.StatusMessages.Should().Contain(m => m.Title == "Part 02.mp3");
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_not_mark_as_imported_from_history_with_no_audio_results_but_audio_on_disk()
+        {
+            GivenAudioOnDisk("book.epub", System.IO.Path.Combine("extras", "Part 01.mp3"));
+            GivenPartResults(new ImportResult(new ImportDecision<LocalBook>(OnDisk("book.epub"), new Rejection("Not an upgrade")), "Not an upgrade"));
+            GivenDownloadHistory(Imported(OnDisk("book.epub")));
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_mark_as_imported_when_every_audio_file_on_disk_was_imported_and_ignore_resource_files()
+        {
+            GivenAudioOnDisk("Part 01.mp3", "Part 02.mp3", "._Part 01.mp3", "cover.jpg");
+            GivenPartResults(
+                new ImportResult(new ImportDecision<LocalBook>(OnDisk("Part 01.mp3"))),
+                new ImportResult(new ImportDecision<LocalBook>(OnDisk("Part 02.mp3"))));
+
+            Subject.Import(_trackedDownload);
+
+            AssertImported();
+        }
+
+        [Test]
+        public void should_not_mark_as_imported_when_the_download_folder_cannot_be_listed()
+        {
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FolderExists(DownloadFolder)).Returns(true);
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.GetAllFilesOrThrow(DownloadFolder)).Throws(new System.UnauthorizedAccessException("denied"));
+            GivenPartResults(new ImportResult(new ImportDecision<LocalBook>(OnDisk("Part 01.mp3"))));
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        private void GivenDownloadFolderGone()
+        {
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FolderExists(DownloadFolder)).Returns(false);
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FileExists(DownloadFolder)).Returns(false);
+        }
+
+        // A share that drops between the scan and this check takes the unimported parts out of sight, not off disk
+        [Test]
+        public void should_not_mark_as_imported_when_the_download_folder_went_missing_without_this_import_removing_it()
+        {
+            GivenPartResults(new ImportResult(new ImportDecision<LocalBook>(OnDisk("Part 01.mp3"))) { SourceMoved = true });
+            GivenDownloadFolderGone();
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_mark_as_imported_when_this_import_removed_the_download_folder()
+        {
+            GivenPartResults(new ImportResult(new ImportDecision<LocalBook>(OnDisk("Part 01.mp3"))) { SourceMoved = true, RemovedFolder = DownloadFolder });
+            GivenDownloadFolderGone();
+
+            Subject.Import(_trackedDownload);
+
+            AssertImported();
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void should_mark_a_missing_single_file_download_imported_only_when_this_import_moved_it(bool moved)
+        {
+            GivenDownloadFolderGone();
+            GivenPartResults(new ImportResult(new ImportDecision<LocalBook>(new LocalBook { Path = DownloadFolder, Book = _trackedDownload.RemoteBook.Books[0], Author = _author })) { SourceMoved = moved });
+
+            Subject.Import(_trackedDownload);
+
+            if (moved)
+            {
+                AssertImported();
+            }
+            else
+            {
+                AssertNotImported();
+                ExceptionVerification.ExpectedWarns(1);
+            }
         }
 
         private void AssertNotImported()

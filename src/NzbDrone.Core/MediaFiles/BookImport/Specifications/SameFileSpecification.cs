@@ -6,7 +6,7 @@ using NzbDrone.Core.Parser.Model;
 
 namespace NzbDrone.Core.MediaFiles.BookImport.Specifications
 {
-    public class SameFileSpecification : IImportDecisionEngineSpecification<LocalBook>
+    public class SameFileSpecification : IImportDecisionEngineSpecification<LocalBook>, IRejectsDeliberately
     {
         private readonly Logger _logger;
 
