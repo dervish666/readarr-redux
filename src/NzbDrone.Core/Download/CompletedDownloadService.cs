@@ -198,7 +198,11 @@ namespace NzbDrone.Core.Download
             // Counting imported files against grabbed books calls a one-book download done after its first part,
             // and Remove Completed then deletes the parts that didn't import. So whatever the counts or history
             // say, a download is not imported while any of its audio files was left behind on this pass.
-            var leftBehind = importResults.AudioFilesLeftBehind();
+            var historyItems = _historyService.FindByDownloadId(trackedDownload.DownloadItem.DownloadId)
+                                              .OrderByDescending(h => h.Date)
+                                              .ToList();
+
+            var leftBehind = importResults.AudioFilesLeftBehind(historyItems.ImportedSourcePaths());
 
             if (leftBehind.Any())
             {
@@ -235,10 +239,6 @@ namespace NzbDrone.Core.Download
             // Since imports should be relatively fast and these types of data changes are infrequent this should be quite
             // safe, but commenting for future benefit.
             var atLeastOneEpisodeImported = importResults.Any(c => c.Result == ImportResultType.Imported);
-
-            var historyItems = _historyService.FindByDownloadId(trackedDownload.DownloadItem.DownloadId)
-                                              .OrderByDescending(h => h.Date)
-                                              .ToList();
 
             var allEpisodesImportedInHistory = _trackedDownloadAlreadyImported.IsImported(trackedDownload, historyItems);
 

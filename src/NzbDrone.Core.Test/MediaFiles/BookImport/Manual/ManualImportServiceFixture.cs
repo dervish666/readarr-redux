@@ -10,6 +10,7 @@ using NzbDrone.Core.Books;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.TrackedDownloads;
+using NzbDrone.Core.History;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.BookImport;
 using NzbDrone.Core.MediaFiles.BookImport.Manual;
@@ -83,12 +84,25 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport.Manual
             Mocker.GetMock<IDiskScanService>().Setup(s => s.GetBookFiles(downloadFolder, true)).Returns(files);
             Mocker.GetMock<IDiskScanService>().Setup(s => s.FilterFiles(downloadFolder, It.IsAny<IEnumerable<IFileInfo>>())).Returns<string, IEnumerable<IFileInfo>>((_, f) => f.ToList());
             Mocker.GetMock<ITrackedDownloadService>().Setup(s => s.Find("dl")).Returns(trackedDownload);
+            GivenImportedBefore();
 
             Mocker.GetMock<IImportApprovedBooks>()
                   .Setup(s => s.Import(It.IsAny<List<ImportDecision<LocalBook>>>(), It.IsAny<bool>(), It.IsAny<DownloadClientItem>(), It.IsAny<ImportMode>()))
                   .Returns<List<ImportDecision<LocalBook>>, bool, DownloadClientItem, ImportMode>((d, r, i, m) => d.Select(x => new ImportResult(x)).ToList());
 
             return trackedDownload;
+        }
+
+        private void GivenImportedBefore(params string[] droppedPaths)
+        {
+            Mocker.GetMock<IHistoryService>()
+                  .Setup(s => s.FindByDownloadId("dl"))
+                  .Returns(droppedPaths.Select(p => new EntityHistory
+                  {
+                      EventType = EntityHistoryEventType.BookFileImported,
+                      DownloadId = "dl",
+                      Data = new Dictionary<string, string> { { "DroppedPath", p } }
+                  }).ToList());
         }
 
         private ManualImportCommand ImportCommand(params string[] paths)

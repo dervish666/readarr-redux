@@ -614,16 +614,96 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
         }
 
         [Test]
-        public void should_mark_as_imported_when_the_other_files_were_rejected_for_good()
+        public void should_mark_as_imported_when_the_other_file_was_turned_down_and_the_library_holds_it()
         {
+            var duplicate = Part(3);
+            duplicate.Size = 1234;
+            duplicate.Book.BookFiles = new List<BookFile> { new BookFile { Path = @"C:\Books\The Autumn Republic\Part 03.mp3".AsOsAgnostic(), Size = 1234 } };
+
             GivenPartResults(
                 new ImportResult(new ImportDecision<LocalBook>(Part(1))),
                 new ImportResult(new ImportDecision<LocalBook>(Part(2))),
-                new ImportResult(new ImportDecision<LocalBook>(Part(3), new DeliberateRejection("Not an upgrade for existing book file(s)")), "Not an upgrade for existing book file(s)"));
+                new ImportResult(new ImportDecision<LocalBook>(duplicate, new DeliberateRejection("Has the same filesize as existing file")), "Has the same filesize as existing file"));
 
             Subject.Import(_trackedDownload);
 
             AssertImported();
+        }
+
+        [Test]
+        public void should_not_mark_as_imported_when_a_file_was_turned_down_with_no_evidence_about_that_file()
+        {
+            GivenPartResults(
+                new ImportResult(new ImportDecision<LocalBook>(Part(1))),
+                new ImportResult(new ImportDecision<LocalBook>(Part(2), new DeliberateRejection("Not an upgrade for existing book file(s)")), "Not an upgrade for existing book file(s)"));
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        private EntityHistory Imported(LocalBook part, string key = "DroppedPath")
+        {
+            return new EntityHistory
+            {
+                EventType = EntityHistoryEventType.BookFileImported,
+                BookId = part.Book.Id,
+                Date = DateTime.UtcNow,
+                Data = new Dictionary<string, string> { { key, part.Path } }
+            };
+        }
+
+        private void GivenDownloadHistory(params EntityHistory[] history)
+        {
+            Mocker.GetMock<IHistoryService>()
+                  .Setup(s => s.FindByDownloadId(It.IsAny<string>()))
+                  .Returns(history.ToList());
+
+            Mocker.GetMock<ITrackedDownloadAlreadyImported>()
+                  .Setup(s => s.IsImported(It.IsAny<TrackedDownload>(), It.IsAny<List<EntityHistory>>()))
+                  .Returns(true);
+        }
+
+        // Part 1 imports and part 2 doesn't. On the retry every file of the book carries "already imported",
+        // judged from part 1's history, and history says the book is in. Part 2 must still keep the download.
+        [Test]
+        public void should_not_mark_as_imported_on_a_retry_when_only_a_sibling_part_was_imported()
+        {
+            GivenPartResults(
+                new ImportResult(new ImportDecision<LocalBook>(Part(1))),
+                new ImportResult(new ImportDecision<LocalBook>(Part(2)), "Book has already been imported"));
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+
+            GivenDownloadHistory(Imported(Part(1)));
+            GivenPartResults(
+                new ImportResult(new ImportDecision<LocalBook>(Part(1), new DeliberateRejection("Book already imported")), "Book already imported"),
+                new ImportResult(new ImportDecision<LocalBook>(Part(2), new DeliberateRejection("Book already imported")), "Book already imported"));
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+            ExceptionVerification.ExpectedWarns(2);
+        }
+
+        [TestCase("DroppedPath")]
+        [TestCase("droppedPath")]
+        public void should_mark_as_imported_on_a_retry_once_history_shows_every_part_was_imported(string key)
+        {
+            GivenDownloadHistory(Imported(Part(1), key), Imported(Part(2), key));
+            GivenPartResults(
+                new ImportResult(new ImportDecision<LocalBook>(Part(1), new DeliberateRejection("Book already imported")), "Book already imported"),
+                new ImportResult(new ImportDecision<LocalBook>(Part(2), new DeliberateRejection("Book already imported")), "Book already imported"));
+
+            Subject.Import(_trackedDownload);
+
+            Mocker.GetMock<IEventAggregator>()
+                  .Verify(v => v.PublishEvent(It.IsAny<DownloadCompletedEvent>()), Times.Once());
+
+            _trackedDownload.State.Should().Be(TrackedDownloadState.Imported);
         }
 
         [Test]

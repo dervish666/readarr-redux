@@ -14,6 +14,7 @@ using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.TrackedDownloads;
+using NzbDrone.Core.History;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.MetadataSource;
@@ -48,6 +49,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
         private readonly IDownloadedBooksImportService _downloadedTracksImportService;
         private readonly IProvideImportItemService _provideImportItemService;
         private readonly IEventAggregator _eventAggregator;
+        private readonly IHistoryService _historyService;
         private readonly Logger _logger;
 
         public ManualImportService(IDiskProvider diskProvider,
@@ -66,6 +68,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                                    IDownloadedBooksImportService downloadedTracksImportService,
                                    IProvideImportItemService provideImportItemService,
                                    IEventAggregator eventAggregator,
+                                   IHistoryService historyService,
                                    Logger logger)
         {
             _diskProvider = diskProvider;
@@ -84,6 +87,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
             _downloadedTracksImportService = downloadedTracksImportService;
             _provideImportItemService = provideImportItemService;
             _eventAggregator = eventAggregator;
+            _historyService = historyService;
             _logger = logger;
         }
 
@@ -422,7 +426,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
 
                 // Same rule as an automatic import, plus the audio files the user didn't pick: they are still in
                 // the download, and calling it imported lets Remove Completed delete them.
-                var leftBehind = results.AudioFilesLeftBehind();
+                var importedBefore = _historyService.FindByDownloadId(trackedDownload.DownloadItem.DownloadId).ImportedSourcePaths();
+
+                var leftBehind = results.AudioFilesLeftBehind(importedBefore);
                 leftBehind.AddRange(GetUnchosenAudioFiles(outputPath, results));
 
                 if (allItemsImported && leftBehind.Any())
