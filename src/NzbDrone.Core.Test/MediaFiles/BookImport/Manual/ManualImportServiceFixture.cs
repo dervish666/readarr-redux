@@ -82,7 +82,8 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport.Manual
             Mocker.GetMock<IDiskProvider>().Setup(s => s.GetFileInfo(It.IsAny<string>())).Returns<string>(p => fileSystem.FileInfo.FromFileName(p));
             Mocker.GetMock<IDiskProvider>().Setup(s => s.FolderExists(downloadFolder)).Returns(true);
             Mocker.GetMock<IDiskScanService>().Setup(s => s.GetBookFiles(downloadFolder, true)).Returns(files);
-            Mocker.GetMock<IDiskScanService>().Setup(s => s.FilterFiles(downloadFolder, It.IsAny<IEnumerable<IFileInfo>>())).Returns<string, IEnumerable<IFileInfo>>((_, f) => f.ToList());
+            Mocker.GetMock<IDiskScanService>().Setup(s => s.FilterFiles(downloadFolder, It.IsAny<IEnumerable<IFileInfo>>())).Returns<string, IEnumerable<IFileInfo>>((_, f) => f.Where(x => !x.FullName.Contains("extras")).ToList());
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.GetAllFilesOrThrow(downloadFolder)).Returns(filesInFolder.ToList());
             Mocker.GetMock<ITrackedDownloadService>().Setup(s => s.Find("dl")).Returns(trackedDownload);
             GivenImportedBefore();
 
@@ -103,6 +104,44 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport.Manual
                       DownloadId = "dl",
                       Data = new Dictionary<string, string> { { "DroppedPath", p } }
                   }).ToList());
+        }
+
+        // The scan skips extras/, so manual import never lists the file there; it is still in the download
+        [Test]
+        public void manual_import_should_not_complete_a_download_with_audio_in_a_folder_the_scan_skips()
+        {
+            var folder = @"C:\downloads\The Autumn Republic".AsOsAgnostic();
+            var part = System.IO.Path.Combine(folder, "Part 01.mp3");
+            var extra = System.IO.Path.Combine(folder, "extras", "Part 02.mp3");
+
+            var trackedDownload = GivenManualImportFromDownload(folder, new[] { part, extra });
+
+            Subject.Execute(ImportCommand(part));
+
+            Mocker.GetMock<IEventAggregator>()
+                  .Verify(v => v.PublishEvent(It.IsAny<DownloadCompletedEvent>()), Times.Never());
+
+            trackedDownload.State.Should().Be(TrackedDownloadState.ImportFailed);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void manual_import_should_not_complete_a_download_whose_folder_cannot_be_listed()
+        {
+            var folder = @"C:\downloads\The Autumn Republic".AsOsAgnostic();
+            var part = System.IO.Path.Combine(folder, "Part 01.mp3");
+
+            var trackedDownload = GivenManualImportFromDownload(folder, new[] { part });
+
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.GetAllFilesOrThrow(folder)).Throws(new System.UnauthorizedAccessException("denied"));
+
+            Subject.Execute(ImportCommand(part));
+
+            Mocker.GetMock<IEventAggregator>()
+                  .Verify(v => v.PublishEvent(It.IsAny<DownloadCompletedEvent>()), Times.Never());
+
+            trackedDownload.State.Should().Be(TrackedDownloadState.ImportFailed);
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         // Copy or hard link leaves part 1 in the folder after the first pass; it was imported, not left behind

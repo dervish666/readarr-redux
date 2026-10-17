@@ -182,6 +182,20 @@ namespace NzbDrone.Common.Disk
             });
         }
 
+        // Every file under path, hidden and dot-folders included, throwing on a folder that can't be read.
+        // GetFiles skips both, which is right for scanning and wrong for proving nothing was left behind.
+        public List<string> GetAllFilesOrThrow(string path)
+        {
+            Ensure.That(path, () => path).IsValidPath(PathValidationType.CurrentOs);
+
+            return _fileSystem.Directory.EnumerateFiles(path, "*", new EnumerationOptions
+            {
+                RecurseSubdirectories = true,
+                IgnoreInaccessible = false,
+                AttributesToSkip = 0
+            }).ToList();
+        }
+
         public long GetFolderSize(string path)
         {
             Ensure.That(path, () => path).IsValidPath(PathValidationType.CurrentOs);

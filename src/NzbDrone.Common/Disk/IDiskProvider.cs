@@ -25,6 +25,7 @@ namespace NzbDrone.Common.Disk
         bool FolderEmpty(string path);
         IEnumerable<string> GetDirectories(string path);
         IEnumerable<string> GetFiles(string path, bool recursive);
+        List<string> GetAllFilesOrThrow(string path);
         long GetFolderSize(string path);
         long GetFileSize(string path);
         void CreateFolder(string path);

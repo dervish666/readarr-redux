@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NLog;
+using NzbDrone.Common;
+using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Instrumentation.Extensions;
@@ -21,7 +23,7 @@ namespace NzbDrone.Core.Download
     {
         void Check(TrackedDownload trackedDownload);
         void Import(TrackedDownload trackedDownload, DownloadImportOptions options = null);
-        bool VerifyImport(TrackedDownload trackedDownload, List<ImportResult> importResults);
+        bool VerifyImport(TrackedDownload trackedDownload, List<ImportResult> importResults, string outputPath);
         Book GetGrabbedBook(TrackedDownload trackedDownload);
     }
 
@@ -33,6 +35,7 @@ namespace NzbDrone.Core.Download
         private readonly IProvideImportItemService _provideImportItemService;
         private readonly IDownloadedBooksImportService _downloadedTracksImportService;
         private readonly ITrackedDownloadAlreadyImported _trackedDownloadAlreadyImported;
+        private readonly IDiskProvider _diskProvider;
         private readonly Logger _logger;
 
         public CompletedDownloadService(IEventAggregator eventAggregator,
@@ -41,6 +44,7 @@ namespace NzbDrone.Core.Download
                                         IProvideImportItemService provideImportItemService,
                                         IDownloadedBooksImportService downloadedTracksImportService,
                                         ITrackedDownloadAlreadyImported trackedDownloadAlreadyImported,
+                                        IDiskProvider diskProvider,
                                         Logger logger)
         {
             _eventAggregator = eventAggregator;
@@ -49,6 +53,7 @@ namespace NzbDrone.Core.Download
             _provideImportItemService = provideImportItemService;
             _downloadedTracksImportService = downloadedTracksImportService;
             _trackedDownloadAlreadyImported = trackedDownloadAlreadyImported;
+            _diskProvider = diskProvider;
             _logger = logger;
         }
 
@@ -117,8 +122,15 @@ namespace NzbDrone.Core.Download
                 return;
             }
 
-            if (VerifyImport(trackedDownload, importResults))
+            if (VerifyImport(trackedDownload, importResults, outputPath))
             {
+                return;
+            }
+
+            // Files were left behind, or the folder couldn't be listed to check
+            if (trackedDownload.State == TrackedDownloadState.ImportFailed)
+            {
+                _eventAggregator.PublishEvent(new BookImportIncompleteEvent(trackedDownload));
                 return;
             }
 
@@ -193,7 +205,8 @@ namespace NzbDrone.Core.Download
             return book;
         }
 
-        public bool VerifyImport(TrackedDownload trackedDownload, List<ImportResult> importResults)
+        // outputPath is the local path this import read, after any remote path mapping
+        public bool VerifyImport(TrackedDownload trackedDownload, List<ImportResult> importResults, string outputPath)
         {
             // Counting imported files against grabbed books calls a one-book download done after its first part,
             // and Remove Completed then deletes the parts that didn't import. So whatever the counts or history
@@ -202,7 +215,23 @@ namespace NzbDrone.Core.Download
                                               .OrderByDescending(h => h.Date)
                                               .ToList();
 
-            var leftBehind = importResults.AudioFilesLeftBehind(historyItems.ImportedSourcePaths());
+            List<string> audioFilesOnDisk;
+
+            try
+            {
+                audioFilesOnDisk = _diskProvider.AudioFilesOnDisk(outputPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex, "Not marking {0} imported, unable to list the files in {1} to check none were left behind", trackedDownload.DownloadItem.Title, outputPath);
+
+                trackedDownload.State = TrackedDownloadState.ImportFailed;
+                trackedDownload.Warn("Unable to list the files in {0} to check none were left behind: {1}", outputPath, ex.Message);
+
+                return false;
+            }
+
+            var leftBehind = importResults.AudioFilesLeftBehind(historyItems.ImportedSourcePaths(), audioFilesOnDisk);
 
             if (leftBehind.Any())
             {
@@ -210,6 +239,18 @@ namespace NzbDrone.Core.Download
                     trackedDownload.DownloadItem.Title,
                     leftBehind.Count,
                     string.Join(", ", leftBehind.Select(Path.GetFileName)));
+
+                var resultsByPath = importResults.Where(r => r.ImportDecision.Item?.Path != null)
+                    .ToLookup(r => r.ImportDecision.Item.Path, PathEqualityComparer.Instance);
+
+                trackedDownload.State = TrackedDownloadState.ImportFailed;
+                trackedDownload.Warn(leftBehind.Select(p =>
+                    {
+                        var errors = resultsByPath[p].SelectMany(r => r.Errors).Distinct().ToList();
+
+                        return new TrackedDownloadStatusMessage(Path.GetFileName(p), errors.Any() ? errors : new List<string> { "Not imported, still in the download" });
+                    })
+                    .ToArray());
 
                 return false;
             }

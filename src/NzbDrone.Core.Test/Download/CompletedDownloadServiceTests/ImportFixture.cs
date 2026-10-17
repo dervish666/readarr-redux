@@ -722,6 +722,76 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             AssertImported();
         }
 
+        private string DownloadFolder => _trackedDownload.DownloadItem.OutputPath.FullPath;
+
+        private void GivenAudioOnDisk(params string[] relativePaths)
+        {
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FolderExists(DownloadFolder)).Returns(true);
+            Mocker.GetMock<IDiskProvider>()
+                  .Setup(s => s.GetAllFilesOrThrow(DownloadFolder))
+                  .Returns(relativePaths.Select(p => System.IO.Path.Combine(DownloadFolder, p)).ToList());
+        }
+
+        private LocalBook OnDisk(string relativePath)
+        {
+            return new LocalBook { Path = System.IO.Path.Combine(DownloadFolder, relativePath), Book = _trackedDownload.RemoteBook.Books[0], Author = _author };
+        }
+
+        // The import scan skips extras/, a dot-folder and the like, so the file there never gets a result
+        [TestCase("extras")]
+        [TestCase(".@__thumb")]
+        [TestCase("@eaDir")]
+        public void should_not_mark_as_imported_with_audio_in_a_folder_the_scan_skips(string folder)
+        {
+            GivenAudioOnDisk("Part 01.mp3", System.IO.Path.Combine(folder, "Part 02.mp3"));
+            GivenPartResults(new ImportResult(new ImportDecision<LocalBook>(OnDisk("Part 01.mp3"))));
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+            _trackedDownload.StatusMessages.Should().Contain(m => m.Title == "Part 02.mp3");
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_not_mark_as_imported_from_history_with_no_audio_results_but_audio_on_disk()
+        {
+            GivenAudioOnDisk("book.epub", System.IO.Path.Combine("extras", "Part 01.mp3"));
+            GivenPartResults(new ImportResult(new ImportDecision<LocalBook>(OnDisk("book.epub"), new Rejection("Not an upgrade")), "Not an upgrade"));
+            GivenDownloadHistory(Imported(OnDisk("book.epub")));
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_mark_as_imported_when_every_audio_file_on_disk_was_imported_and_ignore_resource_files()
+        {
+            GivenAudioOnDisk("Part 01.mp3", "Part 02.mp3", "._Part 01.mp3", "cover.jpg");
+            GivenPartResults(
+                new ImportResult(new ImportDecision<LocalBook>(OnDisk("Part 01.mp3"))),
+                new ImportResult(new ImportDecision<LocalBook>(OnDisk("Part 02.mp3"))));
+
+            Subject.Import(_trackedDownload);
+
+            AssertImported();
+        }
+
+        [Test]
+        public void should_not_mark_as_imported_when_the_download_folder_cannot_be_listed()
+        {
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FolderExists(DownloadFolder)).Returns(true);
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.GetAllFilesOrThrow(DownloadFolder)).Throws(new System.UnauthorizedAccessException("denied"));
+            GivenPartResults(new ImportResult(new ImportDecision<LocalBook>(OnDisk("Part 01.mp3"))));
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
         private void AssertNotImported()
         {
             Mocker.GetMock<IEventAggregator>()

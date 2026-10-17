@@ -78,6 +78,23 @@ namespace NzbDrone.Common.Test.DiskTests
         }
 
         [Test]
+        public void GetAllFilesOrThrow_should_list_hidden_and_dot_folders_that_GetFiles_skips()
+        {
+            var folder = GetTempFilePath();
+            var dotFolder = Path.Combine(folder, ".@__thumb", "Part 02.mp3");
+            var nested = Path.Combine(folder, "@eaDir", "extras", "Part 03.mp3");
+            var top = Path.Combine(folder, "Part 01.mp3");
+
+            foreach (var file in new[] { dotFolder, nested, top })
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(file));
+                File.WriteAllText(file, "audio");
+            }
+
+            Subject.GetAllFilesOrThrow(folder).Should().BeEquivalentTo(new[] { top, dotFolder, nested });
+        }
+
+        [Test]
         public void directory_exist_should_be_able_to_find_existing_folder()
         {
             Subject.FolderExists(TempFolder).Should().BeTrue();

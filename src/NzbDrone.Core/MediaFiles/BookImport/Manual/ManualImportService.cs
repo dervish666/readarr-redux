@@ -424,22 +424,33 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                 var downloadItemCount = Math.Max(1, trackedDownload.RemoteBook?.Books.Count ?? 1);
                 var allItemsImported = importedCount >= downloadItemCount;
 
-                // Same rule as an automatic import, plus the audio files the user didn't pick: they are still in
-                // the download, and calling it imported lets Remove Completed delete them.
-                // Parts imported from this download in an earlier pass, copied or hard linked so still in the folder
+                // Same rule as an automatic import. The files on disk include the audio files the user didn't pick:
+                // they are still in the download, and calling it imported lets Remove Completed delete them. Parts
+                // imported from this download in an earlier pass, copied or hard linked, are still there too.
                 var importedBefore = _historyService.FindByDownloadId(trackedDownload.DownloadItem.DownloadId).ImportedSourcePaths();
 
-                var leftBehind = results.AudioFilesLeftBehind(importedBefore);
-                leftBehind.AddRange(GetUnchosenAudioFiles(outputPath, results).Where(p => !importedBefore.Contains(p)));
-
-                if (allItemsImported && leftBehind.Any())
+                if (allItemsImported)
                 {
-                    _logger.Warn("Not marking {0} imported, {1} audio file(s) in it were not imported: {2}",
-                        trackedDownload.DownloadItem.Title,
-                        leftBehind.Count,
-                        string.Join(", ", leftBehind.Select(Path.GetFileName)));
+                    try
+                    {
+                        var leftBehind = results.AudioFilesLeftBehind(importedBefore, _diskProvider.AudioFilesOnDisk(outputPath));
 
-                    allItemsImported = false;
+                        if (leftBehind.Any())
+                        {
+                            _logger.Warn("Not marking {0} imported, {1} audio file(s) in it were not imported: {2}",
+                                trackedDownload.DownloadItem.Title,
+                                leftBehind.Count,
+                                string.Join(", ", leftBehind.Select(Path.GetFileName)));
+
+                            allItemsImported = false;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Warn(ex, "Not marking {0} imported, unable to list the files in {1} to check none were left behind", trackedDownload.DownloadItem.Title, outputPath);
+
+                        allItemsImported = false;
+                    }
                 }
 
                 if (allItemsImported)
@@ -448,25 +459,6 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                     _eventAggregator.PublishEvent(new DownloadCompletedEvent(trackedDownload, imported.First().ImportDecision.Item.Author.Id));
                 }
             }
-        }
-
-        // Audio files still in the download folder that this import didn't touch, listed the way an automatic
-        // import lists them. Files copied or hard linked out of it carry an Imported result and don't count.
-        private List<string> GetUnchosenAudioFiles(string outputPath, List<ImportResult> results)
-        {
-            if (!_diskProvider.FolderExists(outputPath))
-            {
-                return new List<string>();
-            }
-
-            var handled = results.Where(r => r.ImportDecision.Item?.Path != null)
-                .Select(r => r.ImportDecision.Item.Path)
-                .ToHashSet(PathEqualityComparer.Instance);
-
-            return _diskScanService.FilterFiles(outputPath, _diskScanService.GetBookFiles(outputPath))
-                .Select(f => f.FullName)
-                .Where(p => ImportResultExtensions.IsAudio(p) && !handled.Contains(p))
-                .ToList();
         }
     }
 }

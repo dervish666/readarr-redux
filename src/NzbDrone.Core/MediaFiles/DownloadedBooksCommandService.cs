@@ -70,7 +70,7 @@ namespace NzbDrone.Core.MediaFiles
 
                     var importResults = _downloadedTracksImportService.ProcessPath(message.Path, message.ImportMode, trackedDownload.RemoteBook?.Author, trackedDownload.DownloadItem, grabbedBook);
 
-                    _completedDownloadService.VerifyImport(trackedDownload, importResults);
+                    _completedDownloadService.VerifyImport(trackedDownload, importResults, message.Path);
 
                     return importResults;
                 }
