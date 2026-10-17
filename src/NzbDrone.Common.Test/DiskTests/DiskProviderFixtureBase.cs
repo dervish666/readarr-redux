@@ -117,6 +117,61 @@ namespace NzbDrone.Common.Test.DiskTests
             Subject.GetAllFilesOrThrow(folder).Should().BeEquivalentTo(new[] { part });
         }
 
+        // A hidden .extras linking to audio elsewhere: deleting the download folder must remove the link, not empty
+        // what it points at
+        [TestCase(true)]
+        [TestCase(false)]
+        public void DeleteFolder_should_remove_a_directory_link_without_touching_its_target(bool withOtherFiles)
+        {
+            PosixOnly();
+
+            var folder = GetTempFilePath();
+            var outside = GetTempFilePath();
+            var kept = Path.Combine(outside, "Part 02.mp3");
+
+            Directory.CreateDirectory(Path.Combine(outside, "nested"));
+            File.WriteAllText(kept, "audio");
+            File.WriteAllText(Path.Combine(outside, "nested", "Part 03.mp3"), "audio");
+
+            Directory.CreateDirectory(folder);
+
+            if (withOtherFiles)
+            {
+                File.WriteAllText(Path.Combine(folder, "Part 01.nfo"), "info");
+                Directory.CreateDirectory(Path.Combine(folder, "sub"));
+                Directory.CreateSymbolicLink(Path.Combine(folder, "sub", ".deeper"), outside);
+            }
+
+            Directory.CreateSymbolicLink(Path.Combine(folder, ".extras"), outside);
+
+            Subject.GetDirectoryLinks(folder).Should().HaveCount(withOtherFiles ? 2 : 1);
+
+            Subject.DeleteFolder(folder, true);
+
+            Directory.Exists(folder).Should().BeFalse();
+            File.Exists(kept).Should().BeTrue();
+            File.Exists(Path.Combine(outside, "nested", "Part 03.mp3")).Should().BeTrue();
+        }
+
+        [Test]
+        public void DeleteFolder_on_a_directory_link_should_remove_only_the_link()
+        {
+            PosixOnly();
+
+            var outside = GetTempFilePath();
+            var link = GetTempFilePath();
+            var kept = Path.Combine(outside, "Part 02.mp3");
+
+            Directory.CreateDirectory(outside);
+            File.WriteAllText(kept, "audio");
+            Directory.CreateSymbolicLink(link, outside);
+
+            Subject.DeleteFolder(link, true);
+
+            Directory.Exists(link).Should().BeFalse();
+            File.Exists(kept).Should().BeTrue();
+        }
+
         [Test]
         public void GetAllFilesOrThrow_should_throw_on_a_folder_it_cannot_read()
         {

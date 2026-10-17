@@ -340,6 +340,23 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void should_not_delete_folder_after_a_move_while_it_holds_a_directory_link()
+        {
+            GivenValidAuthor();
+            GivenSuccessfulImport();
+
+            var link = System.IO.Path.Combine(_subFolders[0], ".extras");
+            FileSystem.AddDirectory(link);
+            FileSystem.DirectoryInfo.FromDirectoryName(link).Attributes |= System.IO.FileAttributes.ReparsePoint;
+
+            var results = Subject.ProcessPath(_droneFactory, ImportMode.Move, _trackedDownload.RemoteBook.Author, _trackedDownload.DownloadItem);
+
+            DiskProvider.FolderExists(_subFolders[0]).Should().BeTrue();
+            results.Should().OnlyContain(r => r.RemovedFolder == null);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
         public void should_record_the_folder_it_removed_after_a_move()
         {
             GivenValidAuthor();

@@ -124,6 +124,15 @@ namespace NzbDrone.Core.MediaFiles
                     return false;
                 }
 
+                // The listing above doesn't enter directory links, so it can't vouch for what is behind one
+                var links = _diskProvider.GetDirectoryLinks(directoryInfo.FullName);
+
+                if (links.Any())
+                {
+                    _logger.Warn("Not deleting {0}, it holds links to other folders: {1}", directoryInfo.FullName, string.Join(", ", links));
+                    return false;
+                }
+
                 var bookFiles = _diskScanService.GetBookFiles(directoryInfo.FullName);
                 var rarFiles = _diskProvider.GetFiles(directoryInfo.FullName, true).Where(f =>
                     Path.GetExtension(f).Equals(".rar",
