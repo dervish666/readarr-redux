@@ -20,8 +20,12 @@ namespace Readarr.Http.Authentication
     // because getting in means /initialize.json, and that hands out the API key.
     public class UnconfiguredAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
     {
-        public const string RefusedMessage = "Readarr has no login set up yet, so it only answers the local network. " +
-                                             "Open it from a device on the same network as the server and set a username and password.";
+        public const string RefusedMessage = "Readarr has no login set up yet, so it only answers requests from the local network.\n\n" +
+                                             "To get in, open Readarr at the server's own address and port from a device on the same network, " +
+                                             "not through a public proxy, or through an SSH tunnel to the server " +
+                                             "(ssh -L 8787:localhost:8787 user@server, then http://localhost:8787). " +
+                                             "Set a username and password when asked, and this address works again.\n\n" +
+                                             "If a reverse proxy already handles login for you, set AuthenticationMethod to External in config.xml and restart Readarr.";
 
         private static readonly NLog.Logger AppLogger = NzbDroneLogger.GetLogger(typeof(UnconfiguredAuthenticationHandler));
         private static int _warned;

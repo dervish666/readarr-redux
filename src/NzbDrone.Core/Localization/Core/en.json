@@ -62,6 +62,7 @@
   "AuthenticationMethod": "Authentication Method",
   "AuthenticationMethodHelpText": "Require Username and Password to access {appName}",
   "AuthenticationMethodHelpTextWarning": "Please select a valid authentication method",
+  "AuthenticationNotSetUpCheckMessage": "No login is set up. Until one is, the API key is open to any request that looks local, including requests through a reverse proxy that doesn't forward the client's address. Set a username and password in Settings > General > Security.",
   "AuthenticationRequired": "Authentication Required",
   "AuthenticationRequiredHelpText": "Change which requests authentication is required for. Do not change unless you understand the risks.",
   "AuthenticationRequiredPasswordConfirmationHelpTextWarning": "Confirm new password",

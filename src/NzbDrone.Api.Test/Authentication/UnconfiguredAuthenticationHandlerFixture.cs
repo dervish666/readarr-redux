@@ -99,7 +99,11 @@ namespace NzbDrone.Api.Test.Authentication
 
             httpContext.Response.StatusCode.Should().Be(401);
             httpContext.Response.Body.Position = 0;
-            new StreamReader(httpContext.Response.Body).ReadToEnd().Should().Be(UnconfiguredAuthenticationHandler.RefusedMessage);
+            var body = new StreamReader(httpContext.Response.Body).ReadToEnd();
+            body.Should().Be(UnconfiguredAuthenticationHandler.RefusedMessage);
+
+            // A remote user needs a way back in, not only the reason
+            body.Should().Contain("SSH tunnel").And.Contain("username and password").And.Contain("External");
         }
     }
 }
