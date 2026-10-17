@@ -272,6 +272,54 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport
         }
 
         [Test]
+        public void should_mark_rejections_from_deliberate_specifications_and_only_those()
+        {
+            var deliberate = new Mock<IImportDecisionEngineSpecification<LocalBook>>();
+            deliberate.As<IRejectsDeliberately>();
+            deliberate.Setup(c => c.IsSatisfiedBy(It.IsAny<LocalBook>(), It.IsAny<DownloadClientItem>())).Returns(Decision.Reject("Not an upgrade for existing book file(s)"));
+
+            GivenAugmentationSuccess();
+            GivenSpecifications(_bookpass1);
+            GivenSpecifications(deliberate, _fail1);
+
+            var rejections = Subject.GetImportDecisions(_fileInfos, null, null, _idConfig).Single().Rejections;
+
+            rejections.Should().HaveCount(2);
+            rejections.Single(r => r.Reason == "Not an upgrade for existing book file(s)").Should().BeOfType<DeliberateRejection>();
+            rejections.Single(r => r.Reason == "_fail1").Should().NotBeOfType<DeliberateRejection>();
+        }
+
+        [Test]
+        public void should_keep_a_deliberate_book_rejection_on_each_file()
+        {
+            var deliberate = new Mock<IImportDecisionEngineSpecification<LocalEdition>>();
+            deliberate.As<IRejectsDeliberately>();
+            deliberate.Setup(c => c.IsSatisfiedBy(It.IsAny<LocalEdition>(), It.IsAny<DownloadClientItem>())).Returns(Decision.Reject("Book already imported"));
+
+            GivenAugmentationSuccess();
+            GivenSpecifications(deliberate);
+            GivenSpecifications(_pass1);
+
+            Subject.GetImportDecisions(_fileInfos, null, null, _idConfig).Single().Rejections.Single().Should().BeOfType<DeliberateRejection>();
+        }
+
+        // Adding a specification here makes its rejections count as dealt with when a download completes,
+        // so a part it rejects can be deleted with the download. Keep the list short and deliberate.
+        [Test]
+        public void only_these_specifications_reject_deliberately()
+        {
+            typeof(IRejectsDeliberately).Assembly.GetTypes()
+                .Where(t => t.IsClass && typeof(IRejectsDeliberately).IsAssignableFrom(t))
+                .Should().BeEquivalentTo(new[]
+                {
+                    typeof(UpgradeSpecification),
+                    typeof(SameFileSpecification),
+                    typeof(AlreadyImportedSpecification),
+                    typeof(RescanMatchSpecification)
+                });
+        }
+
+        [Test]
         public void should_return_approved_if_all_specs_pass()
         {
             GivenAugmentationSuccess();

@@ -8,7 +8,7 @@ using NzbDrone.Core.Parser.Model;
 
 namespace NzbDrone.Core.MediaFiles.BookImport.Specifications
 {
-    public class AlreadyImportedSpecification : IImportDecisionEngineSpecification<LocalEdition>
+    public class AlreadyImportedSpecification : IImportDecisionEngineSpecification<LocalEdition>, IRejectsDeliberately
     {
         private readonly IHistoryService _historyService;
         private readonly Logger _logger;

@@ -369,6 +369,17 @@ namespace NzbDrone.Core.Test.MediaFiles
                   .Verify(v => v.GetImportDecisions(It.IsAny<List<IFileInfo>>(), It.Is<IdentificationOverrides>(o => o.Author == author && o.GrabbedBook == ruins), It.IsAny<ImportDecisionMakerInfo>(), It.IsAny<ImportDecisionMakerConfig>()), Times.Once());
         }
 
+        [Test]
+        public void should_turn_down_a_macos_resource_file_deliberately()
+        {
+            var file = Path.Combine(_droneFactory, "._Part 01.mp3");
+            FileSystem.AddFile(file, new MockFileData(string.Empty));
+
+            var result = Subject.ProcessPath(file, ImportMode.Auto, Builder<Author>.CreateNew().Build(), _trackedDownload.DownloadItem);
+
+            result.Single().ImportDecision.Rejections.Single().Should().BeOfType<DeliberateRejection>();
+        }
+
         private void VerifyNoImport()
         {
             Mocker.GetMock<IImportApprovedBooks>().Verify(c => c.Import(It.IsAny<List<ImportDecision<LocalBook>>>(), true, null, ImportMode.Auto),

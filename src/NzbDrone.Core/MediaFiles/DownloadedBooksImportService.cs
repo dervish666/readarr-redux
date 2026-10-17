@@ -281,7 +281,7 @@ namespace NzbDrone.Core.MediaFiles
 
                 return new List<ImportResult>
                        {
-                           new ImportResult(new ImportDecision<LocalBook>(new LocalBook { Path = fileInfo.FullName }, new Rejection("Invalid music file, filename starts with '._'")), "Invalid music file, filename starts with '._'")
+                           new ImportResult(new ImportDecision<LocalBook>(new LocalBook { Path = fileInfo.FullName }, new DeliberateRejection("Invalid music file, filename starts with '._'")), "Invalid music file, filename starts with '._'")
                        };
             }
 

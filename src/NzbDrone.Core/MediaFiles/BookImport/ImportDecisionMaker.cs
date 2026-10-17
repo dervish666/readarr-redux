@@ -295,7 +295,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
                 if (!result.Accepted)
                 {
-                    return new Rejection(result.Reason);
+                    return spec is IRejectsDeliberately ? new DeliberateRejection(result.Reason) : new Rejection(result.Reason);
                 }
             }
             catch (Exception e)

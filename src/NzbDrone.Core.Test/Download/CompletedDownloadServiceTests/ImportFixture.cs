@@ -584,13 +584,42 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             ExceptionVerification.ExpectedWarns(1);
         }
 
+        [TestCase("Unable to parse file")]
+        [TestCase("Unexpected error processing file")]
+        [TestCase("Book match is not close enough: 61.4% vs 80%")]
+        [TestCase("UpgradeSpecification: Object reference not set to an instance of an object.")]
+        public void should_not_mark_as_imported_when_a_part_was_rejected_for_a_reason_that_is_not_deliberate(string reason)
+        {
+            GivenPartResults(
+                new ImportResult(new ImportDecision<LocalBook>(Part(1))),
+                new ImportResult(new ImportDecision<LocalBook>(Part(2), new Rejection(reason)), reason));
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_not_mark_as_imported_when_a_part_has_a_deliberate_and_another_rejection()
+        {
+            GivenPartResults(
+                new ImportResult(new ImportDecision<LocalBook>(Part(1))),
+                new ImportResult(new ImportDecision<LocalBook>(Part(2), new DeliberateRejection("Not an upgrade for existing book file(s)"), new Rejection("Not enough free space")), "Not an upgrade"));
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
         [Test]
         public void should_mark_as_imported_when_the_other_files_were_rejected_for_good()
         {
             GivenPartResults(
                 new ImportResult(new ImportDecision<LocalBook>(Part(1))),
                 new ImportResult(new ImportDecision<LocalBook>(Part(2))),
-                new ImportResult(new ImportDecision<LocalBook>(Part(3), new Rejection("Not an upgrade for existing book file(s)")), "Not an upgrade for existing book file(s)"));
+                new ImportResult(new ImportDecision<LocalBook>(Part(3), new DeliberateRejection("Not an upgrade for existing book file(s)")), "Not an upgrade for existing book file(s)"));
 
             Subject.Import(_trackedDownload);
 
