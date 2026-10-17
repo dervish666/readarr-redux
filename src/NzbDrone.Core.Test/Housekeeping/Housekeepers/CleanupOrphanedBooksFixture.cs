@@ -1,9 +1,13 @@
+using System.Collections.Generic;
 using FizzWare.NBuilder;
 using FluentAssertions;
 using NUnit.Framework;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Housekeeping.Housekeepers;
+using NzbDrone.Core.MediaFiles;
+using NzbDrone.Core.Qualities;
 using NzbDrone.Core.Test.Framework;
+using NzbDrone.Test.Common;
 
 namespace NzbDrone.Core.Test.Housekeeping.Housekeepers
 {
@@ -19,6 +23,54 @@ namespace NzbDrone.Core.Test.Housekeeping.Housekeepers
             Db.Insert(book);
             Subject.Clean();
             AllStoredModels.Should().BeEmpty();
+        }
+
+        [Test]
+        public void should_not_delete_orphaned_book_that_has_files()
+        {
+            var book = Builder<Book>.CreateNew()
+                .With(b => b.AddOptions = new AddBookOptions { AddType = BookAddType.Automatic })
+                .BuildNew();
+            Db.Insert(book);
+
+            var edition = Builder<Edition>.CreateNew()
+                .With(e => e.BookId = book.Id)
+                .BuildNew();
+            Db.Insert(edition);
+
+            var bookFile = Builder<BookFile>.CreateNew()
+                .With(f => f.EditionId = edition.Id)
+                .With(f => f.Quality = new QualityModel())
+                .BuildNew();
+            Db.Insert(bookFile);
+
+            Subject.Clean();
+
+            AllStoredModels.Should().ContainSingle(b => b.Id == book.Id);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_not_delete_orphaned_book_added_by_hand()
+        {
+            var manual = Builder<Book>.CreateNew()
+                .With(b => b.AddOptions = new AddBookOptions { AddType = BookAddType.Manual })
+                .With(b => b.TitleSlug = "manual")
+                .With(b => b.ForeignBookId = "manual")
+                .BuildNew();
+
+            var automatic = Builder<Book>.CreateNew()
+                .With(b => b.AddOptions = new AddBookOptions { AddType = BookAddType.Automatic })
+                .With(b => b.TitleSlug = "automatic")
+                .With(b => b.ForeignBookId = "automatic")
+                .BuildNew();
+
+            Db.InsertMany(new List<Book> { manual, automatic });
+
+            Subject.Clean();
+
+            AllStoredModels.Should().ContainSingle().Which.Id.Should().Be(manual.Id);
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]

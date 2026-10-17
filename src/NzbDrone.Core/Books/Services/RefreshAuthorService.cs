@@ -164,8 +164,23 @@ namespace NzbDrone.Core.Books
         {
             _logger.Debug($"Updating foreign id for {local} to {remote}");
 
+            // Take every book along, not only the ones the new metadata lists. A book left on the old
+            // metadata id belongs to no author, and housekeeping deletes books like that. Once moved,
+            // a book the new list leaves out gets the usual per-book checks in the refresh below.
+            var oldMetadataId = local.AuthorMetadataId;
+            var newMetadataId = remote.Metadata.Value.Id;
+
+            var books = _bookService.GetBooksByAuthorMetadataId(oldMetadataId);
+
+            if (books.Any())
+            {
+                _logger.Debug("Moving {0} books of {1} from author metadata {2} to {3}", books.Count, local, oldMetadataId, newMetadataId);
+                books.ForEach(x => x.AuthorMetadataId = newMetadataId);
+                _bookService.UpdateMany(books);
+            }
+
             // We are moving from one metadata to another (will already have been poplated)
-            local.AuthorMetadataId = remote.Metadata.Value.Id;
+            local.AuthorMetadataId = newMetadataId;
             local.Metadata = remote.Metadata.Value;
 
             // Update list exclusion if one exists
