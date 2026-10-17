@@ -12,6 +12,7 @@ import { kinds } from 'Helpers/Props';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
 import formatDateTime from 'Utilities/Date/formatDateTime';
 import formatBytes from 'Utilities/Number/formatBytes';
+import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
 import styles from './ImportDestinationsModalContent.css';
 
@@ -74,7 +75,8 @@ class ImportDestinationsModalContent extends Component {
     this.state = {
       isFetching: true,
       error: null,
-      items: []
+      items: [],
+      isSubmitted: false
     };
   }
 
@@ -96,6 +98,23 @@ class ImportDestinationsModalContent extends Component {
     });
   }
 
+  componentDidUpdate(prevProps) {
+    const {
+      isImporting,
+      importError,
+      onModalClose
+    } = this.props;
+
+    if (this.state.isSubmitted && prevProps.isImporting && !isImporting) {
+      if (importError) {
+        // eslint-disable-next-line react/no-did-update-set-state
+        this.setState({ isSubmitted: false });
+      } else {
+        onModalClose();
+      }
+    }
+  }
+
   componentWillUnmount() {
     if (this._request) {
       this._request.abortRequest();
@@ -105,9 +124,10 @@ class ImportDestinationsModalContent extends Component {
   //
   // Listeners
 
+  // The modal stays open until the request is accepted, so a failure is shown here rather than lost
   onImportAndReplacePress = () => {
+    this.setState({ isSubmitted: true });
     this.props.onImportAndReplacePress();
-    this.props.onModalClose();
   };
 
   //
@@ -220,6 +240,7 @@ class ImportDestinationsModalContent extends Component {
     const {
       title,
       isImporting,
+      importError,
       onRemovePress,
       onModalClose
     } = this.props;
@@ -239,6 +260,13 @@ class ImportDestinationsModalContent extends Component {
         </ModalHeader>
 
         <ModalBody>
+          {
+            !!importError &&
+              <Alert kind={kinds.DANGER}>
+                {getErrorMessage(importError, translate('QueueImportFailed'))}
+              </Alert>
+          }
+
           {
             isFetching &&
               <LoadingIndicator />
@@ -306,6 +334,7 @@ ImportDestinationsModalContent.propTypes = {
   shortDateFormat: PropTypes.string.isRequired,
   timeFormat: PropTypes.string.isRequired,
   isImporting: PropTypes.bool,
+  importError: PropTypes.object,
   onImportAndReplacePress: PropTypes.func.isRequired,
   onRemovePress: PropTypes.func.isRequired,
   onModalClose: PropTypes.func.isRequired

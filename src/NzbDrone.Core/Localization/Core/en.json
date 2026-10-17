@@ -834,6 +834,7 @@
   "QueueChipWaitingToImport": "Waiting to import",
   "QueueChipWaitingToProcess": "Waiting to process",
   "QueueChipWarning": "Warning",
+  "QueueImportFailed": "The import request failed. Check the logs for details",
   "QueueIsEmpty": "Queue is empty",
   "Queued": "Queued",
   "RemoveFromSeries": "Remove from series",

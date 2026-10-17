@@ -22,6 +22,7 @@ import { icons, kinds, sizes, tooltipPositions } from 'Helpers/Props';
 import InteractiveImportModal from 'InteractiveImport/InteractiveImportModal';
 import formatBytes from 'Utilities/Number/formatBytes';
 import formatCustomFormatScore from 'Utilities/Number/formatCustomFormatScore';
+import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
 import getQueueStatusChips, { canRetryImport, CLOSE_MATCH, DESTINATION_EXISTS } from './getQueueStatusChips';
 import ImportDestinationsModal from './ImportDestinations/ImportDestinationsModal';
@@ -164,6 +165,7 @@ class QueueRow extends Component {
       isGrabbing,
       grabError,
       isImporting,
+      importError,
       isRemoving,
       isSelected,
       columns,
@@ -217,6 +219,7 @@ class QueueRow extends Component {
                   statusMessages={statusMessages}
                   errorMessage={errorMessage}
                   chips={chips}
+                  actionError={importError ? getErrorMessage(importError, translate('QueueImportFailed')) : null}
                 >
                   {
                     hasCloseMatch &&
@@ -506,6 +509,7 @@ class QueueRow extends Component {
           shortDateFormat={shortDateFormat}
           timeFormat={timeFormat}
           isImporting={isImporting}
+          importError={importError}
           onImportAndReplacePress={this.onImportAndReplacePress}
           onRemovePress={this.onCompareRemovePress}
           onModalClose={this.onImportDestinationsModalClose}
@@ -556,6 +560,7 @@ QueueRow.propTypes = {
   isGrabbing: PropTypes.bool.isRequired,
   grabError: PropTypes.object,
   isImporting: PropTypes.bool.isRequired,
+  importError: PropTypes.object,
   isRemoving: PropTypes.bool.isRequired,
   isSelected: PropTypes.bool,
   columns: PropTypes.arrayOf(PropTypes.object).isRequired,
