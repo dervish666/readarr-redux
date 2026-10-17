@@ -10,6 +10,12 @@ namespace NzbDrone.Core.MediaFiles.BookImport
         public ImportDecision<LocalBook> ImportDecision { get; private set; }
         public List<string> Errors { get; private set; }
 
+        // This import moved the file away from its source path, rather than copying or linking it
+        public bool SourceMoved { get; set; }
+
+        // The download folder this import deleted after checking no audio was left in it
+        public string RemovedFolder { get; set; }
+
         public ImportResultType Result
         {
             get

@@ -409,6 +409,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
             {
                 var trackedDownload = groupedTrackedDownload.First().TrackedDownload;
                 var outputPath = trackedDownload.ImportItem.OutputPath.FullPath;
+                var results = groupedTrackedDownload.Select(c => c.ImportResult).ToList();
 
                 if (_diskProvider.FolderExists(outputPath))
                 {
@@ -416,10 +417,10 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                         trackedDownload.DownloadItem.CanMoveFiles)
                     {
                         _diskProvider.DeleteFolder(outputPath, true);
+                        results.ForEach(r => r.RemovedFolder = outputPath);
                     }
                 }
 
-                var results = groupedTrackedDownload.Select(c => c.ImportResult).ToList();
                 var importedCount = results.Count(c => c.Result == ImportResultType.Imported);
                 var downloadItemCount = Math.Max(1, trackedDownload.RemoteBook?.Books.Count ?? 1);
                 var allItemsImported = importedCount >= downloadItemCount;
@@ -429,11 +430,28 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                 // imported from this download in an earlier pass, copied or hard linked, are still there too.
                 var importedBefore = _historyService.FindByDownloadId(trackedDownload.DownloadItem.DownloadId).ImportedSourcePaths();
 
+                // The files were picked in the UI, perhaps from an older listing. Importing files that aren't in the
+                // download's own path says nothing about what is left in it.
+                var outsideDownload = results.Where(r => r.Result == ImportResultType.Imported && r.ImportDecision.Item?.Path != null)
+                    .Select(r => r.ImportDecision.Item.Path)
+                    .Where(p => !PathEqualityComparer.Instance.Equals(p, outputPath) && !outputPath.IsParentPath(p))
+                    .ToList();
+
+                if (allItemsImported && outsideDownload.Any())
+                {
+                    _logger.Warn("Not marking {0} imported, files imported for it aren't in its path {1}: {2}",
+                        trackedDownload.DownloadItem.Title,
+                        outputPath,
+                        string.Join(", ", outsideDownload));
+
+                    allItemsImported = false;
+                }
+
                 if (allItemsImported)
                 {
                     try
                     {
-                        var leftBehind = results.AudioFilesLeftBehind(importedBefore, _diskProvider.AudioFilesOnDisk(outputPath));
+                        var leftBehind = results.AudioFilesLeftBehind(importedBefore, _diskProvider.AudioFilesOnDisk(outputPath, results));
 
                         if (leftBehind.Any())
                         {

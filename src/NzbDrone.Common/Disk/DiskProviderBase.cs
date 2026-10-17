@@ -182,18 +182,49 @@ namespace NzbDrone.Common.Disk
             });
         }
 
-        // Every file under path, hidden and dot-folders included, throwing on a folder that can't be read.
-        // GetFiles skips both, which is right for scanning and wrong for proving nothing was left behind.
+        // Every file under path, hidden and dot-folders included, throwing on a folder that can't be read or that
+        // disappears while it is listed. GetFiles skips hidden entries and unreadable folders, which is right for
+        // scanning and wrong for proving nothing was left behind. Each folder is listed on its own, because the
+        // built-in recursion skips a subfolder that vanishes mid-listing. A directory symlink or junction is not
+        // followed: it can loop, and deleting the folder removes only the link, not what it points to.
         public List<string> GetAllFilesOrThrow(string path)
         {
             Ensure.That(path, () => path).IsValidPath(PathValidationType.CurrentOs);
 
-            return _fileSystem.Directory.EnumerateFiles(path, "*", new EnumerationOptions
+            var options = new EnumerationOptions
             {
-                RecurseSubdirectories = true,
+                RecurseSubdirectories = false,
                 IgnoreInaccessible = false,
                 AttributesToSkip = 0
-            }).ToList();
+            };
+
+            var files = new List<string>();
+            var folders = new Stack<string>();
+            folders.Push(path);
+
+            while (folders.Count > 0)
+            {
+                var folder = folders.Pop();
+
+                if (!_fileSystem.Directory.Exists(folder))
+                {
+                    throw new DirectoryNotFoundException($"{folder} disappeared while it was being listed");
+                }
+
+                files.AddRange(_fileSystem.Directory.EnumerateFiles(folder, "*", options));
+
+                foreach (var child in _fileSystem.Directory.EnumerateDirectories(folder, "*", options))
+                {
+                    if (_fileSystem.DirectoryInfo.FromDirectoryName(child).Attributes.HasFlag(FileAttributes.ReparsePoint))
+                    {
+                        continue;
+                    }
+
+                    folders.Push(child);
+                }
+            }
+
+            return files;
         }
 
         public long GetFolderSize(string path)

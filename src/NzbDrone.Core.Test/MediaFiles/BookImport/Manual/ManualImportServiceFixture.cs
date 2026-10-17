@@ -144,6 +144,43 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport.Manual
             ExceptionVerification.ExpectedWarns(1);
         }
 
+        // A selection from an older listing: the file is readable elsewhere, the download's own path is empty
+        [Test]
+        public void manual_import_should_not_complete_a_download_from_files_outside_its_path()
+        {
+            var folder = @"C:\downloads\The Autumn Republic".AsOsAgnostic();
+            var stale = System.IO.Path.Combine(@"C:\old\The Autumn Republic".AsOsAgnostic(), "Part 01.mp3");
+
+            var trackedDownload = GivenManualImportFromDownload(folder, new[] { stale });
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.GetAllFilesOrThrow(folder)).Returns(new List<string>());
+
+            Subject.Execute(ImportCommand(stale));
+
+            Mocker.GetMock<IEventAggregator>()
+                  .Verify(v => v.PublishEvent(It.IsAny<DownloadCompletedEvent>()), Times.Never());
+
+            trackedDownload.State.Should().Be(TrackedDownloadState.ImportFailed);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void manual_import_should_not_complete_a_download_whose_path_went_missing()
+        {
+            var folder = @"C:\downloads\The Autumn Republic".AsOsAgnostic();
+            var part = System.IO.Path.Combine(folder, "Part 01.mp3");
+
+            var trackedDownload = GivenManualImportFromDownload(folder, new[] { part });
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FolderExists(folder)).Returns(false);
+
+            Subject.Execute(ImportCommand(part));
+
+            Mocker.GetMock<IEventAggregator>()
+                  .Verify(v => v.PublishEvent(It.IsAny<DownloadCompletedEvent>()), Times.Never());
+
+            trackedDownload.State.Should().Be(TrackedDownloadState.ImportFailed);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
         // Copy or hard link leaves part 1 in the folder after the first pass; it was imported, not left behind
         [Test]
         public void manual_import_should_complete_a_download_imported_in_two_copy_passes()

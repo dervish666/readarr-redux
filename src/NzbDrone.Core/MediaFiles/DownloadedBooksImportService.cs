@@ -114,6 +114,16 @@ namespace NzbDrone.Core.MediaFiles
         {
             try
             {
+                // The book file scan below skips extras, @eaDir, dot-folders and hidden files. Audio left in any of
+                // them would go with the folder, so check with the same unfiltered listing completion uses.
+                var audioLeft = _diskProvider.AudioFilesOnDisk(directoryInfo.FullName, new List<ImportResult>());
+
+                if (audioLeft.Any())
+                {
+                    _logger.Warn("Not deleting {0}, audio files are still in it: {1}", directoryInfo.FullName, string.Join(", ", audioLeft.Select(Path.GetFileName)));
+                    return false;
+                }
+
                 var bookFiles = _diskScanService.GetBookFiles(directoryInfo.FullName);
                 var rarFiles = _diskProvider.GetFiles(directoryInfo.FullName, true).Where(f =>
                     Path.GetExtension(f).Equals(".rar",
@@ -246,6 +256,9 @@ namespace NzbDrone.Core.MediaFiles
                 try
                 {
                     _diskProvider.DeleteFolder(directoryInfo.FullName, true);
+
+                    // Lets completion tell this folder going from a share dropping or a client cleaning up
+                    importResults.ForEach(r => r.RemovedFolder = directoryInfo.FullName);
                 }
                 catch (IOException e)
                 {

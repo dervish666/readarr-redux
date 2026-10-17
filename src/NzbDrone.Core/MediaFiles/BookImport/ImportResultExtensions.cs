@@ -27,6 +27,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
         {
             var results = importResults.ToList();
 
+            // Known limit: paths compare case-insensitively on Windows, even in a folder set case-sensitive there
             var leftBehind = results
                 .Where(r => IsAudio(r.ImportDecision.Item?.Path))
                 .GroupBy(r => r.ImportDecision.Item.Path, PathEqualityComparer.Instance)
@@ -47,9 +48,11 @@ namespace NzbDrone.Core.MediaFiles.BookImport
         }
 
         // Every audio file in a download as it sits on disk, in any folder, leaving out only macOS "._" files.
-        // A path that is gone holds nothing: an import that moved the files removes the folder. Throws when a
-        // folder can't be read, and the caller must then not call the download imported.
-        public static List<string> AudioFilesOnDisk(this IDiskProvider diskProvider, string outputPath)
+        // Throws when it can't be listed, and the caller must then not call the download imported or delete it.
+        // A missing path counts as empty only when this same import removed it: it deleted the folder after
+        // checking, or moved that exact single file. Anything else (a share that dropped, a mapping gone stale)
+        // throws, because the files may still be in the client and Remove Completed would delete them.
+        public static List<string> AudioFilesOnDisk(this IDiskProvider diskProvider, string outputPath, IEnumerable<ImportResult> importResults)
         {
             IEnumerable<string> files;
 
@@ -61,12 +64,24 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             {
                 files = diskProvider.GetAllFilesOrThrow(outputPath);
             }
-            else
+            else if (importResults.Any(r => RemovedBy(r, outputPath)))
             {
                 return new List<string>();
             }
+            else
+            {
+                throw new DirectoryNotFoundException($"{outputPath} is missing and this import didn't remove it");
+            }
 
             return files.Where(p => IsAudio(p) && !Path.GetFileName(p).StartsWith("._")).ToList();
+        }
+
+        private static bool RemovedBy(ImportResult result, string outputPath)
+        {
+            var comparer = PathEqualityComparer.Instance;
+
+            return (result.RemovedFolder != null && comparer.Equals(result.RemovedFolder, outputPath)) ||
+                   (result.Result == ImportResultType.Imported && result.SourceMoved && comparer.Equals(result.ImportDecision.Item?.Path ?? string.Empty, outputPath));
         }
 
         // Source paths of the files history says were imported from this download

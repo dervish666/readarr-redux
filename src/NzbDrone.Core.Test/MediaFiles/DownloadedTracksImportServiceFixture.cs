@@ -321,6 +321,35 @@ namespace NzbDrone.Core.Test.MediaFiles
             DiskProvider.FolderExists(_subFolders[0]).Should().BeFalse();
         }
 
+        // The book file scan skips dot-folders; the audio in one must not go when the folder is cleaned up
+        [TestCase(".@__thumb")]
+        [TestCase("extras")]
+        public void should_not_delete_folder_after_a_move_while_audio_is_left_in_a_folder_the_scan_skips(string skipped)
+        {
+            GivenValidAuthor();
+            GivenSuccessfulImport();
+
+            var leftover = System.IO.Path.Combine(_subFolders[0], skipped, "Part 02.mp3");
+            FileSystem.AddFile(leftover, new MockFileData("audio"));
+
+            var results = Subject.ProcessPath(_droneFactory, ImportMode.Move, _trackedDownload.RemoteBook.Author, _trackedDownload.DownloadItem);
+
+            DiskProvider.FileExists(leftover).Should().BeTrue();
+            results.Should().OnlyContain(r => r.RemovedFolder == null);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_record_the_folder_it_removed_after_a_move()
+        {
+            GivenValidAuthor();
+            GivenSuccessfulImport();
+
+            var results = Subject.ProcessPath(_droneFactory, ImportMode.Move, _trackedDownload.RemoteBook.Author, _trackedDownload.DownloadItem);
+
+            results.Should().OnlyContain(r => r.RemovedFolder != null);
+        }
+
         [Test]
         public void should_not_delete_folder_if_importmode_copy()
         {

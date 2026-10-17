@@ -75,6 +75,10 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
             Mocker.GetMock<IProvideImportItemService>()
                 .Setup(s => s.ProvideImportItem(It.IsAny<DownloadClientItem>(), It.IsAny<DownloadClientItem>()))
                 .Returns<DownloadClientItem, DownloadClientItem>((i, p) => i);
+
+            // The download folder is there and holds no audio unless a test says otherwise
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FolderExists(completed.OutputPath.FullPath)).Returns(true);
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.GetAllFilesOrThrow(completed.OutputPath.FullPath)).Returns(new List<string>());
         }
 
         private Book CreateBook(int id)
@@ -790,6 +794,56 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
 
             AssertNotImported();
             ExceptionVerification.ExpectedWarns(1);
+        }
+
+        private void GivenDownloadFolderGone()
+        {
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FolderExists(DownloadFolder)).Returns(false);
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FileExists(DownloadFolder)).Returns(false);
+        }
+
+        // A share that drops between the scan and this check takes the unimported parts out of sight, not off disk
+        [Test]
+        public void should_not_mark_as_imported_when_the_download_folder_went_missing_without_this_import_removing_it()
+        {
+            GivenPartResults(new ImportResult(new ImportDecision<LocalBook>(OnDisk("Part 01.mp3"))) { SourceMoved = true });
+            GivenDownloadFolderGone();
+
+            Subject.Import(_trackedDownload);
+
+            AssertNotImported();
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_mark_as_imported_when_this_import_removed_the_download_folder()
+        {
+            GivenPartResults(new ImportResult(new ImportDecision<LocalBook>(OnDisk("Part 01.mp3"))) { SourceMoved = true, RemovedFolder = DownloadFolder });
+            GivenDownloadFolderGone();
+
+            Subject.Import(_trackedDownload);
+
+            AssertImported();
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void should_mark_a_missing_single_file_download_imported_only_when_this_import_moved_it(bool moved)
+        {
+            GivenDownloadFolderGone();
+            GivenPartResults(new ImportResult(new ImportDecision<LocalBook>(new LocalBook { Path = DownloadFolder, Book = _trackedDownload.RemoteBook.Books[0], Author = _author })) { SourceMoved = moved });
+
+            Subject.Import(_trackedDownload);
+
+            if (moved)
+            {
+                AssertImported();
+            }
+            else
+            {
+                AssertNotImported();
+                ExceptionVerification.ExpectedWarns(1);
+            }
         }
 
         private void AssertNotImported()

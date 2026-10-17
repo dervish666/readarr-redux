@@ -330,7 +330,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     }
 
                     filesToAdd.Add(bookFile);
-                    importResults.Add(new ImportResult(importDecision));
+                    importResults.Add(new ImportResult(importDecision) { SourceMoved = !copyOnly && !localTrack.ExistingFile });
 
                     if (!localTrack.ExistingFile)
                     {

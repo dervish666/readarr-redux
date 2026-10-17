@@ -219,7 +219,7 @@ namespace NzbDrone.Core.Download
 
             try
             {
-                audioFilesOnDisk = _diskProvider.AudioFilesOnDisk(outputPath);
+                audioFilesOnDisk = _diskProvider.AudioFilesOnDisk(outputPath, importResults);
             }
             catch (Exception ex)
             {
