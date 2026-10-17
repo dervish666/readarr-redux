@@ -44,6 +44,7 @@ function QueueStatusCell(props) {
     statusMessages,
     errorMessage,
     chips,
+    actionError,
     children
   } = props;
 
@@ -163,6 +164,13 @@ function QueueStatusCell(props) {
             {actions}
           </div>
       }
+
+      {
+        actionError &&
+          <div className={styles.actionError}>
+            {actionError}
+          </div>
+      }
     </TableRowCell>
   );
 }
@@ -175,6 +183,7 @@ QueueStatusCell.propTypes = {
   statusMessages: PropTypes.arrayOf(PropTypes.object),
   errorMessage: PropTypes.string,
   chips: PropTypes.arrayOf(PropTypes.object).isRequired,
+  actionError: PropTypes.string,
   children: PropTypes.node
 };
 

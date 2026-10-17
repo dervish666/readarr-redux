@@ -25,3 +25,8 @@
 
   margin-top: 4px;
 }
+
+.actionError {
+  margin-top: 4px;
+  color: var(--dangerColor);
+}

@@ -58,6 +58,11 @@ namespace NzbDrone.Core.Test.MusicTests
             Mocker.GetMock<IEditionService>()
                 .Setup(s => s.GetEditionsByBook(It.IsAny<int>()))
                 .Returns(new List<Edition>());
+
+            // As on a second refresh past the grace period, so a book the metadata lost can be deleted
+            Mocker.GetMock<IMissingBookTracker>()
+                .Setup(s => s.MissingLongEnough(It.IsAny<Book>(), It.IsAny<DateTime>()))
+                .Returns(true);
         }
 
         private void GivenBookLookupReturnsBook(string foreignBookId = null)
@@ -783,6 +788,108 @@ namespace NzbDrone.Core.Test.MusicTests
         }
 
         [Test]
+        public void should_refresh_with_the_overrides_saved_since_the_book_was_loaded()
+        {
+            _book.MetadataOverrides = new BookMetadataOverrides { Title = "Old title" };
+
+            Mocker.GetMock<IBookService>()
+                .Setup(s => s.FindById(_book.ForeignBookId))
+                .Returns(Builder<Book>.CreateNew()
+                    .With(b => b.Id = _book.Id)
+                    .With(b => b.ForeignBookId = _book.ForeignBookId)
+                    .With(b => b.MetadataOverrides = new BookMetadataOverrides { Title = "New title" })
+                    .Build());
+
+            RefreshWithRemoteEditions(new List<Edition>(), new List<Edition> { RemoteEdition("1", true) });
+
+            _book.MetadataOverrides.Title.Should().Be("New title");
+            _book.Title.Should().Be("New title");
+        }
+
+        [Test]
+        public void should_keep_book_whose_work_and_edition_are_gone_the_first_time_it_is_missing()
+        {
+            GivenMergedWork(HttpStatusCode.NotFound);
+            GivenMonitoredEdition();
+
+            Mocker.GetMock<IMissingBookTracker>()
+                .Setup(s => s.MissingLongEnough(It.IsAny<Book>(), It.IsAny<DateTime>()))
+                .Returns(false);
+
+            RefreshWithBookMissingFromAuthorList();
+
+            VerifyBookDeleted(Times.Never());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_not_hand_monitoring_to_the_library_copy_the_first_time_a_duplicate_is_missing()
+        {
+            GivenMergedWork(HttpStatusCode.SeeOther);
+            GivenMonitoredEdition();
+
+            _book.Monitored = true;
+
+            Mocker.GetMock<IMissingBookTracker>()
+                .Setup(s => s.MissingLongEnough(It.IsAny<Book>(), It.IsAny<DateTime>()))
+                .Returns(false);
+
+            Mocker.GetMock<IBookService>()
+                .Setup(s => s.FindById("2"))
+                .Returns(Builder<Book>.CreateNew().With(b => b.Id = 2).With(b => b.ForeignBookId = "2").With(b => b.Monitored = false).Build());
+
+            RefreshWithBookMissingFromAuthorList();
+
+            VerifyBookDeleted(Times.Never());
+
+            Mocker.GetMock<IBookService>()
+                .Verify(v => v.SetBookMonitored(It.IsAny<int>(), It.IsAny<bool>()), Times.Never());
+
+            Mocker.GetMock<IEditionService>()
+                .Verify(v => v.UpdateMany(It.IsAny<List<Edition>>()), Times.Never());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_keep_book_whose_work_and_edition_are_gone_if_the_user_edited_its_metadata()
+        {
+            GivenMergedWork(HttpStatusCode.NotFound);
+            GivenMonitoredEdition();
+
+            _book.MetadataOverrides = new BookMetadataOverrides { Title = "My title" };
+
+            RefreshWithBookMissingFromAuthorList();
+
+            VerifyEditionLookups(0);
+            VerifyBookDeleted(Times.Never());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_keep_book_merged_into_a_library_book_if_the_user_linked_it_to_a_series()
+        {
+            GivenMergedWork(HttpStatusCode.SeeOther);
+            GivenMonitoredEdition();
+
+            Mocker.GetMock<IBookService>()
+                .Setup(s => s.FindById("2"))
+                .Returns(Builder<Book>.CreateNew().With(b => b.Id = 2).With(b => b.ForeignBookId = "2").Build());
+
+            Mocker.GetMock<ISeriesBookLinkService>()
+                .Setup(s => s.GetLinksByBook(It.Is<List<int>>(l => l.Contains(_book.Id))))
+                .Returns(new List<SeriesBookLink> { new SeriesBookLink { BookId = _book.Id, IsManual = true } });
+
+            RefreshWithBookMissingFromAuthorList();
+
+            VerifyBookDeleted(Times.Never());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
         public void should_delete_book_whose_work_is_gone_without_a_monitored_edition_to_follow()
         {
             GivenMergedWork(HttpStatusCode.SeeOther);
@@ -851,6 +958,37 @@ namespace NzbDrone.Core.Test.MusicTests
             VerifyBookDeleted(Times.Never());
 
             ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_not_cut_down_the_cached_authors_works_list_when_refreshing_one_book()
+        {
+            var remoteAuthor = Builder<Author>.CreateNew()
+                .With(a => a.Metadata = Builder<AuthorMetadata>.CreateNew().Build())
+                .With(a => a.Books = Builder<Book>.CreateListOfSize(3).BuildList())
+                .Build();
+
+            var remoteBook = Builder<Book>.CreateNew()
+                .With(b => b.Id = 0)
+                .With(b => b.ForeignBookId = _book.ForeignBookId)
+                .With(b => b.Editions = new List<Edition>())
+                .Build();
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Setup(s => s.GetBookInfo(_book.ForeignBookId))
+                .Returns(Tuple.Create(remoteAuthor.ForeignAuthorId, remoteBook, new List<AuthorMetadata> { remoteAuthor.Metadata.Value }));
+
+            Mocker.GetMock<IProvideAuthorInfo>()
+                .Setup(s => s.GetAuthorInfo(remoteAuthor.ForeignAuthorId, It.IsAny<bool>()))
+                .Returns(remoteAuthor);
+
+            Mocker.GetMock<IBookService>()
+                .Setup(s => s.GetBook(_book.Id))
+                .Returns(_book);
+
+            Subject.Execute(new RefreshBookCommand(_book.Id));
+
+            remoteAuthor.Books.Value.Should().HaveCount(3);
         }
 
         [Test]

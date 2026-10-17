@@ -17,6 +17,7 @@ namespace NzbDrone.Core.MediaFiles
         BookFileMoveResult UpgradeBookFile(BookFile bookFile, LocalBook localBook, bool copyOnly = false, ICollection<string> importedPaths = null);
         void RemoveSetAsideFiles(IEnumerable<SetAsideBookFile> files);
         List<SetAsideBookFile> RestoreSetAsideFiles(IEnumerable<SetAsideBookFile> files);
+        List<SetAsideBookFile> RollBack(IEnumerable<BookFileMoveResult> results);
     }
 
     public class UpgradeMediaFileService : IUpgradeMediaFiles
@@ -180,6 +181,10 @@ namespace NzbDrone.Core.MediaFiles
             }
 
             moveFileResult.SetAsideFiles = setAside;
+            moveFileResult.SourcePath = sourcePath;
+            moveFileResult.CopyOnly = copyOnly;
+            moveFileResult.IsCalibre = isCalibre;
+            moveFileResult.DisplacedFile = displaced;
 
             if (!isCalibre)
             {
@@ -287,6 +292,47 @@ namespace NzbDrone.Core.MediaFiles
                 _logger.Error(e, "Unable to undo the import of {0}, the new file is still at {1}", sourcePath, destination);
                 importedPaths?.Add(destination);
             }
+        }
+
+        // The new rows failed to save after every file moved, so undo the import: new files go back where they came
+        // from, the files they replaced go back in place, and the rows UpgradeBookFile deleted for those files,
+        // this book's and any other book's file that was in the way, are added again. Returns what stays set aside.
+        public List<SetAsideBookFile> RollBack(IEnumerable<BookFileMoveResult> results)
+        {
+            var list = results.ToList();
+
+            foreach (var result in list.Where(x => !x.IsCalibre && x.SourcePath != null && x.BookFile != null && !x.BookFile.Path.PathEquals(x.SourcePath)))
+            {
+                UndoTransfer(result.BookFile, result.SourcePath, result.CopyOnly, null);
+            }
+
+            var kept = RestoreSetAsideFiles(list.SelectMany(x => x.SetAsideFiles));
+
+            var rows = list.SelectMany(x => x.OldFiles)
+                .Concat(list.Where(x => x.DisplacedFile != null).Select(x => x.DisplacedFile))
+                .DistinctBy(x => x.Path)
+                .ToList();
+
+            foreach (var row in rows)
+            {
+                if (!_diskProvider.FileExists(row.Path) || _mediaFileService.GetFileWithPath(row.Path) != null)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    row.Id = 0;
+                    _mediaFileService.Add(row);
+                    _logger.Info("Put the library entry for {0} back", row.Path);
+                }
+                catch (Exception e)
+                {
+                    _logger.Error(e, "Couldn't put the library entry for {0} back, rescan its author to pick the file up again", row.Path);
+                }
+            }
+
+            return kept;
         }
 
         public List<SetAsideBookFile> RestoreSetAsideFiles(IEnumerable<SetAsideBookFile> files)

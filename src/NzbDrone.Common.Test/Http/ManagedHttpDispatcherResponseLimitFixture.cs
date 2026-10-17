@@ -46,19 +46,19 @@ namespace NzbDrone.Common.Test.Http
                 _handler = handler;
             }
 
-            protected override HttpClient GetClient(HttpUri uri)
+            protected override HttpClient GetClient(HttpUri uri, bool publicAddressesOnly)
             {
                 return new HttpClient(_handler, false);
             }
         }
 
-        private HttpResponse Get(HttpStatusCode statusCode, HttpContent content, long? maxResponseLength)
+        private HttpResponse Get(HttpStatusCode statusCode, HttpContent content, long? maxResponseLength, Stream responseStream = null)
         {
             var userAgent = new Mock<IUserAgentBuilder>();
             userAgent.Setup(s => s.GetUserAgent(It.IsAny<bool>())).Returns("Readarr/1.0");
 
             var dispatcher = new StubDispatcher(new StubHandler(() => new HttpResponseMessage(statusCode) { Content = content }), userAgent.Object);
-            var request = new HttpRequest("http://metadata.local/work/1") { MaxResponseLength = maxResponseLength };
+            var request = new HttpRequest("http://metadata.local/work/1") { MaxResponseLength = maxResponseLength, ResponseStream = responseStream };
 
             return dispatcher.GetResponseAsync(request, new CookieContainer()).GetAwaiter().GetResult();
         }
@@ -107,6 +107,29 @@ namespace NzbDrone.Common.Test.Http
             var response = Get(HttpStatusCode.OK, new ByteArrayContent(Bytes(Limit * 4)), null);
 
             response.ResponseData.Should().HaveCount(Limit * 4);
+        }
+
+        [Test]
+        public void should_stop_streaming_to_a_file_once_the_body_passes_the_limit()
+        {
+            var content = new StreamContent(new MemoryStream(Bytes(Limit * 4)));
+            content.Headers.ContentLength = 10;
+            using var file = new MemoryStream();
+
+            Action act = () => Get(HttpStatusCode.OK, content, Limit, file);
+
+            act.Should().Throw<HttpResponseTooLargeException>();
+            file.Length.Should().BeLessOrEqualTo(Limit);
+        }
+
+        [Test]
+        public void should_stream_a_body_within_the_limit_to_a_file()
+        {
+            using var file = new MemoryStream();
+
+            Get(HttpStatusCode.OK, new ByteArrayContent(Bytes(Limit)), Limit, file);
+
+            file.Length.Should().Be(Limit);
         }
     }
 }

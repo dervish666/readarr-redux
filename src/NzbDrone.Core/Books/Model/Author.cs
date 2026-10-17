@@ -56,6 +56,12 @@ namespace NzbDrone.Core.Books
             get { return Metadata.Value.ForeignAuthorId; } set { Metadata.Value.ForeignAuthorId = value; }
         }
 
+        // A copy whose properties can be set without changing this one, for objects shared through a cache
+        public Author ShallowCopy()
+        {
+            return (Author)MemberwiseClone();
+        }
+
         public override string ToString()
         {
             return string.Format("[{0}][{1}]", Metadata.Value.ForeignAuthorId.NullSafe(), Metadata.Value.Name.NullSafe());

@@ -12,6 +12,10 @@ namespace NzbDrone.Core.MediaCover
         public const string DefaultExtension = ".jpg";
         public const int HeaderLength = 12;
 
+        // Cover URLs come from the metadata source, so a hostile or broken server could otherwise stream until the
+        // disk or memory runs out. Every cover download and header lookup stops at this many bytes.
+        public const long MaxLength = 20 * 1024 * 1024;
+
         public static readonly HashSet<string> AllowedExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             ".jpg",

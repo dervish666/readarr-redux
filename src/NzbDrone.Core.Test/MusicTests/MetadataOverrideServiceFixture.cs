@@ -6,7 +6,9 @@ using Moq;
 using NUnit.Framework;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Books.Commands;
+using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.Messaging.Commands;
+using NzbDrone.Core.MetadataSource;
 using NzbDrone.Core.Test.Framework;
 
 namespace NzbDrone.Core.Test.MusicTests
@@ -287,6 +289,54 @@ namespace NzbDrone.Core.Test.MusicTests
 
             Mocker.GetMock<IManageCommandQueue>()
                 .Verify(v => v.Push(It.Is<RefreshAuthorCommand>(c => c.AuthorId == 4), It.IsAny<CommandPriority>(), It.IsAny<CommandTrigger>()), Times.Once());
+
+            // A refresh put the user's overview on the cached author, so the cache has to go before that refresh runs
+            Mocker.GetMock<IProvideAuthorInfo>()
+                .Verify(v => v.EvictAuthor(_metadata.ForeignAuthorId), Times.Exactly(2));
+        }
+
+        [Test]
+        public void should_drop_the_cached_author_when_a_book_is_edited()
+        {
+            var edit = EditOf(_book7);
+            edit.Title = "Defiance of the Fall, Book Seven";
+            _subject.UpdateBookMetadata(_book7.Id, edit);
+
+            Mocker.GetMock<IProvideAuthorInfo>()
+                .Verify(v => v.EvictAuthor(_metadata.ForeignAuthorId), Times.Once());
+        }
+
+        [TestCase(-1, null)]
+        [TestCase(0, null)]
+        [TestCase(0, "  ")]
+        public void should_reject_an_invalid_series_row_and_change_nothing(int seriesId, string newSeriesTitle)
+        {
+            var edit = EditOf(_book1);
+            edit.Title = "Changed";
+            edit.Series = new List<BookSeriesEdit> { new BookSeriesEdit { SeriesId = seriesId, NewSeriesTitle = newSeriesTitle } };
+
+            Assert.Throws<NzbDroneClientException>(() => _subject.UpdateBookMetadata(_book1.Id, edit));
+
+            Links().Should().ContainSingle(x => x.BookId == _book1.Id && x.SeriesId == _series.Id);
+            var book = Mocker.Resolve<BookRepository>().Get(_book1.Id);
+            book.Title.Should().Be("Defiance of the Fall");
+            book.MetadataOverrides.RemovedFromSeries.Should().BeEmpty();
+        }
+
+        [Test]
+        public void should_reject_an_unknown_series_before_removing_links_or_starting_series()
+        {
+            var edit = EditOf(_book1);
+            edit.Series = new List<BookSeriesEdit>
+            {
+                new BookSeriesEdit { SeriesId = 0, NewSeriesTitle = "Side Stories" },
+                new BookSeriesEdit { SeriesId = 9999 }
+            };
+
+            Assert.Throws<NzbDroneClientException>(() => _subject.UpdateBookMetadata(_book1.Id, edit));
+
+            Links().Should().ContainSingle(x => x.BookId == _book1.Id && x.SeriesId == _series.Id);
+            Mocker.Resolve<SeriesRepository>().All().Should().ContainSingle();
         }
     }
 }

@@ -7,9 +7,10 @@ using NzbDrone.Core.Localization;
 
 namespace NzbDrone.Core.HealthCheck.Checks
 {
-    // With no login set up, Readarr answers any request that looks local, and /initialize.json hands those
-    // requests the API key. A reverse proxy on the same machine or network that doesn't pass on the client
-    // address makes every request it forwards look local, so say so at startup and in System > Status.
+    // With no login set up, the web UI answers only the local network, and until setup is finished it also asks for
+    // the one-time setup code from the log, since a reverse proxy on the same machine that doesn't pass on the client
+    // address makes every request look local. Running on with no login, by setting AuthenticationNoneConfirmed, drops
+    // the code, and then that proxy hands anyone the API key, so say so at startup and in System > Status.
     [CheckOn(typeof(ApplicationStartedEvent))]
     [CheckOn(typeof(ConfigFileSavedEvent))]
     public class AuthenticationNotSetUpCheck : HealthCheckBase
@@ -31,13 +32,20 @@ namespace NzbDrone.Core.HealthCheck.Checks
                 return new HealthCheck(GetType());
             }
 
-            _logger.Warn("No login is set up. Until one is, the API key is open to any request that looks local, " +
-                         "including requests through a reverse proxy that doesn't forward the client's address. " +
-                         "Set a username and password in Settings, General, Security.");
+            if (!_configFileProvider.AuthenticationNoneConfirmed)
+            {
+                return new HealthCheck(GetType(),
+                    HealthCheckResult.Error,
+                    _localizationService.GetLocalizedString("AuthenticationNotSetUpCheckMessage"),
+                    "#authentication-not-set-up");
+            }
+
+            _logger.Warn("Running with no login, as AuthenticationNoneConfirmed is set. The API key is open to any request that looks local, " +
+                         "including requests through a reverse proxy that doesn't forward the client's address.");
 
             return new HealthCheck(GetType(),
-                HealthCheckResult.Error,
-                _localizationService.GetLocalizedString("AuthenticationNotSetUpCheckMessage"),
+                HealthCheckResult.Warning,
+                _localizationService.GetLocalizedString("AuthenticationNoneConfirmedCheckMessage"),
                 "#authentication-not-set-up");
         }
     }

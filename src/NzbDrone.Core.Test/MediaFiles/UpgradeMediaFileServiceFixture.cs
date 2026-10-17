@@ -441,6 +441,33 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void should_put_a_replaced_file_and_its_library_entry_back_when_the_import_is_rolled_back()
+        {
+            var occupant = new BookFile { Id = 7, EditionId = 4 };
+            var disk = GivenAFileInTheWay(occupant);
+            var sourcePath = _trackFile.Path;
+            var deleted = false;
+            _localTrack.ReplaceDestination = true;
+
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(s => s.Delete(occupant, DeleteMediaFileReason.Upgrade))
+                .Callback(() => deleted = true);
+
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(s => s.GetFileWithPath(occupant.Path))
+                .Returns(() => deleted ? null : occupant);
+
+            var result = Subject.UpgradeBookFile(_trackFile, _localTrack);
+
+            var kept = Subject.RollBack(new List<BookFileMoveResult> { result });
+
+            kept.Should().BeEmpty();
+            disk.Should().Contain(occupant.Path, "other");
+            disk.Should().Contain(sourcePath, "new");
+            Mocker.GetMock<IMediaFileService>().Verify(v => v.Add(It.Is<BookFile>(f => f.Path == occupant.Path && f.EditionId == 4)), Times.Once());
+        }
+
+        [Test]
         public void should_return_old_track_file_in_oldFiles()
         {
             GivenSingleTrackWithSingleTrackFile();

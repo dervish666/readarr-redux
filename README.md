@@ -50,10 +50,10 @@ Indexers, download clients, root folders, profiles and Calibre settings carry ov
 
 The full list is in [CHANGELOG.md](CHANGELOG.md).
 
-- **Metadata.** The source is a setting with a Test button and a health check. Search, ISBN and ASIN lookups, the Goodreads Series import list and refreshes all go through it; only the Goodreads List import list still reads goodreads.com. An outage serves the last good answer instead of failing, and rate limits or a slow source can no longer stall a refresh for hours.
-- **Data loss.** Authors, books and editions are no longer deleted when the source answers 404, returns a truncated works list or merges a work into another one (merges are followed). Upgrades no longer remove old files before the new ones are in place.
-- **Imports.** Downloads stay matched to the book that was grabbed, packs import as packs, and multi-part audiobooks no longer lose, misnumber or silently skip parts.
-- **Security.** Salted PBKDF2 password hashes, login throttling, sessions revoked when credentials change, and fixes for a forwarded-header auth bypass, path traversal in file routes, zip-slip and SQL injection (CVE-2025-50983).
+- **Metadata.** The source is a setting with a Test button and a health check. Search, ISBN and ASIN lookups, the Goodreads Series import list and refreshes all go through it. Only the Goodreads List import list still reads goodreads.com, with an API key built into upstream Readarr, so it stops working if Goodreads revokes that key. An outage serves the last good answer instead of failing, and rate limits or a slow source can no longer stall a refresh for hours.
+- **Data loss.** Authors, books and editions are no longer deleted when the source answers 404, returns a truncated works list or merges a work into another one (merges are followed). A book the source can't find is deleted only when a refresh at least 12 hours after the first miss still can't find it, and never when it has files or was added or edited by hand. Upgrades no longer remove old files before the new ones are in place. Folder clean-up and the recycle bin never go through symlinks or junctions, and never delete a folder that still holds hidden files.
+- **Imports.** Downloads stay matched to the book that was grabbed, packs import as packs, and multi-part audiobooks no longer lose, misnumber or silently skip parts. A download counts as imported only when every audio file in it has imported, so Remove Completed Downloads can't delete parts that didn't. Anything left over keeps the download in the queue as Import Failed for you to sort out by hand.
+- **Security.** Salted PBKDF2 password hashes, login throttling, sessions revoked when credentials change, and fixes for a forwarded-header auth bypass, path traversal in file routes, zip-slip and SQL injection (CVE-2025-50983). With no login set up, only local requests get in. Covers must be real raster images and are served so a browser can't run them.
 - **Platform.** .NET 10 and React 18. No call-home: Sentry, update checks and server-side notifications are removed.
 - **Download clients.** qBittorrent 5.2 login and API keys, Transmission 4 labels, Deluge daemon reconnects, SABnzbd 4.1 sorter checks, and torrents left intact when Remove Completed Downloads is off.
 
@@ -64,6 +64,14 @@ The Goodreads Bookshelf import list and notification sign their Goodreads reques
 ### Who can make Readarr fetch URLs
 
 Indexers, download clients, notifications, import lists and the metadata source all take URLs, and Readarr will request whatever they point at, including addresses on your LAN. That is by design: anyone with the API key or a login is an administrator. Keep both private.
+
+Cover URLs are different. The metadata source chooses them, so Readarr only fetches covers from public addresses, or from the metadata source's own host. A cover server on any other LAN address is refused, and covers over 20 MB are dropped.
+
+### First run: the setup code
+
+Until a login is set up, the web UI answers only the local network, and only after you enter a one-time setup code. Readarr writes the code to its console and log every time it starts (`docker logs readarr`, or `logs/readarr.txt` in the data folder). Without it, a reverse proxy on the same machine that sends no `X-Forwarded-For` header would make every visitor look local and hand them the API key. Once the code is in, Readarr asks you for a username and password, and after that the code isn't needed.
+
+To run with no login on purpose, set `<AuthenticationNoneConfirmed>True</AuthenticationNoneConfirmed>` in `config.xml` (or `READARR__AUTH__NONECONFIRMED=true`) and restart. That drops the setup code and the setup prompt, and a same-machine proxy that strips the client address then lets anyone in, so System > Status keeps warning about it.
 
 ## Building from source
 
@@ -77,6 +85,8 @@ dotnet _output/net10.0/Readarr.dll -nobrowser -data=/tmp/readarr-dev
 ```
 
 Then open http://localhost:8787. Restore needs no private feeds; the packages that only existed on Servarr's feeds are vendored in [src/Libraries/nuget](src/Libraries/nuget/README.md). [CONTRIBUTING.md](CONTRIBUTING.md) has the test commands.
+
+ImageSharp stays on 3.1.12 for now. Once it moves to 4.x, a Release build needs `SIXLABORS_LICENSE_KEY` set to the full contents of a Six Labors licence file; CI reads it from the repository secret of that name.
 
 The [upstream wiki](https://wiki.servarr.com/readarr) still describes most settings correctly.
 

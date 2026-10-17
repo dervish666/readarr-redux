@@ -27,6 +27,8 @@ namespace NzbDrone.Common.Disk
         IEnumerable<string> GetFiles(string path, bool recursive);
         List<string> GetAllFilesOrThrow(string path);
         List<string> GetDirectoryLinks(string path);
+        IEnumerable<string> GetFilesNotFollowingLinks(string path);
+        bool IsDirectoryLink(string path);
         long GetFolderSize(string path);
         long GetFileSize(string path);
         void CreateFolder(string path);

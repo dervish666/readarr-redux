@@ -35,18 +35,13 @@ class EditAuthorModalContent extends Component {
       overview: null,
       savedOverview: null,
       isOverviewSaving: false,
-      overviewSaveError: null
+      overviewSaveError: null,
+      overviewLoadError: null
     };
   }
 
   componentDidMount() {
-    this._overviewRequest = createAjaxRequest({
-      url: `/author/${this.props.authorId}/metadata`
-    });
-
-    this._overviewRequest.request.done((data) => {
-      this.setState({ overview: data.overview || '', savedOverview: data.overview || '' });
-    });
+    this.loadOverview();
   }
 
   componentWillUnmount() {
@@ -55,8 +50,33 @@ class EditAuthorModalContent extends Component {
     }
   }
 
+  loadOverview = () => {
+    this.setState({ overviewLoadError: null });
+
+    this._overviewRequest = createAjaxRequest({
+      url: `/author/${this.props.authorId}/metadata`
+    });
+
+    this._overviewRequest.request.done((data) => {
+      this.setState({ overview: data.overview || '', savedOverview: data.overview || '' });
+    });
+
+    // Without this the overview field just never appeared
+    this._overviewRequest.request.fail((xhr) => {
+      if (xhr.aborted) {
+        return;
+      }
+
+      this.setState({ overviewLoadError: xhr });
+    });
+  };
+
   //
   // Listeners
+
+  onOverviewReloadPress = () => {
+    this.loadOverview();
+  };
 
   onOverviewChange = ({ value }) => {
     this.setState({ overview: value });
@@ -272,6 +292,20 @@ class EditAuthorModalContent extends Component {
                     onChange={this.onOverviewChange}
                   />
                 </FormGroup>
+            }
+
+            {
+              !!this.state.overviewLoadError &&
+                <Alert kind={kinds.DANGER}>
+                  {getErrorMessage(this.state.overviewLoadError, translate('AuthorOverviewLoadError'))}
+
+                  <Button
+                    className={styles.retryButton}
+                    onPress={this.onOverviewReloadPress}
+                  >
+                    {translate('Reload')}
+                  </Button>
+                </Alert>
             }
 
             {

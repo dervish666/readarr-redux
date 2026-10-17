@@ -368,6 +368,33 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void should_keep_a_folder_whose_audio_arrived_after_the_delete_check()
+        {
+            // ShouldDeleteFolder passed, then a client wrote the next part into the same folder
+            var folder = _subFolders[0];
+            var late = System.IO.Path.Combine(folder, "Part 02.mp3");
+            FileSystem.AddFile(System.IO.Path.Combine(folder, "release.nfo"), new MockFileData("nfo"));
+            FileSystem.AddFile(late, new MockFileData("audio"));
+
+            Subject.DeleteImportedFolder(folder).Should().BeFalse();
+
+            DiskProvider.FileExists(late).Should().BeTrue();
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_delete_a_folder_left_with_only_leftovers()
+        {
+            var folder = System.IO.Path.Combine(_subFolders[0], "leftovers");
+            FileSystem.AddFile(System.IO.Path.Combine(folder, "release.nfo"), new MockFileData("nfo"));
+            FileSystem.AddFile(System.IO.Path.Combine(folder, "sub", ".hidden.txt"), new MockFileData("x"));
+
+            Subject.DeleteImportedFolder(folder).Should().BeTrue();
+
+            DiskProvider.FolderExists(folder).Should().BeFalse();
+        }
+
+        [Test]
         public void should_not_delete_folder_if_importmode_copy()
         {
             GivenValidAuthor();

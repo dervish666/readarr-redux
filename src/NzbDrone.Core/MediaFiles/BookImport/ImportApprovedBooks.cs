@@ -175,6 +175,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             var filesToAdd = new List<BookFile>(qualifiedImports.Count);
             var trackImportedEvents = new List<TrackImportedEvent>(qualifiedImports.Count);
             var setAsideFiles = new Dictionary<string, List<SetAsideBookFile>>();
+            var moveResults = new List<BookFileMoveResult>();
 
             // A book whose new files didn't all import is incomplete, and keeps the files they were replacing.
             // Rejected parts and second listings of a file never reach the loop below, so start from them.
@@ -289,6 +290,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
                         var moveResult = _bookFileUpgrader.UpgradeBookFile(bookFile, localTrack, copyOnly, importedPaths);
                         oldFiles = moveResult.OldFiles;
+                        moveResults.Add(moveResult);
 
                         if (moveResult.SetAsideFiles.Any())
                         {
@@ -403,17 +405,15 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             }
             catch
             {
-                // Without the new rows the import didn't take, so nothing it replaced may be recycled
-                foreach (var bookSetAsideFiles in setAsideFiles.Values)
-                {
-                    var kept = _bookFileUpgrader.RestoreSetAsideFiles(bookSetAsideFiles);
+                // Without the new rows the import didn't take, so undo it: nothing it replaced may be recycled, and
+                // the library entries it removed for those files come back with them
+                var kept = _bookFileUpgrader.RollBack(moveResults);
 
-                    if (kept.Any())
-                    {
-                        _logger.Error("Couldn't save the imported book files, so the {0} files they replaced were kept in {1}",
-                            kept.Count,
-                            kept.Select(x => Path.GetDirectoryName(x.Path)).Distinct().ConcatToString(", "));
-                    }
+                if (kept.Any())
+                {
+                    _logger.Error("Couldn't save the imported book files, so the {0} files they replaced were kept in {1}",
+                        kept.Count,
+                        kept.Select(x => Path.GetDirectoryName(x.Path)).Distinct().ConcatToString(", "));
                 }
 
                 throw;
@@ -885,6 +885,11 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     {
                         edition.BookId = book.Id;
                         edition.Monitored = false;
+
+                        // A refresh puts the user's title, overview and page count on every edition, so one added
+                        // here has to get them too, or the book shows the source's values until the next refresh
+                        book.MetadataOverrides?.ApplyTo(edition);
+
                         _editionService.InsertMany(new List<Edition> { edition });
 
                         dbEdition = _editionService.GetEditionByForeignEditionId(edition.ForeignEditionId);

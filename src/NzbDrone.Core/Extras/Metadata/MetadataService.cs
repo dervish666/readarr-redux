@@ -12,12 +12,14 @@ using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Extras.Files;
 using NzbDrone.Core.Extras.Metadata.Files;
 using NzbDrone.Core.Extras.Others;
+using NzbDrone.Core.MediaCover;
 using NzbDrone.Core.MediaFiles;
 
 namespace NzbDrone.Core.Extras.Metadata
 {
     public class MetadataService : ExtraFileManager<MetadataFile>
     {
+        private readonly IConfigService _configService;
         private readonly IMetadataFactory _metadataFactory;
         private readonly ICleanMetadataService _cleanMetadataService;
         private readonly IRecycleBinProvider _recycleBinProvider;
@@ -44,6 +46,7 @@ namespace NzbDrone.Core.Extras.Metadata
                                Logger logger)
             : base(configService, diskProvider, diskTransferService, logger)
         {
+            _configService = configService;
             _metadataFactory = metadataFactory;
             _cleanMetadataService = cleanMetadataService;
             _otherExtraFileRenamer = otherExtraFileRenamer;
@@ -352,7 +355,7 @@ namespace NzbDrone.Core.Extras.Metadata
             {
                 if (image.Url.StartsWith("http"))
                 {
-                    _httpClient.DownloadFile(image.Url, fullPath);
+                    _httpClient.DownloadFile(CoverRequest.Create(image.Url, _configService.MetadataSource), fullPath);
                 }
                 else if (_diskProvider.FileExists(image.Url))
                 {
