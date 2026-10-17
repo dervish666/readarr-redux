@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using FizzWare.NBuilder;
 using Moq;
@@ -166,11 +167,11 @@ namespace NzbDrone.Core.Test.MediaFiles.MediaFileDeletionService
             GivenAuthorFolderExists();
 
             Mocker.GetMock<IDiskProvider>()
-                  .Setup(s => s.GetFiles(_author.Path, true))
-                  .Returns(new[] { Path.Combine(_author.Path, "Other Book", "Other Book.m4b") });
+                  .Setup(s => s.GetAllFilesOrThrow(_author.Path))
+                  .Returns(new List<string> { Path.Combine(_author.Path, "Other Book", "Other Book.m4b") });
 
             Mocker.GetMock<IDiskProvider>()
-                  .Setup(s => s.GetFiles(bookFolder, true))
+                  .Setup(s => s.GetAllFilesOrThrow(bookFolder))
                   .Throws(new DirectoryNotFoundException());
 
             Subject.Handle(new BookFileDeletedEvent(_trackFile, DeleteMediaFileReason.MissingFromDisk));
@@ -190,12 +191,71 @@ namespace NzbDrone.Core.Test.MediaFiles.MediaFileDeletionService
                   .Returns(true);
 
             Mocker.GetMock<IDiskProvider>()
-                  .Setup(s => s.GetFiles(It.IsAny<string>(), true))
+                  .Setup(s => s.GetAllFilesOrThrow(It.IsAny<string>()))
                   .Throws(new DirectoryNotFoundException());
 
             Subject.Handle(new BookFileDeletedEvent(_trackFile, DeleteMediaFileReason.MissingFromDisk));
 
             Mocker.GetMock<IDiskProvider>().Verify(v => v.RemoveEmptySubfolders(It.IsAny<string>()), Times.Never());
+            Mocker.GetMock<IDiskProvider>().Verify(v => v.DeleteFolder(It.IsAny<string>(), It.IsAny<bool>()), Times.Never());
+        }
+
+        private void GivenTidyingUp(List<string> filesUnderAuthor)
+        {
+            _trackFile.Path = Path.Combine(_author.Path, "Book Title", "Book Title.m4b");
+            _trackFile.Author = _author;
+
+            Mocker.GetMock<IConfigService>()
+                  .SetupGet(s => s.DeleteEmptyFolders)
+                  .Returns(true);
+
+            GivenAuthorFolderExists();
+
+            Mocker.GetMock<IDiskProvider>()
+                  .Setup(s => s.GetAllFilesOrThrow(_author.Path))
+                  .Returns(filesUnderAuthor);
+
+            Mocker.GetMock<IDiskProvider>()
+                  .Setup(s => s.GetDirectoryLinks(It.IsAny<string>()))
+                  .Returns(new List<string>());
+        }
+
+        [Test]
+        public void should_keep_an_author_folder_that_holds_only_hidden_files()
+        {
+            // GetFiles skips these, so the folder used to look empty and was deleted outright
+            GivenTidyingUp(new List<string> { Path.Combine(_author.Path, "Book Title", ".readarr-upgrade", "20261017-120000-ab", "Book Title.m4b") });
+
+            Subject.Handle(new BookFileDeletedEvent(_trackFile, DeleteMediaFileReason.Manual));
+
+            Mocker.GetMock<IDiskProvider>().Verify(v => v.DeleteFolder(It.IsAny<string>(), It.IsAny<bool>()), Times.Never());
+            Mocker.GetMock<IDiskProvider>().Verify(v => v.DeleteEmptyFolder(_author.Path), Times.Never());
+        }
+
+        [Test]
+        public void should_remove_an_author_folder_left_with_no_files_without_a_recursive_delete()
+        {
+            GivenTidyingUp(new List<string>());
+
+            Subject.Handle(new BookFileDeletedEvent(_trackFile, DeleteMediaFileReason.Manual));
+
+            Mocker.GetMock<IDiskProvider>().Verify(v => v.RemoveEmptySubfolders(_author.Path), Times.Once());
+            Mocker.GetMock<IDiskProvider>().Verify(v => v.DeleteEmptyFolder(_author.Path), Times.Once());
+            Mocker.GetMock<IDiskProvider>().Verify(v => v.DeleteFolder(It.IsAny<string>(), It.IsAny<bool>()), Times.Never());
+        }
+
+        [Test]
+        public void should_keep_an_author_folder_that_holds_a_directory_link()
+        {
+            GivenTidyingUp(new List<string>());
+
+            Mocker.GetMock<IDiskProvider>()
+                  .Setup(s => s.GetDirectoryLinks(_author.Path))
+                  .Returns(new List<string> { Path.Combine(_author.Path, "linked") });
+
+            Subject.Handle(new BookFileDeletedEvent(_trackFile, DeleteMediaFileReason.Manual));
+
+            Mocker.GetMock<IDiskProvider>().Verify(v => v.DeleteEmptyFolder(It.IsAny<string>()), Times.Never());
             Mocker.GetMock<IDiskProvider>().Verify(v => v.DeleteFolder(It.IsAny<string>(), It.IsAny<bool>()), Times.Never());
         }
 
