@@ -2,6 +2,7 @@ interface SystemStatus {
   appData: string;
   appName: string;
   authentication: string;
+  authenticationNoneConfirmed: boolean;
   branch: string;
   buildTime: string;
   instanceName: string;

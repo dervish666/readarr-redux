@@ -67,7 +67,11 @@ Indexers, download clients, notifications, import lists and the metadata source 
 
 Cover URLs are different. The metadata source chooses them, so Readarr only fetches covers from public addresses, or from the metadata source's own host. A cover server on any other LAN address is refused, and covers over 20 MB are dropped.
 
-A reverse proxy on the same machine that sends no `X-Forwarded-For` header makes every request look local. Set up a login before you put Readarr behind one.
+### First run: the setup code
+
+Until a login is set up, the web UI answers only the local network, and only after you enter a one-time setup code. Readarr writes the code to its console and log every time it starts (`docker logs readarr`, or `logs/readarr.txt` in the data folder). Without it, a reverse proxy on the same machine that sends no `X-Forwarded-For` header would make every visitor look local and hand them the API key. Once the code is in, Readarr asks you for a username and password, and after that the code isn't needed.
+
+To run with no login on purpose, set `<AuthenticationNoneConfirmed>True</AuthenticationNoneConfirmed>` in `config.xml` (or `READARR__AUTH__NONECONFIRMED=true`) and restart. That drops the setup code and the setup prompt, and a same-machine proxy that strips the client address then lets anyone in, so System > Status keeps warning about it.
 
 ## Building from source
 

@@ -78,6 +78,7 @@ namespace Readarr.Api.V1.System
                 Mode = _runtimeInfo.Mode,
                 Branch = _configFileProvider.Branch,
                 Authentication = _configFileProvider.AuthenticationMethod,
+                AuthenticationNoneConfirmed = _configFileProvider.AuthenticationNoneConfirmed,
                 DatabaseType = _database.DatabaseType,
                 DatabaseVersion = _database.Version,
                 MigrationVersion = _database.Migration,

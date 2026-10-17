@@ -7,4 +7,5 @@ public class AuthOptions
     public string Method { get; set; }
     public string Required { get; set; }
     public bool? TrustCgnatIpAddresses { get; set; }
+    public bool? NoneConfirmed { get; set; }
 }
