@@ -426,10 +426,11 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
 
                 // Same rule as an automatic import, plus the audio files the user didn't pick: they are still in
                 // the download, and calling it imported lets Remove Completed delete them.
+                // Parts imported from this download in an earlier pass, copied or hard linked so still in the folder
                 var importedBefore = _historyService.FindByDownloadId(trackedDownload.DownloadItem.DownloadId).ImportedSourcePaths();
 
                 var leftBehind = results.AudioFilesLeftBehind(importedBefore);
-                leftBehind.AddRange(GetUnchosenAudioFiles(outputPath, results));
+                leftBehind.AddRange(GetUnchosenAudioFiles(outputPath, results).Where(p => !importedBefore.Contains(p)));
 
                 if (allItemsImported && leftBehind.Any())
                 {

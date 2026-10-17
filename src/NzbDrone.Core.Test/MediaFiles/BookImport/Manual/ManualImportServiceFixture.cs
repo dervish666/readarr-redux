@@ -105,6 +105,34 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport.Manual
                   }).ToList());
         }
 
+        // Copy or hard link leaves part 1 in the folder after the first pass; it was imported, not left behind
+        [Test]
+        public void manual_import_should_complete_a_download_imported_in_two_copy_passes()
+        {
+            var folder = @"C:\downloads\The Autumn Republic".AsOsAgnostic();
+            var parts = new[] { 1, 2 }.Select(n => System.IO.Path.Combine(folder, $"Part {n:00}.mp3")).ToList();
+
+            var trackedDownload = GivenManualImportFromDownload(folder, parts);
+
+            var first = ImportCommand(parts[0]);
+            first.ImportMode = ImportMode.Copy;
+            Subject.Execute(first);
+
+            trackedDownload.State.Should().Be(TrackedDownloadState.ImportFailed);
+
+            GivenImportedBefore(parts[0]);
+
+            var second = ImportCommand(parts[1]);
+            second.ImportMode = ImportMode.Copy;
+            Subject.Execute(second);
+
+            Mocker.GetMock<IEventAggregator>()
+                  .Verify(v => v.PublishEvent(It.IsAny<DownloadCompletedEvent>()), Times.Once());
+
+            trackedDownload.State.Should().Be(TrackedDownloadState.Imported);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
         private ManualImportCommand ImportCommand(params string[] paths)
         {
             return new ManualImportCommand
