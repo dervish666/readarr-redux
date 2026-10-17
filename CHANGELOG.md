@@ -6,6 +6,42 @@ Versions are `0.5.0.<CI run number>`. Only pushes to `develop` publish an image,
 
 ## Unreleased
 
+Fixes from the 2026-10-17 audit's Medium and Low findings.
+
+- Fixed: A book the metadata source can't find is no longer deleted on the first not-found. A refresh at least 12 hours later has to miss it too. The wait starts again after a restart, which only ever delays a delete.
+- Fixed: Refresh no longer deletes a book whose title, date, pages, overview or series you edited by hand.
+- Fixed: A refresh running while you saved a book's metadata could write its older copy back over your edit.
+- Fixed: Clearing an author's overview could bring your old text back from the metadata cache.
+- Fixed: A bad series row in a metadata edit, such as an id of -1 or a new series with no title, deleted the book's series links. Every row is now checked before anything is saved.
+- Fixed: A new edition added during an import showed the metadata source's title, overview and pages instead of the ones you set.
+- Fixed: When saving an import's new rows failed, Import and replace left the other book without its file. The whole import is now undone: new files go back to the download, the replaced files go back in place, and their library entries come back.
+- Fixed: Refreshing a single book left the cached author with a works list of just that book, so the next author refresh looked up every other book one at a time.
+- Fixed: Deleting a book file could delete its author folder outright, past the recycle bin, when the folder held only hidden files or dot-folders such as an upgrade's `.readarr-upgrade`.
+- Fixed: Recycle bin cleanup, recycling a folder, cross-drive folder moves and empty-folder tidying went through symlinks and junctions, so cleanup could delete old files wherever a recycled link pointed, the library included.
+- Fixed: Audio written into a download folder after the import's clean-up check was deleted with the folder. The clean-up now deletes only the files it listed, never audio or books, and removes a folder only when it is empty.
+- Security: Covers, cover proxying and metadata extras images only connect to public addresses, checked at connect time and on every redirect. The metadata source's own host is the one exception, for self-hosted setups. A cover server on another LAN host no longer works.
+- Security: Metadata responses stop at 64 MB and covers at 20 MB, counted after decompression, so a broken or hostile server can't fill memory or disk.
+- Security: The Docker entrypoint no longer follows symlinks in `/config` when it fixes ownership, so it can't hand files outside `/config` to PUID:PGID.
+- Fixed: A failed Plex sign-in poll left the sign-in button spinning for good. Polling also gives up after ten minutes.
+- Fixed: Editing the metadata source address while a save was still running lost the edit.
+- Fixed: A failed Import anyway or Import and replace request showed no error. The queue row shows it, and the compare dialog stays open with the error.
+- Fixed: The author overview field disappeared without a word when it failed to load. It now says so, with a Reload button.
+- Build: CI and the Docker build read a Six Labors licence key from the `SIXLABORS_LICENSE_KEY` secret, ready for ImageSharp 4. ImageSharp stays on 3.1.12 until the secret is set.
+
+## 0.5.0.94 (2026-10-17)
+
+Fixes from the 2026-10-17 audit's High findings.
+
+- Fixed: A multi-part audiobook download was marked imported, and with Remove Completed Downloads on deleted, while some of its parts had not imported. A download now counts as imported only when every audio file under its folder has imported or was moved or deleted by the same import.
+- Fixed: Moving an author to its canonical id could orphan books that housekeeping then deleted. The books and the author now move in one transaction, and Cleanup Orphaned Books checks again before it deletes.
+- Security: With no login set up (authentication None), only requests from the local network get in, and System > Status warns about it. Anything else gets a 401 instead of the API key.
+- Security: Covers must be JPEG, PNG, GIF, WebP or AVIF by name and by content. Anything else is discarded, and covers are served with `nosniff` and a Content Security Policy.
+- Fixed: Deleting a folder no longer goes through directory links inside it.
+
+**More downloads now stay in the queue as Import Failed and need removing by hand.** Readarr no longer calls a download imported while anything in it could be lost. That covers any audio that didn't import, including audio in `extras/`, dot-folders and sample or bonus folders; "Not an upgrade" duplicates; downloads whose history predates this release; folders that are missing or can't be read; partial scans; and folders containing links. Check the queue after upgrading and remove what you have dealt with.
+
+## 0.5.0.91 (2026-10-16)
+
 Editing metadata by hand. Migration 044.
 
 - New: Edit Book has a Metadata section for title, release date, pages and overview. Values set there are kept over the metadata source's on every refresh, and clearing a field brings the source's value back. A changed title is also what downloaded files are matched against. Files keep their tags until you retag them.
