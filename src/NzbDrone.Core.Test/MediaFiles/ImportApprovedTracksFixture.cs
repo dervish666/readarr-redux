@@ -113,6 +113,48 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void should_give_an_edition_added_on_import_the_books_values_set_by_hand()
+        {
+            var local = _approvedDecisions.First().Item;
+            local.Book.MetadataOverrides = new BookMetadataOverrides { Title = "My title", Overview = "My overview", PageCount = 321 };
+
+            var remote = Builder<Edition>.CreateNew()
+                .With(e => e.Id = 0)
+                .With(e => e.ForeignEditionId = "new-edition")
+                .With(e => e.Title = "Source title")
+                .With(e => e.Overview = "Source overview")
+                .With(e => e.PageCount = 100)
+                .Build();
+
+            local.Edition = remote;
+
+            Edition inserted = null;
+
+            Mocker.GetMock<IEditionService>()
+                .Setup(s => s.InsertMany(It.IsAny<List<Edition>>()))
+                .Callback<List<Edition>>(l => inserted = l.Single());
+
+            Mocker.GetMock<IEditionService>()
+                .Setup(s => s.GetEditionByForeignEditionId("new-edition"))
+                .Returns(() => inserted);
+
+            Mocker.GetMock<IEditionService>()
+                .Setup(s => s.SetMonitored(It.IsAny<Edition>()))
+                .Returns((Edition e) =>
+                {
+                    e.Monitored = true;
+                    return new List<Edition> { e };
+                });
+
+            Subject.Import(_approvedDecisions, false);
+
+            inserted.Should().NotBeNull();
+            inserted.Title.Should().Be("My title");
+            inserted.Overview.Should().Be("My overview");
+            inserted.PageCount.Should().Be(321);
+        }
+
+        [Test]
         public void should_only_import_approved()
         {
             var all = new List<ImportDecision<LocalBook>>();

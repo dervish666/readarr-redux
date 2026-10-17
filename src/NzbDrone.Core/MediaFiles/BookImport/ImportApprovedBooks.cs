@@ -885,6 +885,11 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     {
                         edition.BookId = book.Id;
                         edition.Monitored = false;
+
+                        // A refresh puts the user's title, overview and page count on every edition, so one added
+                        // here has to get them too, or the book shows the source's values until the next refresh
+                        book.MetadataOverrides?.ApplyTo(edition);
+
                         _editionService.InsertMany(new List<Edition> { edition });
 
                         dbEdition = _editionService.GetEditionByForeignEditionId(edition.ForeignEditionId);
