@@ -115,7 +115,10 @@ namespace NzbDrone.Core.Test.MediaCoverTests
             Subject.HandleAsync(new AuthorRefreshCompleteEvent(_author));
 
             Mocker.GetMock<IHttpClient>()
-                  .Verify(v => v.DownloadFile("http://dummy.com/poster.html", It.Is<string>(f => f.EndsWith("poster.jpg")), It.IsAny<string>()), Times.Once());
+                  .Verify(v => v.DownloadFile("http://dummy.com/poster.html", It.Is<string>(f => f.EndsWith("poster.jpg")), It.IsAny<string>(), CoverImageFormat.MaxLength), Times.Once());
+
+            Mocker.GetMock<IHttpClient>()
+                  .Verify(v => v.Get(It.Is<HttpRequest>(r => r.MaxResponseLength == CoverImageFormat.MaxLength)), Times.Once());
 
             Mocker.GetMock<IDiskProvider>()
                   .Verify(v => v.DeleteFile(It.Is<string>(f => f.EndsWith("poster.jpg"))), Times.Once());
@@ -363,10 +366,10 @@ namespace NzbDrone.Core.Test.MediaCoverTests
             Subject.HandleAsync(new AuthorRefreshCompleteEvent(_author));
 
             Mocker.GetMock<IHttpClient>()
-                  .Verify(v => v.DownloadFile("http://dummy.com/cover.jpg", It.IsAny<string>(), It.IsAny<string>()), Times.Once());
+                  .Verify(v => v.DownloadFile("http://dummy.com/cover.jpg", It.IsAny<string>(), It.IsAny<string>(), CoverImageFormat.MaxLength), Times.Once());
 
             Mocker.GetMock<IHttpClient>()
-                  .Verify(v => v.DownloadFile("http://dummy.com/other.jpg", It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+                  .Verify(v => v.DownloadFile("http://dummy.com/other.jpg", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<long?>()), Times.Never());
 
             Mocker.GetMock<IEventAggregator>()
                   .Verify(v => v.PublishEvent(It.IsAny<MediaCoversUpdatedEvent>()), Times.Once());

@@ -121,7 +121,14 @@ namespace NzbDrone.Common.Http.Dispatchers
                     {
                         if (request.ResponseStream != null && responseMessage.StatusCode == HttpStatusCode.OK)
                         {
-                            await responseMessage.Content.CopyToAsync(request.ResponseStream, null, cts.Token);
+                            if (request.MaxResponseLength.HasValue)
+                            {
+                                await CopyLimitedAsync(request, responseMessage.Content, request.ResponseStream, request.MaxResponseLength.Value, cts.Token);
+                            }
+                            else
+                            {
+                                await responseMessage.Content.CopyToAsync(request.ResponseStream, null, cts.Token);
+                            }
                         }
                         else if (request.MaxResponseLength.HasValue)
                         {
@@ -174,6 +181,32 @@ namespace NzbDrone.Common.Http.Dispatchers
             }
 
             return buffer.ToArray();
+        }
+
+        // The streamed form of ReadLimitedAsync, for downloads written straight to a file
+        private static async Task CopyLimitedAsync(HttpRequest request, HttpContent content, Stream destination, long maxLength, CancellationToken cancellationToken)
+        {
+            if (content.Headers.ContentLength > maxLength)
+            {
+                throw new HttpResponseTooLargeException(request, maxLength);
+            }
+
+            await using var stream = await content.ReadAsStreamAsync(cancellationToken);
+            var chunk = new byte[81920];
+            long total = 0;
+            int read;
+
+            while ((read = await stream.ReadAsync(chunk, cancellationToken)) > 0)
+            {
+                total += read;
+
+                if (total > maxLength)
+                {
+                    throw new HttpResponseTooLargeException(request, maxLength);
+                }
+
+                await destination.WriteAsync(chunk.AsMemory(0, read), cancellationToken);
+            }
         }
 
         protected virtual System.Net.Http.HttpClient GetClient(HttpUri uri)

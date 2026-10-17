@@ -19,6 +19,7 @@ namespace NzbDrone.Common.Http
     {
         HttpResponse Execute(HttpRequest request);
         void DownloadFile(string url, string fileName, string userAgent = null);
+        void DownloadFile(string url, string fileName, string userAgent, long? maxResponseLength);
         HttpResponse Get(HttpRequest request);
         HttpResponse<T> Get<T>(HttpRequest request)
             where T : new();
@@ -29,6 +30,7 @@ namespace NzbDrone.Common.Http
 
         Task<HttpResponse> ExecuteAsync(HttpRequest request);
         Task DownloadFileAsync(string url, string fileName, string userAgent = null);
+        Task DownloadFileAsync(string url, string fileName, string userAgent, long? maxResponseLength);
         Task<HttpResponse> GetAsync(HttpRequest request);
         Task<HttpResponse<T>> GetAsync<T>(HttpRequest request)
             where T : new();
@@ -261,7 +263,13 @@ namespace NzbDrone.Common.Http
             }
         }
 
-        public async Task DownloadFileAsync(string url, string fileName, string userAgent = null)
+        public Task DownloadFileAsync(string url, string fileName, string userAgent = null)
+        {
+            return DownloadFileAsync(url, fileName, userAgent, null);
+        }
+
+        // A response over maxResponseLength bytes throws HttpResponseTooLargeException and leaves no file behind
+        public async Task DownloadFileAsync(string url, string fileName, string userAgent, long? maxResponseLength)
         {
             var fileNamePart = fileName + ".part";
 
@@ -281,6 +289,7 @@ namespace NzbDrone.Common.Http
                     var request = new HttpRequest(url);
                     request.AllowAutoRedirect = true;
                     request.ResponseStream = fileStream;
+                    request.MaxResponseLength = maxResponseLength;
                     request.RequestTimeout = TimeSpan.FromSeconds(300);
                     var response = await GetAsync(request);
 
@@ -311,8 +320,13 @@ namespace NzbDrone.Common.Http
 
         public void DownloadFile(string url, string fileName, string userAgent = null)
         {
+            DownloadFile(url, fileName, userAgent, null);
+        }
+
+        public void DownloadFile(string url, string fileName, string userAgent, long? maxResponseLength)
+        {
             // https://docs.microsoft.com/en-us/archive/msdn-magazine/2015/july/async-programming-brownfield-async-development#the-thread-pool-hack
-            Task.Run(() => DownloadFileAsync(url, fileName, userAgent)).GetAwaiter().GetResult();
+            Task.Run(() => DownloadFileAsync(url, fileName, userAgent, maxResponseLength)).GetAwaiter().GetResult();
         }
 
         public Task<HttpResponse> GetAsync(HttpRequest request)

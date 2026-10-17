@@ -62,7 +62,10 @@ namespace NzbDrone.Core.MediaCover
         {
             var url = GetUrl(hash);
 
-            var request = new HttpRequest(url);
+            var request = new HttpRequest(url)
+            {
+                MaxResponseLength = CoverImageFormat.MaxLength
+            };
 
             return _httpClient.Get(request).ResponseData;
         }

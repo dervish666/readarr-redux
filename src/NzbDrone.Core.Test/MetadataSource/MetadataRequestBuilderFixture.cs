@@ -37,6 +37,16 @@ namespace NzbDrone.Core.Test.MetadataSource
             request.RateLimit.Should().BeGreaterThan(TimeSpan.Zero);
         }
 
+        [Test]
+        public void should_limit_the_size_of_every_metadata_response()
+        {
+            GivenMetadataSource("http://api.readarr.com/api/testing/");
+
+            var request = Subject.GetRequestBuilder().Create().SetSegment("route", "author/1").Build();
+
+            request.MaxResponseLength.Should().Be(MetadataRequestBuilder.MaxResponseLength);
+        }
+
         [TestCase(null)]
         [TestCase("")]
         [TestCase("  ")]

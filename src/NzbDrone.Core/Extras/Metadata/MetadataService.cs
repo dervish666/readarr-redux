@@ -12,6 +12,7 @@ using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Extras.Files;
 using NzbDrone.Core.Extras.Metadata.Files;
 using NzbDrone.Core.Extras.Others;
+using NzbDrone.Core.MediaCover;
 using NzbDrone.Core.MediaFiles;
 
 namespace NzbDrone.Core.Extras.Metadata
@@ -352,7 +353,7 @@ namespace NzbDrone.Core.Extras.Metadata
             {
                 if (image.Url.StartsWith("http"))
                 {
-                    _httpClient.DownloadFile(image.Url, fullPath);
+                    _httpClient.DownloadFile(image.Url, fullPath, null, CoverImageFormat.MaxLength);
                 }
                 else if (_diskProvider.FileExists(image.Url))
                 {
