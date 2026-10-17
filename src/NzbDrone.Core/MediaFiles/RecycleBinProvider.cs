@@ -57,7 +57,10 @@ namespace NzbDrone.Core.MediaFiles
 
                 _logger.Debug("Setting last accessed: {0}", path);
                 _diskProvider.FolderSetLastWriteTime(destination, DateTime.UtcNow);
-                foreach (var file in _diskProvider.GetFiles(destination, true))
+
+                // Not through directory links: touching their targets' files would keep them from ever expiring, and
+                // Cleanup used to delete through the links once they did
+                foreach (var file in _diskProvider.GetFilesNotFollowingLinks(destination))
                 {
                     SetLastWriteTime(file, DateTime.UtcNow);
                 }
@@ -172,7 +175,9 @@ namespace NzbDrone.Core.MediaFiles
 
             _logger.Info("Removing items older than {0} days from the recycling bin", cleanupDays);
 
-            foreach (var file in _diskProvider.GetFiles(_configService.RecycleBin, true))
+            // A folder recycled with a directory link in it brings the link along. Cleanup never goes through one, or
+            // it would delete old files from wherever the link points, the library included.
+            foreach (var file in _diskProvider.GetFilesNotFollowingLinks(_configService.RecycleBin))
             {
                 if (_diskProvider.FileGetLastWrite(file).AddDays(cleanupDays) > DateTime.UtcNow)
                 {

@@ -107,6 +107,14 @@ namespace NzbDrone.Common.Disk
                     continue;
                 }
 
+                // Entering a directory link would move its target's files, which can be anywhere, out from under it.
+                // A move of the folder removes the link itself afterwards; the target stays where it is.
+                if (_diskProvider.IsDirectoryLink(subDir.FullName))
+                {
+                    _logger.Warn("Not transferring {0}: it is a link to another folder, which is left as it is", subDir.FullName);
+                    continue;
+                }
+
                 result &= TransferFolder(subDir.FullName, Path.Combine(targetPath, subDir.Name), mode);
             }
 
