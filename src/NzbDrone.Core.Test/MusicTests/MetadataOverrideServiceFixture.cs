@@ -7,6 +7,7 @@ using NUnit.Framework;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Books.Commands;
 using NzbDrone.Core.Messaging.Commands;
+using NzbDrone.Core.MetadataSource;
 using NzbDrone.Core.Test.Framework;
 
 namespace NzbDrone.Core.Test.MusicTests
@@ -287,6 +288,21 @@ namespace NzbDrone.Core.Test.MusicTests
 
             Mocker.GetMock<IManageCommandQueue>()
                 .Verify(v => v.Push(It.Is<RefreshAuthorCommand>(c => c.AuthorId == 4), It.IsAny<CommandPriority>(), It.IsAny<CommandTrigger>()), Times.Once());
+
+            // A refresh put the user's overview on the cached author, so the cache has to go before that refresh runs
+            Mocker.GetMock<IProvideAuthorInfo>()
+                .Verify(v => v.EvictAuthor(_metadata.ForeignAuthorId), Times.Exactly(2));
+        }
+
+        [Test]
+        public void should_drop_the_cached_author_when_a_book_is_edited()
+        {
+            var edit = EditOf(_book7);
+            edit.Title = "Defiance of the Fall, Book Seven";
+            _subject.UpdateBookMetadata(_book7.Id, edit);
+
+            Mocker.GetMock<IProvideAuthorInfo>()
+                .Verify(v => v.EvictAuthor(_metadata.ForeignAuthorId), Times.Once());
         }
     }
 }

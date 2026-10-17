@@ -9,6 +9,7 @@ using NzbDrone.Core.Books.Events;
 using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
+using NzbDrone.Core.MetadataSource;
 
 namespace NzbDrone.Core.Books
 {
@@ -60,6 +61,7 @@ namespace NzbDrone.Core.Books
         private readonly ISeriesService _seriesService;
         private readonly ISeriesBookLinkService _linkService;
         private readonly IManageCommandQueue _commandQueueManager;
+        private readonly IProvideAuthorInfo _authorInfo;
         private readonly IEventAggregator _eventAggregator;
         private readonly Logger _logger;
 
@@ -70,6 +72,7 @@ namespace NzbDrone.Core.Books
                                        ISeriesService seriesService,
                                        ISeriesBookLinkService linkService,
                                        IManageCommandQueue commandQueueManager,
+                                       IProvideAuthorInfo authorInfo,
                                        IEventAggregator eventAggregator,
                                        Logger logger)
         {
@@ -80,6 +83,7 @@ namespace NzbDrone.Core.Books
             _seriesService = seriesService;
             _linkService = linkService;
             _commandQueueManager = commandQueueManager;
+            _authorInfo = authorInfo;
             _eventAggregator = eventAggregator;
             _logger = logger;
         }
@@ -125,6 +129,7 @@ namespace NzbDrone.Core.Books
         public void UpdateBookMetadata(int bookId, BookMetadataEdit edit)
         {
             bool cleared;
+            string foreignAuthorId;
 
             // A refresh of this book waits until the edit is saved, and an edit waits for a running refresh
             using (BookEditLock.Take(bookId))
@@ -163,8 +168,12 @@ namespace NzbDrone.Core.Books
                 _bookService.UpdateMany(new List<Book> { book });
                 _editionService.UpdateMany(editions);
 
+                foreignAuthorId = book.AuthorMetadata?.Value?.ForeignAuthorId;
+
                 _logger.Info("Updated the metadata of {0} by hand", book);
             }
+
+            _authorInfo.EvictAuthor(foreignAuthorId);
 
             // Values the user stopped overriding come back from the metadata source
             if (cleared)
@@ -187,16 +196,23 @@ namespace NzbDrone.Core.Books
 
             if (wasOverridden && overrides.Overview == null)
             {
-                // Like an edition, an author keeps its overview when the source sends none, so clear it here and let
-                // a refresh bring the source's back
+                // Like an edition, an author keeps its overview when the source sends none, so clear it here
                 metadata.Overview = string.Empty;
-                _commandQueueManager.Push(new RefreshAuthorCommand(authorId));
             }
 
             overrides.ApplyTo(metadata);
             _authorMetadataService.Update(metadata);
 
+            // A refresh put the user's overview on the cached author, which would bring it back once cleared
+            _authorInfo.EvictAuthor(metadata.ForeignAuthorId);
+
             _logger.Info("Updated the overview of {0} by hand", author);
+
+            // Only now the override is saved and the cache gone, so the refresh brings back the source's overview
+            if (wasOverridden && overrides.Overview == null)
+            {
+                _commandQueueManager.Push(new RefreshAuthorCommand(authorId));
+            }
 
             _eventAggregator.PublishEvent(new AuthorUpdatedEvent(_authorService.GetAuthor(authorId)));
         }
