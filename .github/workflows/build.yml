@@ -38,6 +38,9 @@ jobs:
           yarn lint
           yarn stylelint-linux
 
+      - name: Typecheck
+        run: yarn typecheck
+
       - name: Build
         run: yarn build --env production
 

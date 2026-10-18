@@ -10,6 +10,8 @@
     "watch": "webpack --watch --config ./frontend/build/webpack.config.js",
     "lint": "eslint --config frontend/.eslintrc.js --ignore-path frontend/.eslintignore frontend/",
     "lint-fix": "yarn lint --fix",
+    "typecheck": "tsc --noEmit --skipLibCheck -p frontend/tsconfig.json",
+    "smoke": "playwright test -c e2e/playwright.config.ts",
     "stylelint-linux": "stylelint $(find frontend -name '*.css') --config frontend/.stylelintrc",
     "stylelint-windows": "stylelint \"frontend/**/*.css\" --config frontend/.stylelintrc"
   },
@@ -25,6 +27,7 @@
     "defaults"
   ],
   "dependencies": {
+    "@fastify/deepmerge": "3.2.2",
     "@fortawesome/fontawesome-free": "6.7.1",
     "@fortawesome/fontawesome-svg-core": "6.7.1",
     "@fortawesome/free-regular-svg-icons": "6.7.1",
@@ -33,6 +36,7 @@
     "@microsoft/signalr": "10.0.11",
     "@sentry/browser": "7.119.1",
     "@sentry/integrations": "7.119.1",
+    "@tanstack/react-query": "5.104.1",
     "@types/node": "20.16.11",
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
@@ -83,7 +87,8 @@
     "redux-thunk": "2.4.2",
     "reselect": "4.1.8",
     "stacktrace-js": "2.0.2",
-    "typescript": "5.1.6"
+    "typescript": "5.1.6",
+    "zustand": "5.0.15"
   },
   "devDependencies": {
     "@babel/core": "7.29.6",
@@ -93,6 +98,7 @@
     "@babel/preset-env": "7.26.0",
     "@babel/preset-react": "7.26.3",
     "@babel/preset-typescript": "7.26.0",
+    "@playwright/test": "1.63.0",
     "@types/lodash": "4.14.195",
     "@types/react-lazyload": "3.2.3",
     "@types/redux-actions": "2.6.5",

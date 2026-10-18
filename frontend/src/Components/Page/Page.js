@@ -3,7 +3,7 @@ import React, { Component } from 'react';
 import AppUpdatedModalConnector from 'App/AppUpdatedModalConnector';
 import ColorImpairedContext from 'App/ColorImpairedContext';
 import ConnectionLostModalConnector from 'App/ConnectionLostModalConnector';
-import SignalRConnector from 'Components/SignalRConnector';
+import SignalRListener from 'Components/SignalRListener';
 import AuthenticationRequiredModal from 'FirstRun/AuthenticationRequiredModal';
 import locationShape from 'Helpers/Props/Shapes/locationShape';
 import PageHeader from './Header/PageHeader';
@@ -84,7 +84,7 @@ class Page extends Component {
     return (
       <ColorImpairedContext.Provider value={enableColorImpairedMode}>
         <div className={className}>
-          <SignalRConnector />
+          <SignalRListener />
 
           <PageHeader
             onSidebarToggle={onSidebarToggle}
