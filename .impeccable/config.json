@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "createdAt": "2026-10-18T23:11:38.497Z",
+        "reason": "Matches Sonarr v5; Sam confirmed Inter is intentional"
+      }
+    ]
+  }
+}
