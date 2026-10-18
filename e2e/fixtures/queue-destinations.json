@@ -1,0 +1,23 @@
+[
+  {
+    "sourcePath": "/downloads/Fixture.Book.Blocked/Fixture Book Blocked.epub",
+    "sourceSize": 5242880,
+    "sourceModified": "2026-10-01T12:00:00Z",
+    "sourceQuality": { "quality": { "id": 3, "name": "EPUB" }, "revision": { "version": 1, "real": 0, "isRepack": false } },
+    "sourceTagTitle": "Fixture Book Blocked",
+    "sourceTagAuthor": "Fixture Author",
+    "authorName": "Fixture Author",
+    "bookTitle": "Fixture Book Blocked",
+    "rejections": ["Book match is not close enough: 72.5%"],
+    "destinationPath": "/books/Fixture Author/Fixture Book Blocked/Fixture Book Blocked.epub",
+    "destinationExists": true,
+    "destinationSize": 4194304,
+    "destinationModified": "2025-01-01T12:00:00Z",
+    "destinationTagTitle": "Fixture Book Blocked",
+    "destinationTagAuthor": "Fixture Author",
+    "destinationBookFileId": 990301,
+    "destinationQuality": { "quality": { "id": 3, "name": "EPUB" }, "revision": { "version": 1, "real": 0, "isRepack": false } },
+    "destinationAuthorName": "Fixture Author",
+    "destinationBookTitle": "Fixture Book Blocked"
+  }
+]

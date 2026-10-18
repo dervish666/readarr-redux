@@ -3,7 +3,7 @@ import _ from 'lodash';
 import PropTypes from 'prop-types';
 import React, { Component, Fragment } from 'react';
 import ReactDOM from 'react-dom';
-import QueueStatusConnector from 'Activity/Queue/Status/QueueStatusConnector';
+import QueueStatus from 'Activity/Queue/Status/QueueStatus';
 import OverlayScroller from 'Components/Scroller/OverlayScroller';
 import Scroller from 'Components/Scroller/Scroller';
 import { icons } from 'Helpers/Props';
@@ -80,7 +80,7 @@ const groups = [
         iconName: icons.DOWNLOAD,
         title: () => translate('Queue'),
         to: '/activity/queue',
-        statusComponent: QueueStatusConnector
+        statusComponent: QueueStatus
       },
 
       {

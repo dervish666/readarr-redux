@@ -3,7 +3,7 @@ import React from 'react';
 import { Redirect, Route } from 'react-router-dom';
 import BlocklistConnector from 'Activity/Blocklist/BlocklistConnector';
 import HistoryConnector from 'Activity/History/HistoryConnector';
-import QueueConnector from 'Activity/Queue/QueueConnector';
+import Queue from 'Activity/Queue/Queue';
 import AuthorDetailsPageConnector from 'Author/Details/AuthorDetailsPageConnector';
 import AuthorIndexConnector from 'Author/Index/AuthorIndexConnector';
 import BookDetailsPageConnector from 'Book/Details/BookDetailsPageConnector';
@@ -130,7 +130,7 @@ function AppRoutes(props) {
 
       <Route
         path="/activity/queue"
-        component={QueueConnector}
+        component={Queue}
       />
 
       <Route

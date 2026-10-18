@@ -5,7 +5,7 @@ type PropertyFunction<T> = () => T;
 interface Column {
   name: string;
   label: string | PropertyFunction<string> | React.ReactNode;
-  columnLabel?: string;
+  columnLabel?: string | PropertyFunction<string>;
   isSortable?: boolean;
   isVisible: boolean;
   isModifiable?: boolean;

@@ -5,20 +5,19 @@ import {
 } from '@microsoft/signalr';
 import { QueryClient, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import ModelBase from 'App/ModelBase';
-import AppState from 'App/State/AppState';
 import Command from 'Commands/Command';
 import { setAppValue, setVersion } from 'Store/Actions/appActions';
 import { fetchAuthor } from 'Store/Actions/authorActions';
-import { removeItem, update, updateItem } from 'Store/Actions/baseActions';
+import { removeItem, updateItem } from 'Store/Actions/baseActions';
 import { deleteAuthorBooks } from 'Store/Actions/bookActions';
 import {
   fetchCommands,
   finishCommand,
   updateCommand,
 } from 'Store/Actions/commandActions';
-import { fetchQueue, fetchQueueDetails } from 'Store/Actions/queueActions';
+import { fetchQueueDetails } from 'Store/Actions/queueActions';
 import { fetchQualityDefinitions } from 'Store/Actions/settingsActions';
 import { fetchHealth } from 'Store/Actions/systemActions';
 import { fetchTagDetails, fetchTags } from 'Store/Actions/tagActions';
@@ -38,8 +37,9 @@ interface SignalRMessage {
 
 // The react-query side of the bridge. Each message marks the queries under these
 // /api/v1 path prefixes stale, so any react-query consumer refetches what changed.
-// Nothing reads these through react-query yet; each Stage 2 and 3 PR that moves a
-// domain over keeps (or sharpens) its entry here and drops the redux dispatch below.
+// Each Stage 2 and 3 PR that moves a domain over keeps (or sharpens) its entry here
+// and drops the redux dispatch below. queue/status is absent on purpose: its message
+// carries the new counts, which the switch below writes straight into the cache.
 const QUERY_KEYS_BY_MESSAGE: Record<string, string[]> = {
   author: ['/author'],
   book: ['/book'],
@@ -50,7 +50,6 @@ const QUERY_KEYS_BY_MESSAGE: Record<string, string[]> = {
   qualitydefinition: ['/qualitydefinition'],
   queue: ['/queue'],
   'queue/details': ['/queue/details'],
-  'queue/status': ['/queue/status'],
   rootfolder: ['/rootfolder'],
   'system/task': ['/system/task'],
   tag: ['/tag'],
@@ -69,16 +68,6 @@ function invalidateQueries(queryClient: QueryClient, name: string) {
 function SignalRListener() {
   const queryClient = useQueryClient();
   const dispatch = useDispatch();
-
-  const isQueuePopulated = useSelector(
-    (state: AppState) =>
-      (state as unknown as { queue: { paged: { isPopulated: boolean } } }).queue
-        .paged.isPopulated
-  );
-
-  // Handlers below are created once, so they read the latest value through a ref.
-  const isQueuePopulatedRef = useRef(isQueuePopulated);
-  isQueuePopulatedRef.current = isQueuePopulated;
 
   const connection = useRef<HubConnection | null>(null);
 
@@ -218,17 +207,17 @@ function SignalRListener() {
         return;
 
       case 'queue':
-        if (isQueuePopulatedRef.current) {
-          dispatch(fetchQueue());
-        }
+        // The queue page is on react-query; invalidateQueries above refetches it.
         return;
 
       case 'queue/details':
+        // Kept redux feed: author, calendar and wanted read state.queue.details.
         dispatch(fetchQueueDetails());
         return;
 
       case 'queue/status':
-        dispatch(update({ section: 'queue.status', data: body.resource }));
+        // The message carries the new counts, so write them straight into the cache.
+        queryClient.setQueryData(['/queue/status'], body.resource);
         return;
 
       case 'version':

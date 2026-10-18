@@ -1,0 +1,107 @@
+{
+  "page": 1,
+  "pageSize": 20,
+  "sortKey": "timeleft",
+  "sortDirection": "ascending",
+  "totalRecords": 2,
+  "records": [
+    {
+      "id": 990001,
+      "authorId": 990101,
+      "bookId": 990201,
+      "author": {
+        "id": 990101,
+        "authorName": "Fixture Author",
+        "sortName": "author, fixture",
+        "titleSlug": "fixture-author",
+        "status": "continuing",
+        "monitored": true,
+        "path": "/books/Fixture Author",
+        "qualityProfileId": 1,
+        "metadataProfileId": 1,
+        "rootFolderPath": "/books",
+        "genres": [],
+        "tags": [],
+        "added": "2026-01-01T00:00:00Z",
+        "overview": ""
+      },
+      "book": {
+        "id": 990201,
+        "title": "Fixture Book Downloading",
+        "titleSlug": "fixture-book-downloading",
+        "releaseDate": "2020-05-01T00:00:00Z"
+      },
+      "quality": { "quality": { "id": 3, "name": "EPUB" }, "revision": { "version": 1, "real": 0, "isRepack": false } },
+      "customFormats": [],
+      "customFormatScore": 0,
+      "size": 10485760,
+      "title": "Fixture.Author-Fixture.Book.Downloading.epub",
+      "sizeleft": 4194304,
+      "timeleft": "00:10:00",
+      "estimatedCompletionTime": "2030-01-01T00:10:00Z",
+      "status": "downloading",
+      "trackedDownloadStatus": "ok",
+      "trackedDownloadState": "downloading",
+      "statusMessages": [],
+      "downloadId": "FIXTURE-DOWNLOADING",
+      "protocol": "torrent",
+      "downloadClient": "Fixture Client",
+      "downloadClientHasPostImportCategory": false,
+      "indexer": "Fixture Indexer",
+      "outputPath": "/downloads/Fixture.Book.Downloading",
+      "downloadForced": false
+    },
+    {
+      "id": 990002,
+      "authorId": 990101,
+      "bookId": 990202,
+      "author": {
+        "id": 990101,
+        "authorName": "Fixture Author",
+        "sortName": "author, fixture",
+        "titleSlug": "fixture-author",
+        "status": "continuing",
+        "monitored": true,
+        "path": "/books/Fixture Author",
+        "qualityProfileId": 1,
+        "metadataProfileId": 1,
+        "rootFolderPath": "/books",
+        "genres": [],
+        "tags": [],
+        "added": "2026-01-01T00:00:00Z",
+        "overview": ""
+      },
+      "book": {
+        "id": 990202,
+        "title": "Fixture Book Blocked",
+        "titleSlug": "fixture-book-blocked",
+        "releaseDate": "2021-06-01T00:00:00Z"
+      },
+      "quality": { "quality": { "id": 3, "name": "EPUB" }, "revision": { "version": 1, "real": 0, "isRepack": false } },
+      "customFormats": [],
+      "customFormatScore": 0,
+      "size": 5242880,
+      "title": "Fixture.Author-Fixture.Book.Blocked.epub",
+      "sizeleft": 0,
+      "status": "completed",
+      "trackedDownloadStatus": "warning",
+      "trackedDownloadState": "importPending",
+      "statusMessages": [
+        {
+          "title": "Fixture Book Blocked.epub",
+          "messages": [
+            "Book match is not close enough: 72.5%",
+            "Destination already exists: /books/Fixture Author/Fixture Book Blocked/Fixture Book Blocked.epub"
+          ]
+        }
+      ],
+      "downloadId": "FIXTURE-BLOCKED",
+      "protocol": "usenet",
+      "downloadClient": "Fixture Client",
+      "downloadClientHasPostImportCategory": true,
+      "indexer": "Fixture Indexer",
+      "outputPath": "/downloads/Fixture.Book.Blocked",
+      "downloadForced": false
+    }
+  ]
+}
