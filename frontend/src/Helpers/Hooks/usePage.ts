@@ -3,10 +3,14 @@ import { useHistory } from 'react-router';
 import { create } from 'zustand';
 
 interface PageStore {
+  blocklist: number;
+  history: number;
   queue: number;
 }
 
 const pageStore = create<PageStore>(() => ({
+  blocklist: 1,
+  history: 1,
   queue: 1,
 }));
 

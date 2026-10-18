@@ -3,7 +3,6 @@ import * as author from './authorActions';
 import * as authorDetails from './authorDetailsActions';
 import * as authorHistory from './authorHistoryActions';
 import * as authorIndex from './authorIndexActions';
-import * as blocklist from './blocklistActions';
 import * as books from './bookActions';
 import * as bookFiles from './bookFileActions';
 import * as bookHistory from './bookHistoryActions';
@@ -14,7 +13,6 @@ import * as captcha from './captchaActions';
 import * as commands from './commandActions';
 import * as customFilters from './customFilterActions';
 import * as editions from './editionActions';
-import * as history from './historyActions';
 import * as interactiveImportActions from './interactiveImportActions';
 import * as oAuth from './oAuthActions';
 import * as organizePreview from './organizePreviewActions';
@@ -36,7 +34,6 @@ export default [
   authorDetails,
   authorHistory,
   authorIndex,
-  blocklist,
   bookFiles,
   bookHistory,
   bookIndex,
@@ -47,7 +44,6 @@ export default [
   commands,
   customFilters,
   editions,
-  history,
   interactiveImportActions,
   oAuth,
   organizePreview,

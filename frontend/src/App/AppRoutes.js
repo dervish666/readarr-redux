@@ -1,8 +1,8 @@
 import PropTypes from 'prop-types';
 import React from 'react';
 import { Redirect, Route } from 'react-router-dom';
-import BlocklistConnector from 'Activity/Blocklist/BlocklistConnector';
-import HistoryConnector from 'Activity/History/HistoryConnector';
+import Blocklist from 'Activity/Blocklist/Blocklist';
+import History from 'Activity/History/History';
 import Queue from 'Activity/Queue/Queue';
 import AuthorDetailsPageConnector from 'Author/Details/AuthorDetailsPageConnector';
 import AuthorIndexConnector from 'Author/Index/AuthorIndexConnector';
@@ -125,7 +125,7 @@ function AppRoutes(props) {
 
       <Route
         path="/activity/history"
-        component={HistoryConnector}
+        component={History}
       />
 
       <Route
@@ -135,7 +135,7 @@ function AppRoutes(props) {
 
       <Route
         path="/activity/blocklist"
-        component={BlocklistConnector}
+        component={Blocklist}
       />
 
       {/*

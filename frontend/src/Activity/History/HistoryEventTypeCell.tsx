@@ -1,16 +1,15 @@
-import PropTypes from 'prop-types';
 import React from 'react';
 import Icon from 'Components/Icon';
 import TableRowCell from 'Components/Table/Cells/TableRowCell';
 import { icons, kinds } from 'Helpers/Props';
+import { HistoryData, HistoryEventType } from 'typings/History';
+import translate from 'Utilities/String/translate';
 import styles from './HistoryEventTypeCell.css';
 
-function getIconName(eventType) {
+function getIconName(eventType: HistoryEventType) {
   switch (eventType) {
     case 'grabbed':
       return icons.DOWNLOADING;
-    case 'authorFolderImported':
-      return icons.DRIVE;
     case 'bookFileImported':
       return icons.DOWNLOADED;
     case 'downloadFailed':
@@ -30,7 +29,7 @@ function getIconName(eventType) {
   }
 }
 
-function getIconKind(eventType) {
+function getIconKind(eventType: HistoryEventType) {
   switch (eventType) {
     case 'downloadFailed':
       return kinds.DANGER;
@@ -41,56 +40,47 @@ function getIconKind(eventType) {
   }
 }
 
-function getTooltip(eventType, data) {
+function getTooltip(eventType: HistoryEventType, data: HistoryData) {
   switch (eventType) {
     case 'grabbed':
-      return `Book grabbed from ${data.indexer} and sent to ${data.downloadClient}`;
-    case 'authorFolderImported':
-      return 'Book imported from author folder';
+      return translate('BookGrabbedTooltip', {
+        indexer: data.indexer ?? '',
+        downloadClient: data.downloadClient ?? '',
+      });
     case 'bookFileImported':
-      return 'Book downloaded successfully and picked up from download client';
+      return translate('BookImportedTooltip');
     case 'downloadFailed':
-      return 'Book download failed';
+      return translate('DownloadFailedBookTooltip');
     case 'bookFileDeleted':
-      return 'Book file deleted';
+      return translate('BookFileDeletedTooltip');
     case 'bookFileRenamed':
-      return 'Book file renamed';
+      return translate('BookFileRenamedTooltip');
     case 'bookFileRetagged':
-      return 'Book file tags updated';
+      return translate('BookFileRetaggedTooltip');
     case 'bookImportIncomplete':
-      return 'Files downloaded but not all could be imported';
+      return translate('BookImportIncompleteTooltip');
     case 'downloadIgnored':
-      return 'Book Download Ignored';
+      return translate('DownloadIgnoredBookTooltip');
     default:
-      return 'Unknown event';
+      return translate('UnknownEventTooltip');
   }
 }
 
-function HistoryEventTypeCell({ eventType, data }) {
-  const iconName = getIconName(eventType);
-  const iconKind = getIconKind(eventType);
-  const tooltip = getTooltip(eventType, data);
+interface HistoryEventTypeCellProps {
+  eventType: HistoryEventType;
+  data?: HistoryData;
+}
 
+// Shared with the author and book history tables, which still pass redux rows.
+function HistoryEventTypeCell({
+  eventType,
+  data = {},
+}: HistoryEventTypeCellProps) {
   return (
-    <TableRowCell
-      className={styles.cell}
-      title={tooltip}
-    >
-      <Icon
-        name={iconName}
-        kind={iconKind}
-      />
+    <TableRowCell className={styles.cell} title={getTooltip(eventType, data)}>
+      <Icon name={getIconName(eventType)} kind={getIconKind(eventType)} />
     </TableRowCell>
   );
 }
-
-HistoryEventTypeCell.propTypes = {
-  eventType: PropTypes.string.isRequired,
-  data: PropTypes.object
-};
-
-HistoryEventTypeCell.defaultProps = {
-  data: {}
-};
 
 export default HistoryEventTypeCell;
