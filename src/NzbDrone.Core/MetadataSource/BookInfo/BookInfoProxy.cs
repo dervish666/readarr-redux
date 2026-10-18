@@ -112,6 +112,16 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
             }
         }
 
+        // A refresh writes the user's overrides onto the cached objects it saves, so once an override is cleared the
+        // cached copy would still carry the user's old value back in
+        public void EvictAuthor(string foreignAuthorId)
+        {
+            if (foreignAuthorId.IsNotNullOrWhiteSpace())
+            {
+                _authorCache.Remove(foreignAuthorId);
+            }
+        }
+
         public HashSet<string> GetChangedBooks(DateTime startTime)
         {
             return _cache.Get("ChangedBooks", () => GetChangedBooksUncached(startTime), TimeSpan.FromMinutes(30));

@@ -119,6 +119,15 @@
       never reads; decoded profiles are only byte-copied on clone and encode.
     Remove these with the move to ImageSharp 4.1.2 or later.
   -->
+  <!--
+    The Six Labors licence key for ImageSharp 4, read from the SIXLABORS_LICENSE_KEY environment variable: the
+    whole contents of the issued sixlabors.lic, never committed. CI sets it from the repository secret of the
+    same name. ImageSharp 3.1.12 ignores it.
+  -->
+  <PropertyGroup Condition="'$(SixLaborsLicenseKey)' == '' and '$(SIXLABORS_LICENSE_KEY)' != ''">
+    <SixLaborsLicenseKey>$(SIXLABORS_LICENSE_KEY)</SixLaborsLicenseKey>
+  </PropertyGroup>
+
   <ItemGroup>
     <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-wmxv-xphr-5c9g" />
     <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-j9gm-c75j-xc9q" />

@@ -74,17 +74,23 @@ export default {
     // The server saves whatever the probe says and returns the probe alongside, so a failing source is a warning
     // shown after the save rather than an error that blocks it
     [SAVE_METADATA_SOURCE_SETTINGS]: function(getState, payload, dispatch) {
+      const submitted = getMetadataSource(getState);
+
       dispatch(set({ section, isSaving: true }));
 
       const promise = createAjaxRequest({
         url,
         method: 'PUT',
         dataType: 'json',
-        data: JSON.stringify({ id: 1, metadataSource: getMetadataSource(getState) })
+        data: JSON.stringify({ id: 1, metadataSource: submitted })
       }).request;
 
       promise.done((data) => {
         const { probe, ...item } = data;
+
+        // The save can take as long as the server's probe of the address. An edit made meanwhile is still
+        // pending, and the probe is about the old address, so keep the one and drop the other.
+        const editedSince = getMetadataSource(getState) !== submitted;
 
         dispatch(batchActions([
           update({ section, data: item }),
@@ -93,10 +99,12 @@ export default {
             section,
             isSaving: false,
             saveError: null,
-            pendingChanges: {},
-            probe,
-            probeFromSave: true,
-            testError: null
+            ...(editedSince ? {} : {
+              pendingChanges: {},
+              probe,
+              probeFromSave: true,
+              testError: null
+            })
           })
         ]));
       });

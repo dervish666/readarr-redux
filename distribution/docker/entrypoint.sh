@@ -10,8 +10,9 @@ if [ "$(id -u)" = "0" ]; then
     PUID="${PUID:-1000}"
     PGID="${PGID:-1000}"
 
-    # Only entries not already owned by PUID:PGID are touched, so later starts cost nothing on a big /config
-    if ! find /config \( ! -user "$PUID" -o ! -group "$PGID" \) -exec chown "$PUID:$PGID" {} +; then
+    # Only entries not already owned by PUID:PGID are touched, so later starts cost nothing on a big /config.
+    # -h changes a symlink itself: a plain chown follows it and would hand over whatever it points at outside /config.
+    if ! find /config \( ! -user "$PUID" -o ! -group "$PGID" \) -exec chown -h "$PUID:$PGID" {} +; then
         echo "Could not give everything under /config to $PUID:$PGID, Readarr may not be able to write there" >&2
     fi
 

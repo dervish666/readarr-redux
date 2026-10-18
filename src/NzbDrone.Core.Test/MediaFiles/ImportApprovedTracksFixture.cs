@@ -113,6 +113,48 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void should_give_an_edition_added_on_import_the_books_values_set_by_hand()
+        {
+            var local = _approvedDecisions.First().Item;
+            local.Book.MetadataOverrides = new BookMetadataOverrides { Title = "My title", Overview = "My overview", PageCount = 321 };
+
+            var remote = Builder<Edition>.CreateNew()
+                .With(e => e.Id = 0)
+                .With(e => e.ForeignEditionId = "new-edition")
+                .With(e => e.Title = "Source title")
+                .With(e => e.Overview = "Source overview")
+                .With(e => e.PageCount = 100)
+                .Build();
+
+            local.Edition = remote;
+
+            Edition inserted = null;
+
+            Mocker.GetMock<IEditionService>()
+                .Setup(s => s.InsertMany(It.IsAny<List<Edition>>()))
+                .Callback<List<Edition>>(l => inserted = l.Single());
+
+            Mocker.GetMock<IEditionService>()
+                .Setup(s => s.GetEditionByForeignEditionId("new-edition"))
+                .Returns(() => inserted);
+
+            Mocker.GetMock<IEditionService>()
+                .Setup(s => s.SetMonitored(It.IsAny<Edition>()))
+                .Returns((Edition e) =>
+                {
+                    e.Monitored = true;
+                    return new List<Edition> { e };
+                });
+
+            Subject.Import(_approvedDecisions, false);
+
+            inserted.Should().NotBeNull();
+            inserted.Title.Should().Be("My title");
+            inserted.Overview.Should().Be("My overview");
+            inserted.PageCount.Should().Be(321);
+        }
+
+        [Test]
         public void should_only_import_approved()
         {
             var all = new List<ImportDecision<LocalBook>>();
@@ -396,8 +438,38 @@ namespace NzbDrone.Core.Test.MediaFiles
             Mocker.GetMock<IRecycleBinProvider>()
                 .Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
 
-            ExceptionVerification.ExpectedErrors(1);
-            ExceptionVerification.ExpectedWarns(3);
+            // The new parts go back to the download first, so every old part fits back in place and nothing is left
+            // set aside to warn about
+        }
+
+        [Test]
+        public void should_undo_the_import_and_its_deleted_rows_when_the_new_rows_cannot_be_saved()
+        {
+            var disk = new Dictionary<string, string>();
+            var database = new List<BookFile>();
+            var decisions = GivenMultiPartUpgrade(disk, database);
+
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(s => s.AddMany(It.IsAny<List<BookFile>>()))
+                .Throws(new InvalidOperationException("database or disk is full"));
+
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(s => s.Add(It.IsAny<BookFile>()))
+                .Returns<BookFile>(f =>
+                {
+                    database.Add(f);
+                    return f;
+                });
+
+            Assert.Throws<InvalidOperationException>(() => Subject.Import(decisions, true));
+
+            // The new parts are back in the download, the old ones in the library, each with its row
+            disk.Where(x => x.Value == "old").Should().HaveCount(3);
+            disk.Where(x => x.Value == "new").Select(x => x.Key).Should().BeEquivalentTo(decisions.Select(d => d.Item.Path));
+            database.Select(x => x.Path).Should().BeEquivalentTo(disk.Where(x => x.Value == "old").Select(x => x.Key));
+
+            ExceptionVerification.IgnoreWarns();
+            ExceptionVerification.IgnoreErrors();
         }
 
         [Test]

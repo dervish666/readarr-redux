@@ -173,6 +173,55 @@ namespace NzbDrone.Common.Test.DiskTests
         }
 
         [Test]
+        public void RemoveEmptySubfolders_should_not_enter_or_remove_a_directory_link()
+        {
+            var folder = GetTempFilePath();
+            var outside = GetTempFilePath();
+            Directory.CreateDirectory(folder);
+            Directory.CreateDirectory(Path.Combine(outside, "empty"));
+
+            var link = Path.Combine(folder, "linked");
+            Directory.CreateSymbolicLink(link, outside);
+
+            Subject.RemoveEmptySubfolders(folder);
+
+            Directory.Exists(Path.Combine(outside, "empty")).Should().BeTrue();
+            Directory.Exists(link).Should().BeTrue();
+        }
+
+        [Test]
+        public void EmptyFolder_on_a_directory_link_should_leave_its_target_alone()
+        {
+            var folder = GetTempFilePath();
+            var outside = GetTempFilePath();
+            Directory.CreateDirectory(folder);
+            Directory.CreateDirectory(outside);
+            File.WriteAllText(Path.Combine(outside, "book.m4b"), "audio");
+
+            var link = Path.Combine(folder, "linked");
+            Directory.CreateSymbolicLink(link, outside);
+
+            Subject.EmptyFolder(link);
+
+            File.Exists(Path.Combine(outside, "book.m4b")).Should().BeTrue();
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void GetFilesNotFollowingLinks_should_list_hidden_files_but_not_go_through_links()
+        {
+            var folder = GetTempFilePath();
+            var outside = GetTempFilePath();
+            Directory.CreateDirectory(Path.Combine(folder, ".hidden"));
+            Directory.CreateDirectory(outside);
+            File.WriteAllText(Path.Combine(folder, ".hidden", "part 1.mp3"), "audio");
+            File.WriteAllText(Path.Combine(outside, "book.m4b"), "audio");
+            Directory.CreateSymbolicLink(Path.Combine(folder, "linked"), outside);
+
+            Subject.GetFilesNotFollowingLinks(folder).Should().BeEquivalentTo(new[] { Path.Combine(folder, ".hidden", "part 1.mp3") });
+        }
+
+        [Test]
         public void GetAllFilesOrThrow_should_throw_on_a_folder_it_cannot_read()
         {
             PosixOnly();

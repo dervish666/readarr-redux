@@ -203,6 +203,15 @@ namespace NzbDrone.Common.Disk
             return links;
         }
 
+        // Every file under path, hidden ones included, without entering directory links. Unreadable folders are
+        // passed over, as GetFiles does. For walks that change or delete what they find.
+        public IEnumerable<string> GetFilesNotFollowingLinks(string path)
+        {
+            Ensure.That(path, () => path).IsValidPath(PathValidationType.CurrentOs);
+
+            return WalkFiles(path, false, new List<string>());
+        }
+
         // Lists files one folder at a time. The built-in recursion follows directory symlinks (a loop lists the
         // same files over and over) and skips a subfolder that vanishes mid-listing. A directory link is recorded
         // in links and not entered. With throwOnError a folder that is gone or unreadable throws; without, it is
@@ -251,7 +260,7 @@ namespace NzbDrone.Common.Disk
             return files;
         }
 
-        private bool IsDirectoryLink(string path)
+        public bool IsDirectoryLink(string path)
         {
             return _fileSystem.DirectoryInfo.FromDirectoryName(path).Attributes.HasFlag(FileAttributes.ReparsePoint);
         }
@@ -538,6 +547,13 @@ namespace NzbDrone.Common.Disk
         {
             Ensure.That(path, () => path).IsValidPath(PathValidationType.CurrentOs);
 
+            // Emptying a directory link would empty its target, which can be anywhere
+            if (IsDirectoryLink(path))
+            {
+                Logger.Warn("Not emptying {0}: it is a link to another folder, which is left as it is", path);
+                return;
+            }
+
             foreach (var file in GetFiles(path, false))
             {
                 DeleteFile(file);
@@ -661,15 +677,21 @@ namespace NzbDrone.Common.Disk
         public void RemoveEmptySubfolders(string path)
         {
             // Depth first search for empty subdirectories
-            foreach (var subdir in Directory.EnumerateDirectories(path))
+            foreach (var subdir in _fileSystem.Directory.EnumerateDirectories(path))
             {
+                // A directory link is neither entered nor removed: its target can be anywhere, the library included
+                if (IsDirectoryLink(subdir))
+                {
+                    continue;
+                }
+
                 RemoveEmptySubfolders(subdir);
 
-                if (Directory.EnumerateFileSystemEntries(subdir).Empty())
+                if (_fileSystem.Directory.EnumerateFileSystemEntries(subdir).Empty())
                 {
                     try
                     {
-                        Directory.Delete(subdir, false);
+                        _fileSystem.Directory.Delete(subdir, false);
                     }
                     catch (Exception ex)
                     {

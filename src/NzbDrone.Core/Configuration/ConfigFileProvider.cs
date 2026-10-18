@@ -61,6 +61,7 @@ namespace NzbDrone.Core.Configuration
         string PostgresLogDb { get; }
         string PostgresCacheDb { get; }
         bool TrustCgnatIpAddresses { get; }
+        bool AuthenticationNoneConfirmed { get; }
     }
 
     public class ConfigFileProvider : IConfigFileProvider
@@ -479,5 +480,9 @@ namespace NzbDrone.Core.Configuration
         }
 
         public bool TrustCgnatIpAddresses => _authOptions.TrustCgnatIpAddresses ?? GetValueBoolean("TrustCgnatIpAddresses", false, persist: false);
+
+        // Set by hand in config.xml (or READARR__AUTH__NONECONFIRMED) to keep running with no login on purpose. Until
+        // then authentication None means setup isn't finished, and the web UI asks for the one-time setup code.
+        public bool AuthenticationNoneConfirmed => _authOptions.NoneConfirmed ?? GetValueBoolean("AuthenticationNoneConfirmed", false, persist: false);
     }
 }

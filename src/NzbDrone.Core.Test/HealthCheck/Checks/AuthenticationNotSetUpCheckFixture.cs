@@ -17,6 +17,10 @@ namespace NzbDrone.Core.Test.HealthCheck.Checks
             Mocker.GetMock<ILocalizationService>()
                   .Setup(s => s.GetLocalizedString("AuthenticationNotSetUpCheckMessage"))
                   .Returns("No login is set up");
+
+            Mocker.GetMock<ILocalizationService>()
+                  .Setup(s => s.GetLocalizedString("AuthenticationNoneConfirmedCheckMessage"))
+                  .Returns("Running with no login on purpose");
         }
 
         private void GivenAuthenticationMethod(AuthenticationType method)
@@ -27,11 +31,23 @@ namespace NzbDrone.Core.Test.HealthCheck.Checks
         }
 
         [Test]
-        public void should_return_error_and_log_a_warning_when_no_login_is_set_up()
+        public void should_return_error_when_no_login_is_set_up()
         {
             GivenAuthenticationMethod(AuthenticationType.None);
 
             Subject.Check().ShouldBeError("No login is set up");
+        }
+
+        [Test]
+        public void should_warn_and_log_when_running_with_no_login_on_purpose()
+        {
+            GivenAuthenticationMethod(AuthenticationType.None);
+
+            Mocker.GetMock<IConfigFileProvider>()
+                  .SetupGet(s => s.AuthenticationNoneConfirmed)
+                  .Returns(true);
+
+            Subject.Check().ShouldBeWarning("Running with no login on purpose");
 
             ExceptionVerification.ExpectedWarns(1);
         }

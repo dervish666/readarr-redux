@@ -57,6 +57,12 @@ namespace NzbDrone.Common.Http
         // Bytes of body, after decompression, to read before giving up with HttpResponseTooLargeException. Null reads it all.
         public long? MaxResponseLength { get; set; }
 
+        // For URLs a third party chose, such as covers from the metadata source: a direct connection may only go to a
+        // public address, checked against the resolved address at connect time and again on every redirect. Hosts in
+        // PrivateAddressHosts are exempt. A configured proxy does its own resolving, so the check does not apply there.
+        public bool PublicAddressesOnly { get; set; }
+        public HashSet<string> PrivateAddressHosts { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         public override string ToString()
         {
             return ToString();

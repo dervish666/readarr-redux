@@ -414,9 +414,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Manual
                 if (_diskProvider.FolderExists(outputPath))
                 {
                     if (_downloadedTracksImportService.ShouldDeleteFolder(_diskProvider.GetDirectoryInfo(outputPath)) &&
-                        trackedDownload.DownloadItem.CanMoveFiles)
+                        trackedDownload.DownloadItem.CanMoveFiles &&
+                        _downloadedTracksImportService.DeleteImportedFolder(outputPath))
                     {
-                        _diskProvider.DeleteFolder(outputPath, true);
                         results.ForEach(r => r.RemovedFolder = outputPath);
                     }
                 }

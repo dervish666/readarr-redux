@@ -24,8 +24,11 @@ ARG BUILD_SOURCEBRANCHNAME=local
 WORKDIR /src
 COPY . .
 COPY --from=frontend /src/_output/UI /ui
-# Updates come from new images, so the in-app updater (Readarr.Update) is not shipped
-RUN case "$TARGETARCH" in \
+# Updates come from new images, so the in-app updater (Readarr.Update) is not shipped.
+# The Six Labors licence key comes in as a build secret (docker build --secret id=SIXLABORS_LICENSE_KEY,env=SIXLABORS_LICENSE_KEY),
+# so it stays out of the image and its history. Without one the build still works while ImageSharp is on 3.x.
+RUN --mount=type=secret,id=SIXLABORS_LICENSE_KEY,env=SIXLABORS_LICENSE_KEY \
+    case "$TARGETARCH" in \
         amd64) rid=linux-x64 ;; \
         arm64) rid=linux-arm64 ;; \
         *) echo "Unsupported architecture: $TARGETARCH" >&2; exit 1 ;; \

@@ -30,6 +30,9 @@ namespace Readarr.Api.V1.System
         public DatabaseType DatabaseType { get; set; }
         public Version DatabaseVersion { get; set; }
         public AuthenticationType Authentication { get; set; }
+
+        // No login on purpose, so the UI stops asking for one to be set up
+        public bool AuthenticationNoneConfirmed { get; set; }
         public int MigrationVersion { get; set; }
         public string UrlBase { get; set; }
         public Version RuntimeVersion { get; set; }

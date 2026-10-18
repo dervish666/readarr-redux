@@ -54,6 +54,9 @@ jobs:
   backend:
     needs: frontend
     runs-on: ubuntu-24.04
+    env:
+      # ImageSharp 4 needs it to build; empty on pull requests from forks, which get no secrets
+      SIXLABORS_LICENSE_KEY: ${{ secrets.SIXLABORS_LICENSE_KEY }}
     strategy:
       fail-fast: false
       matrix:
@@ -156,6 +159,9 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # A build secret, so the key never lands in an image layer or the build args
+          secrets: |
+            SIXLABORS_LICENSE_KEY=${{ secrets.SIXLABORS_LICENSE_KEY }}
           build-args: |
             READARRVERSION=${{ env.READARRVERSION }}
             BUILD_SOURCEBRANCHNAME=${{ github.ref_name }}

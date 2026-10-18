@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using NLog;
 using NzbDrone.Common.Disk;
@@ -263,18 +264,44 @@ namespace NzbDrone.Core.MediaFiles
                     return;
                 }
 
-                if (_diskProvider.GetFiles(author.Path, true).Empty())
+                // GetFiles skips hidden files and dot-folders, so an author folder holding only those, an upgrade's
+                // set-aside .readarr-upgrade folder for one, looked empty and was deleted outright, past the recycle
+                // bin. Count every file, and only ever remove folders that really are empty.
+                if (HoldsNoFiles(author.Path))
                 {
-                    _diskProvider.DeleteFolder(author.Path, true);
+                    _diskProvider.RemoveEmptySubfolders(author.Path);
+
+                    try
+                    {
+                        _diskProvider.DeleteEmptyFolder(author.Path);
+                    }
+                    catch (IOException e)
+                    {
+                        _logger.Debug(e, "Not removing author folder {0}: something arrived in it", author.Path);
+                    }
                 }
                 else if (!_diskProvider.FolderExists(bookFolder))
                 {
                     _logger.Debug("Not tidying up after {0}: book folder {1} is already gone or inaccessible", message.BookFile.Path, bookFolder);
                 }
-                else if (_diskProvider.GetFiles(bookFolder, true).Empty())
+                else if (HoldsNoFiles(bookFolder))
                 {
                     _diskProvider.RemoveEmptySubfolders(bookFolder);
                 }
+            }
+        }
+
+        // A folder that can't be read, or that holds a directory link, counts as holding files: it is left alone
+        private bool HoldsNoFiles(string path)
+        {
+            try
+            {
+                return _diskProvider.GetAllFilesOrThrow(path).Empty() && _diskProvider.GetDirectoryLinks(path).Empty();
+            }
+            catch (Exception e)
+            {
+                _logger.Debug(e, "Not tidying up {0}: it couldn't be fully listed", path);
+                return false;
             }
         }
     }

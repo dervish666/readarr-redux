@@ -53,6 +53,39 @@ namespace NzbDrone.Common.Extensions
             return isLinkLocal || isClassA || isClassC || isClassB;
         }
 
+        // False for anything a request from outside the LAN could not reach: loopback, private, link-local, CGNAT,
+        // benchmarking, multicast, reserved and unspecified addresses
+        public static bool IsPublicAddress(this IPAddress ipAddress)
+        {
+            if (ipAddress.IsIPv4MappedToIPv6)
+            {
+                ipAddress = ipAddress.MapToIPv4();
+            }
+
+            if (ipAddress.IsLocalAddress() || ipAddress.IsCgnatIpAddress())
+            {
+                return false;
+            }
+
+            if (ipAddress.AddressFamily == AddressFamily.InterNetwork)
+            {
+                var bytes = ipAddress.GetAddressBytes();
+
+                return bytes[0] != 0 &&
+                       bytes[0] < 224 &&
+                       !(bytes[0] == 192 && bytes[1] == 0 && bytes[2] == 0) &&
+                       !(bytes[0] == 198 && (bytes[1] == 18 || bytes[1] == 19));
+            }
+
+            if (ipAddress.AddressFamily == AddressFamily.InterNetworkV6)
+            {
+                return !ipAddress.Equals(IPAddress.IPv6None) &&
+                       !ipAddress.IsIPv6Multicast;
+            }
+
+            return false;
+        }
+
         public static bool IsCgnatIpAddress(this IPAddress ipAddress)
         {
             var bytes = ipAddress.GetAddressBytes();

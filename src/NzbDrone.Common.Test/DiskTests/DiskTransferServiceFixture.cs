@@ -406,6 +406,27 @@ namespace NzbDrone.Common.Test.DiskTests
         }
 
         [Test]
+        public void TransferFolder_should_not_go_through_a_directory_link()
+        {
+            WithRealDiskProvider();
+
+            var source = GetFilledTempFolder();
+            var outside = new DirectoryInfo(GetTempFilePath());
+            outside.Create();
+            File.WriteAllText(Path.Combine(outside.FullName, "library book.m4b"), "audio");
+            Directory.CreateSymbolicLink(Path.Combine(source.FullName, "linked"), outside.FullName);
+
+            var destination = new DirectoryInfo(GetTempFilePath());
+
+            Subject.TransferFolder(source.FullName, destination.FullName, TransferMode.Copy);
+
+            File.Exists(Path.Combine(destination.FullName, "linked", "library book.m4b")).Should().BeFalse();
+            File.Exists(Path.Combine(outside.FullName, "library book.m4b")).Should().BeTrue();
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
         public void CopyFolder_should_overwrite_existing_folder()
         {
             WithRealDiskProvider();
@@ -776,6 +797,10 @@ namespace NzbDrone.Common.Test.DiskTests
         private void WithEmulatedDiskProvider()
         {
             Mocker.GetMock<IDiskProvider>()
+                .Setup(v => v.IsDirectoryLink(It.IsAny<string>()))
+                .Returns(false);
+
+            Mocker.GetMock<IDiskProvider>()
                 .Setup(v => v.FileExists(It.IsAny<string>()))
                 .Returns(false);
 
@@ -848,6 +873,10 @@ namespace NzbDrone.Common.Test.DiskTests
         private void WithRealDiskProvider()
         {
             IFileSystem fileSystem = new FileSystem();
+
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(v => v.IsDirectoryLink(It.IsAny<string>()))
+                .Returns<string>(p => fileSystem.DirectoryInfo.FromDirectoryName(p).Attributes.HasFlag(FileAttributes.ReparsePoint));
 
             Mocker.GetMock<IDiskProvider>()
                 .Setup(v => v.FolderExists(It.IsAny<string>()))

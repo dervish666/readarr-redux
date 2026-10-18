@@ -22,6 +22,7 @@ namespace NzbDrone.Core.MediaFiles
         List<ImportResult> ProcessRootFolder(IDirectoryInfo directoryInfo);
         List<ImportResult> ProcessPath(string path, ImportMode importMode = ImportMode.Auto, Author author = null, DownloadClientItem downloadClientItem = null, Book book = null, DownloadImportOptions options = null);
         bool ShouldDeleteFolder(IDirectoryInfo directoryInfo);
+        bool DeleteImportedFolder(string path);
     }
 
     public class DownloadedBooksImportService : IDownloadedBooksImportService
@@ -172,6 +173,56 @@ namespace NzbDrone.Core.MediaFiles
             }
         }
 
+        // Removes a download folder once ShouldDeleteFolder has passed it. A recursive delete would also take a file
+        // that landed after that check, such as the next part a client is still writing into a shared folder. So
+        // this deletes only what it lists now, refuses if any of that is audio or a book, and then removes folders
+        // only when they are empty, which the OS refuses if anything new is in them. True if the folder is gone.
+        public bool DeleteImportedFolder(string path)
+        {
+            try
+            {
+                var files = _diskProvider.GetAllFilesOrThrow(path);
+                var media = files.Where(f => MediaFileExtensions.AllExtensions.Contains(Path.GetExtension(f)) && !Path.GetFileName(f).StartsWith("._")).ToList();
+
+                if (media.Any())
+                {
+                    _logger.Warn("Not deleting {0}, book or audio files arrived in it: {1}", path, string.Join(", ", media.Select(Path.GetFileName)));
+                    return false;
+                }
+
+                if (_diskProvider.GetDirectoryLinks(path).Any())
+                {
+                    _logger.Warn("Not deleting {0}, it holds links to other folders", path);
+                    return false;
+                }
+
+                foreach (var file in files)
+                {
+                    _diskProvider.DeleteFile(file);
+                }
+
+                _diskProvider.RemoveEmptySubfolders(path);
+                _diskProvider.DeleteEmptyFolder(path);
+
+                return true;
+            }
+            catch (DirectoryNotFoundException e)
+            {
+                _logger.Debug(e, "Folder {0} has already been removed", path);
+                return false;
+            }
+            catch (IOException e)
+            {
+                _logger.Warn(e, "Kept {0} after importing from it, something in it couldn't be removed or arrived while it was being removed", path);
+                return false;
+            }
+            catch (UnauthorizedAccessException e)
+            {
+                _logger.Warn(e, "Kept {0} after importing from it, something in it couldn't be removed", path);
+                return false;
+            }
+        }
+
         private List<ImportResult> ProcessFolder(IDirectoryInfo directoryInfo, ImportMode importMode, DownloadClientItem downloadClientItem)
         {
             var cleanedUpName = GetCleanedUpFolderName(directoryInfo.Name);
@@ -262,16 +313,10 @@ namespace NzbDrone.Core.MediaFiles
             {
                 _logger.Debug("Deleting folder after importing valid files");
 
-                try
+                if (DeleteImportedFolder(directoryInfo.FullName))
                 {
-                    _diskProvider.DeleteFolder(directoryInfo.FullName, true);
-
                     // Lets completion tell this folder going from a share dropping or a client cleaning up
                     importResults.ForEach(r => r.RemovedFolder = directoryInfo.FullName);
-                }
-                catch (IOException e)
-                {
-                    _logger.Debug(e, "Unable to delete folder after importing: {0}", e.Message);
                 }
             }
 

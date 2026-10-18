@@ -43,6 +43,8 @@ namespace NzbDrone.Core.Books
         private readonly IEventAggregator _eventAggregator;
         private readonly ICheckIfBookShouldBeRefreshed _checkIfBookShouldBeRefreshed;
         private readonly IMapCoversToLocal _mediaCoverService;
+        private readonly ISeriesBookLinkService _seriesBookLinkService;
+        private readonly IMissingBookTracker _missingBookTracker;
         private readonly Logger _logger;
 
         public RefreshBookService(IBookService bookService,
@@ -57,6 +59,8 @@ namespace NzbDrone.Core.Books
                                   IEventAggregator eventAggregator,
                                   ICheckIfBookShouldBeRefreshed checkIfBookShouldBeRefreshed,
                                   IMapCoversToLocal mediaCoverService,
+                                  ISeriesBookLinkService seriesBookLinkService,
+                                  IMissingBookTracker missingBookTracker,
                                   Logger logger)
         : base(logger, authorMetadataService)
         {
@@ -71,6 +75,8 @@ namespace NzbDrone.Core.Books
             _eventAggregator = eventAggregator;
             _checkIfBookShouldBeRefreshed = checkIfBookShouldBeRefreshed;
             _mediaCoverService = mediaCoverService;
+            _seriesBookLinkService = seriesBookLinkService;
+            _missingBookTracker = missingBookTracker;
             _logger = logger;
         }
 
@@ -79,7 +85,10 @@ namespace NzbDrone.Core.Books
             try
             {
                 var tuple = _bookInfo.GetBookInfo(book.ForeignBookId);
-                var author = _authorInfo.GetAuthorInfo(tuple.Item1);
+
+                // The metadata source's author object is cached and shared with the next author refresh. Setting its
+                // Books to this one book left that refresh a works list of one, so every other book looked missing.
+                var author = _authorInfo.GetAuthorInfo(tuple.Item1).ShallowCopy();
                 var newbook = tuple.Item2;
 
                 newbook.Author = author;
@@ -131,9 +140,25 @@ namespace NzbDrone.Core.Books
             if (result.Entity != null)
             {
                 result.Entity.Id = local.Id;
+                _missingBookTracker.Found(local);
             }
 
             return result;
+        }
+
+        // True to go ahead with deleting a book the metadata no longer has. The first time, the book is kept, and only
+        // a refresh at least MissingBookTracker.Grace later that still can't find it deletes it.
+        private bool PastDeleteGrace(Book local, RemoteData result)
+        {
+            if (_missingBookTracker.MissingLongEnough(local, DateTime.UtcNow))
+            {
+                return true;
+            }
+
+            KeptBooks.Pending(local, _missingBookTracker.DeleteAfter(local), _logger);
+            result.Keep = true;
+
+            return false;
         }
 
         // The work 404'd. Goodreads merges works without leaving a redirect, so before the book is deleted ask where
@@ -156,6 +181,7 @@ namespace NzbDrone.Core.Books
 
             if (edition == null)
             {
+                PastDeleteGrace(local, result);
                 return result;
             }
 
@@ -168,6 +194,7 @@ namespace NzbDrone.Core.Books
             catch (EditionNotFoundException)
             {
                 _logger.Debug("Edition {0} of {1} is gone too", edition.ForeignEditionId, local);
+                PastDeleteGrace(local, result);
                 return result;
             }
 
@@ -182,6 +209,11 @@ namespace NzbDrone.Core.Books
 
             if (existing != null)
             {
+                if (!PastDeleteGrace(local, result))
+                {
+                    return result;
+                }
+
                 // A duplicate now with no files to move, so the base class deletes it. If it was the wanted copy,
                 // pass that on first, with its edition, which would otherwise be deleted along with it.
                 if (local.Monitored && !existing.Monitored)
@@ -268,9 +300,21 @@ namespace NzbDrone.Core.Books
 
         protected override bool ShouldDelete(Book local)
         {
-            // not manually added and has no files
+            // Not added by hand, no files, and nothing the user changed by hand: deleting a book with metadata
+            // overrides or series links the user made would lose that work for good
             return local.AddOptions.AddType != BookAddType.Manual &&
-                !_mediaFileService.GetFilesByBook(local.Id).Any();
+                !_mediaFileService.GetFilesByBook(local.Id).Any() &&
+                !HasManualEdits(local);
+        }
+
+        private bool HasManualEdits(Book local)
+        {
+            if (local.MetadataOverrides != null && !local.MetadataOverrides.IsEmpty)
+            {
+                return true;
+            }
+
+            return _seriesBookLinkService.GetLinksByBook(new List<int> { local.Id })?.Any(x => x.IsManual) == true;
         }
 
         protected override void LogProgress(Book local)
@@ -546,7 +590,19 @@ namespace NzbDrone.Core.Books
 
         public bool RefreshBookInfo(Book book, List<Book> remoteBooks, Author remoteData, bool forceUpdateFileTags)
         {
-            return RefreshEntityInfo(book, remoteBooks, remoteData, true, forceUpdateFileTags, null);
+            using (BookEditLock.Take(book.Id))
+            {
+                // The book may have been loaded long before this point in an author refresh. An edit saved since
+                // then must win, or this refresh writes the old overrides back and keeps applying them.
+                var stored = _bookService.FindById(book.ForeignBookId);
+
+                if (stored != null && stored.Id == book.Id)
+                {
+                    book.MetadataOverrides = stored.MetadataOverrides;
+                }
+
+                return RefreshEntityInfo(book, remoteBooks, remoteData, true, forceUpdateFileTags, null);
+            }
         }
 
         public bool RefreshBookInfo(Book book)
