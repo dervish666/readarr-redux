@@ -8,6 +8,8 @@ This version was modified by Sam Castillo and contributors, starting on 2026-10-
 
 Several fixes are ports of changes from Sonarr (https://github.com/Sonarr/Sonarr, GPL-3.0). Their commit messages name the Sonarr commit they came from.
 
+From 2026-10-18 the frontend is being moved onto Sonarr's v5 frontend (copyright Team Sonarr, GPL-3.0), starting with its data-fetching hooks, option stores and SignalR listener. Files ported from Sonarr are named, with the Sonarr commit they came from, in the commit that brought them in.
+
 Readarr Redux is not affiliated with, endorsed by or supported by the Readarr or Servarr teams. The app keeps the Readarr name, logo and internal identifiers so existing installs can move over; those belong to their owners.
 
 ## Third-party packages
