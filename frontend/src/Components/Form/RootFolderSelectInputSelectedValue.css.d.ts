@@ -3,6 +3,7 @@
 interface CssExports {
   'authorFolder': string;
   'freeSpace': string;
+  'isMissing': string;
   'path': string;
   'pathContainer': string;
   'selectedValue': string;

@@ -3,6 +3,6 @@
 }
 
 .input {
-  composes: input from '~./TagInput.css';
+  composes: input from '~Components/Form/TagInput.css';
   composes: hasButton from '~Components/Form/Input.css';
 }

@@ -20,37 +20,30 @@ function AdvancedSettingsButton(props) {
       title={advancedSettings ? translate('ShownClickToHide') : translate('HiddenClickToShow')}
       onPress={onAdvancedSettingsPress}
     >
-      <Icon
-        name={icons.ADVANCED_SETTINGS}
-        size={21}
-      />
-
-      <span
-        className={classNames(
-          styles.indicatorContainer,
-          'fa-layers fa-fw'
-        )}
-      >
+      <div className={styles.iconWrapper}>
         <Icon
-          className={styles.indicatorBackground}
-          name={icons.CIRCLE}
+          name={icons.ADVANCED_SETTINGS}
           size={16}
         />
 
-        <Icon
-          className={advancedSettings ? styles.enabled : styles.disabled}
-          name={advancedSettings ? icons.CHECK : icons.CLOSE}
-          size={10}
-        />
-      </span>
+        <span
+          className={classNames(
+            styles.indicatorContainer,
+            advancedSettings ? styles.enabled : styles.disabled
+          )}
+        >
+          <Icon
+            name={advancedSettings ? icons.CHECK_CIRCLE : icons.FATAL}
+            size={9}
+          />
+        </span>
+      </div>
 
       {
         showLabel ?
-          <div className={styles.labelContainer}>
-            <div className={styles.label}>
-              {advancedSettings ? translate('HideAdvanced') : translate('ShowAdvanced')}
-            </div>
-          </div> :
+          <span className={styles.label}>
+            {advancedSettings ? translate('HideAdvanced') : translate('ShowAdvanced')}
+          </span> :
           null
       }
     </Link>

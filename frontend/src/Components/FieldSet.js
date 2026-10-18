@@ -1,6 +1,6 @@
-import classNames from 'classnames';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
+import SectionHeading from 'Components/SectionHeading';
 import { sizes } from 'Helpers/Props';
 import styles from './FieldSet.css';
 
@@ -11,18 +11,22 @@ class FieldSet extends Component {
 
   render() {
     const {
-      size,
       legend,
       children
     } = this.props;
 
     return (
-      <fieldset className={styles.fieldSet}>
-        <legend className={classNames(styles.legend, (size === sizes.SMALL) && styles.small)}>
-          {legend}
-        </legend>
-        {children}
-      </fieldset>
+      <div className={styles.section}>
+        {
+          legend ?
+            <SectionHeading title={legend} /> :
+            null
+        }
+
+        <section className={styles.fieldSet}>
+          {children}
+        </section>
+      </div>
     );
   }
 

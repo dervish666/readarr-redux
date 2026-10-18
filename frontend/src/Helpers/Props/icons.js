@@ -1,229 +1,214 @@
-//
-// Regular
-
+// Icon mapping follows Sonarr's icons.ts (commit 76c006b94).
 import {
-  faBookmark as farBookmark,
-  faCalendar as farCalendar,
-  faCircle as farCircle,
-  faClock as farClock,
-  faClone as farClone,
-  faDotCircle as farDotCircle,
-  faFile as farFile,
-  faFileArchive as farFileArchive,
-  faFileAudio as farFileAudio,
-  faFolder as farFolder,
-  faHdd as farHdd,
-  faKeyboard as farKeyboard,
-  faObjectGroup as farObjectGroup,
-  faObjectUngroup as farObjectUngroup
-} from '@fortawesome/free-regular-svg-icons';
-//
-// Solid
-import {
-  faArrowCircleLeft as fasArrowCircleLeft,
-  faArrowCircleRight as fasArrowCircleRight,
-  faArrowCircleUp as fasArrowCircleUp,
-  faBackward as fasBackward,
-  faBan as fasBan,
-  faBars as fasBars,
-  faBolt as fasBolt,
-  faBook as fasBook,
-  faBookmark as fasBookmark,
-  faBookReader as fasBookReader,
-  faBroadcastTower as fasBroadcastTower,
-  faBug as fasBug,
-  faCalendarAlt as fasCalendarAlt,
-  faCaretDown as fasCaretDown,
-  faCheck as fasCheck,
-  faCheckCircle as fasCheckCircle,
-  faCheckSquare as fasCheckSquare,
-  faChevronCircleDown as fasChevronCircleDown,
-  faChevronCircleRight as fasChevronCircleRight,
-  faChevronCircleUp as fasChevronCircleUp,
-  faCircle as fasCircle,
-  faCloud as fasCloud,
-  faCloudDownloadAlt as fasCloudDownloadAlt,
-  faCog as fasCog,
-  faCogs as fasCogs,
-  faCopy as fasCopy,
-  faDesktop as fasDesktop,
-  faDownload as fasDownload,
-  faEdit as fasEdit,
-  faEllipsisH as fasEllipsisH,
-  faExclamationCircle as fasExclamationCircle,
-  faExclamationTriangle as fasExclamationTriangle,
-  faExternalLinkAlt as fasExternalLinkAlt,
-  faEye as fasEye,
-  faFastBackward as fasFastBackward,
-  faFastForward as fasFastForward,
-  faFileExport as fasFileExport,
-  faFileImport as fasFileImport,
-  faFileInvoice as farFileInvoice,
-  faFilter as fasFilter,
-  faFlag as fasFlag,
-  faFolderOpen as fasFolderOpen,
-  faForward as fasForward,
-  faHeart as fasHeart,
-  faHistory as fasHistory,
-  faHome as fasHome,
-  faInfoCircle as fasInfoCircle,
-  faLaptop as fasLaptop,
-  faLevelUpAlt as fasLevelUpAlt,
-  faListCheck as fasListCheck,
-  faLongArrowAltRight as fasLongArrowAltRight,
-  faMedkit as fasMedkit,
-  faMinus as fasMinus,
-  faPause as fasPause,
-  faPlay as fasPlay,
-  faPlus as fasPlus,
-  faPowerOff as fasPowerOff,
-  faQuestion as fasQuestion,
-  faQuestionCircle as fasQuestionCircle,
-  faRedoAlt as fasRedoAlt,
-  faRetweet as fasRetweet,
-  faRocket as fasRocket,
-  faRss as fasRss,
-  faSave as fasSave,
-  faSearch as fasSearch,
-  faSearchPlus as fasSearchPlus,
-  faSignOutAlt as fasSignOutAlt,
-  faSitemap as fasSitemap,
-  faSort as fasSort,
-  faSortDown as fasSortDown,
-  faSortUp as fasSortUp,
-  faSpinner as fasSpinner,
-  faStar as fasStar,
-  faStop as fasStop,
-  faSync as fasSync,
-  faTable as fasTable,
-  faTags as fasTags,
-  faTh as fasTh,
-  faThList as fasThList,
-  faTimes as fasTimes,
-  faTimesCircle as fasTimesCircle,
-  faTrashAlt as fasTrashAlt,
-  faUser as fasUser,
-  faUserPlus as fasUserPlus,
-  faUsers as fasUsers,
-  faVial as fasVial,
-  faWrench as fasWrench
-} from '@fortawesome/free-solid-svg-icons';
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Ban,
+  Book,
+  Bookmark,
+  BookmarkX,
+  BookOpen,
+  Bug,
+  Calendar,
+  CalendarDays,
+  Captions,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  ChevronUp,
+  Circle,
+  CircleAlert,
+  CircleCheck,
+  CircleChevronLeft,
+  CircleChevronRight,
+  CircleChevronUp,
+  CircleDot,
+  CircleHelp,
+  CircleStop,
+  CircleX,
+  Clock,
+  Cloud,
+  CloudDownload,
+  Copy,
+  CornerLeftUp,
+  Download,
+  EllipsisVertical,
+  ExternalLink,
+  Eye,
+  File,
+  FileArchive,
+  FileAudio,
+  FileInput,
+  FileOutput,
+  FileText,
+  Flag,
+  FlaskConical,
+  Folder,
+  FolderOpen,
+  FolderPen,
+  Group,
+  HardDrive,
+  Heart,
+  HeartPulse,
+  History,
+  House,
+  Info,
+  Keyboard,
+  Laptop,
+  LayoutGrid,
+  LayoutList,
+  ListChecks,
+  ListFilter,
+  Loader,
+  LogOut,
+  Menu,
+  Minus,
+  Monitor,
+  MoveRight,
+  Pause,
+  Play,
+  Plus,
+  Power,
+  Radio,
+  RefreshCcw,
+  RefreshCw,
+  Rocket,
+  RotateCcw,
+  Rss,
+  Save,
+  Search,
+  Settings,
+  SquareCheckBig,
+  SquarePen,
+  Star,
+  Table,
+  Tags,
+  Trash,
+  TriangleAlert,
+  Ungroup,
+  User,
+  UserPlus,
+  Users,
+  Wrench,
+  X,
+  ZoomIn
+} from 'lucide-react';
 
-//
-// Icons
-
-export const ACTIONS = fasBolt;
-export const ACTIVITY = farClock;
-export const ADD = fasPlus;
-export const ADD_MISSING_AUTHORS = fasSearchPlus;
-export const ALTERNATE_TITLES = farClone;
-export const ADVANCED_SETTINGS = fasCog;
-export const ARROW_LEFT = fasArrowCircleLeft;
-export const ARROW_RIGHT = fasArrowCircleRight;
-export const ARROW_RIGHT_NO_CIRCLE = fasLongArrowAltRight;
-export const ARROW_UP = fasArrowCircleUp;
-export const AUTHORS = fasUsers;
-export const BACKUP = farFileArchive;
-export const BAN = fasBan;
-export const BOOK = fasBook;
-export const BUG = fasBug;
-export const CALENDAR = fasCalendarAlt;
-export const CALENDAR_O = farCalendar;
-export const CARET_DOWN = fasCaretDown;
-export const CHECK = fasCheck;
-export const CHECK_INDETERMINATE = fasMinus;
-export const CHECK_CIRCLE = fasCheckCircle;
-export const CHECK_SQUARE = fasCheckSquare;
-export const CIRCLE = fasCircle;
-export const CIRCLE_OUTLINE = farCircle;
-export const CLEAR = fasTrashAlt;
-export const CLIPBOARD = fasCopy;
-export const CLOSE = fasTimes;
-export const CLONE = farClone;
-export const COLLAPSE = fasChevronCircleUp;
-export const COMPUTER = fasDesktop;
-export const DANGER = fasExclamationCircle;
-export const DELETE = fasTrashAlt;
-export const DOWNLOAD = fasDownload;
-export const DOWNLOADED = fasDownload;
-export const DOWNLOADING = fasCloudDownloadAlt;
-export const DRIVE = farHdd;
-export const EDIT = fasWrench;
-export const TRACK_FILE = farFileAudio;
-export const EXPAND = fasChevronCircleDown;
-export const EXPAND_INDETERMINATE = fasChevronCircleRight;
-export const EXPORT = fasFileExport;
-export const EXTERNAL_LINK = fasExternalLinkAlt;
-export const FATAL = fasTimesCircle;
-export const FILE = farFile;
-export const FILEIMPORT = fasFileImport;
-export const FILTER = fasFilter;
-export const FLAG = fasFlag;
-export const FOLDER = farFolder;
-export const FOLDER_OPEN = fasFolderOpen;
-export const GROUP = farObjectGroup;
-export const HEALTH = fasMedkit;
-export const HEART = fasHeart;
-export const HISTORY = fasHistory;
-export const HOUSEKEEPING = fasHome;
-export const IGNORE = fasTimesCircle;
-export const INFO = fasInfoCircle;
-export const INTERACTIVE = fasUser;
-export const KEYBOARD = farKeyboard;
-export const LOGOUT = fasSignOutAlt;
-export const MANAGE = fasListCheck;
-export const MEDIA_INFO = farFileInvoice;
-export const MISSING = fasExclamationTriangle;
-export const MONITORED = fasBookmark;
-export const NETWORK = fasBroadcastTower;
-export const NAVBAR_COLLAPSE = fasBars;
-export const NOT_AIRED = farClock;
-export const ORGANIZE = fasSitemap;
-export const OVERFLOW = fasEllipsisH;
-export const OVERVIEW = fasThList;
-export const PAGE_FIRST = fasFastBackward;
-export const PAGE_PREVIOUS = fasBackward;
-export const PAGE_NEXT = fasForward;
-export const PAGE_LAST = fasFastForward;
-export const PARENT = fasLevelUpAlt;
-export const PAUSED = fasPause;
-export const PENDING = farClock;
-export const PROFILE = fasUser;
-export const POSTER = fasTh;
-export const QUEUED = fasCloud;
-export const QUICK = fasRocket;
-export const REFRESH = fasSync;
-export const REMOVE = fasTimes;
-export const REORDER = fasBars;
-export const RESCAN = fasFolderOpen;
-export const RESTART = fasRedoAlt;
-export const RESTORE = fasHistory;
-export const RETAG = fasEdit;
-export const RSS = fasRss;
-export const SAVE = fasSave;
-export const SCHEDULED = farClock;
-export const SCORE = fasUserPlus;
-export const SEARCH = fasSearch;
-export const AUTHOR_CONTINUING = fasPlay;
-export const AUTHOR_ENDED = fasStop;
-export const SETTINGS = fasCogs;
-export const SHUTDOWN = fasPowerOff;
-export const SORT = fasSort;
-export const SORT_ASCENDING = fasSortUp;
-export const SORT_DESCENDING = fasSortDown;
-export const SPINNER = fasSpinner;
-export const STAR_FULL = fasStar;
-export const SUBTRACT = fasMinus;
-export const SYSTEM = fasLaptop;
-export const TABLE = fasTable;
-export const TAGS = fasTags;
-export const TBA = fasQuestionCircle;
-export const TEST = fasVial;
-export const UNGROUP = farObjectUngroup;
-export const UNKNOWN = fasQuestion;
-export const UNMONITORED = farBookmark;
-export const UPDATE = fasRetweet;
-export const UNSAVED_SETTING = farDotCircle;
-export const VIEW = fasEye;
-export const WARNING = fasExclamationTriangle;
-export const WIKI = fasBookReader;
+export const ACTIONS = EllipsisVertical;
+export const ACTIVITY = Clock;
+export const ADD = Plus;
+export const ADD_MISSING_AUTHORS = ZoomIn;
+export const ALTERNATE_TITLES = Captions;
+export const ADVANCED_SETTINGS = Settings;
+export const ARROW_LEFT = CircleChevronLeft;
+export const ARROW_RIGHT = CircleChevronRight;
+export const ARROW_RIGHT_NO_CIRCLE = MoveRight;
+export const ARROW_UP = CircleChevronUp;
+export const AUTHORS = Users;
+export const BACKUP = FileArchive;
+export const BAN = Ban;
+export const BOOK = Book;
+export const BUG = Bug;
+export const CALENDAR = CalendarDays;
+export const CALENDAR_O = Calendar;
+export const CARET_DOWN = ChevronDown;
+export const CHECK = Check;
+export const CHECK_INDETERMINATE = Minus;
+export const CHECK_CIRCLE = CircleCheck;
+export const CHECK_SQUARE = SquareCheckBig;
+export const CIRCLE = Circle;
+export const CIRCLE_OUTLINE = Circle;
+export const CLEAR = Trash;
+export const CLIPBOARD = Copy;
+export const CLOSE = X;
+export const CLONE = Copy;
+export const COLLAPSE = ChevronUp;
+export const COMPUTER = Monitor;
+export const DANGER = CircleAlert;
+export const DELETE = Trash;
+export const DOWNLOAD = Download;
+export const DOWNLOADED = Download;
+export const DOWNLOADING = CloudDownload;
+export const DRIVE = HardDrive;
+export const EDIT = Wrench;
+export const TRACK_FILE = FileAudio;
+export const EXPAND = ChevronDown;
+export const EXPAND_INDETERMINATE = ChevronRight;
+export const EXPORT = FileOutput;
+export const EXTERNAL_LINK = ExternalLink;
+export const FATAL = CircleX;
+export const FILE = File;
+export const FILEIMPORT = FileInput;
+export const FILTER = ListFilter;
+export const FLAG = Flag;
+export const FOLDER = Folder;
+export const FOLDER_OPEN = FolderOpen;
+export const GROUP = Group;
+export const HEALTH = HeartPulse;
+export const HEART = Heart;
+export const HISTORY = History;
+export const HOUSEKEEPING = House;
+export const IGNORE = CircleX;
+export const INFO = Info;
+export const INTERACTIVE = User;
+export const KEYBOARD = Keyboard;
+export const LOGOUT = LogOut;
+export const MANAGE = ListChecks;
+export const MEDIA_INFO = FileText;
+export const MISSING = TriangleAlert;
+export const MONITORED = Bookmark;
+export const NETWORK = Radio;
+export const NAVBAR_COLLAPSE = Menu;
+export const NOT_AIRED = Clock;
+export const ORGANIZE = FolderPen;
+export const OVERFLOW = EllipsisVertical;
+export const OVERVIEW = LayoutList;
+export const PAGE_FIRST = ChevronsLeft;
+export const PAGE_PREVIOUS = ChevronLeft;
+export const PAGE_NEXT = ChevronRight;
+export const PAGE_LAST = ChevronsRight;
+export const PARENT = CornerLeftUp;
+export const PAUSED = Pause;
+export const PENDING = Clock;
+export const PROFILE = User;
+export const POSTER = LayoutGrid;
+export const QUEUED = Cloud;
+export const QUICK = Rocket;
+export const REFRESH = RefreshCw;
+export const REMOVE = X;
+export const REORDER = Menu;
+export const RESCAN = FolderOpen;
+export const RESTART = RotateCcw;
+export const RESTORE = History;
+export const RETAG = SquarePen;
+export const RSS = Rss;
+export const SAVE = Save;
+export const SCHEDULED = Clock;
+export const SCORE = UserPlus;
+export const SEARCH = Search;
+export const AUTHOR_CONTINUING = Play;
+export const AUTHOR_ENDED = CircleStop;
+export const SETTINGS = Settings;
+export const SHUTDOWN = Power;
+export const SORT = ArrowUpDown;
+export const SORT_ASCENDING = ArrowUp;
+export const SORT_DESCENDING = ArrowDown;
+export const SPINNER = Loader;
+export const STAR_FULL = Star;
+export const SUBTRACT = Minus;
+export const SYSTEM = Laptop;
+export const TABLE = Table;
+export const TAGS = Tags;
+export const TBA = CircleHelp;
+export const TEST = FlaskConical;
+export const UNGROUP = Ungroup;
+export const UNKNOWN = CircleHelp;
+export const UNMONITORED = BookmarkX;
+export const UPDATE = RefreshCcw;
+export const UNSAVED_SETTING = CircleDot;
+export const VIEW = Eye;
+export const WARNING = TriangleAlert;
+export const WIKI = BookOpen;

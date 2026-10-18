@@ -4,10 +4,9 @@ interface CssExports {
   'button': string;
   'disabled': string;
   'enabled': string;
-  'indicatorBackground': string;
+  'iconWrapper': string;
   'indicatorContainer': string;
   'label': string;
-  'labelContainer': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

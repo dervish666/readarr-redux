@@ -17,13 +17,17 @@ function PageMenuButton(props) {
       className={styles.menuButton}
       {...otherProps}
     >
-      <Icon
-        name={iconName}
-        size={18}
-      />
+      <div className={styles.inner}>
+        <div className={styles.iconWrapper}>
+          <Icon
+            name={iconName}
+            size={18}
+          />
+        </div>
 
-      <div className={styles.label}>
-        {text}
+        <div className={styles.label}>
+          {text}
+        </div>
       </div>
     </MenuButton>
   );

@@ -2,8 +2,7 @@
 // Please do not change this file!
 interface CssExports {
   'fieldSet': string;
-  'legend': string;
-  'small': string;
+  'section': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

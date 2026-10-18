@@ -91,6 +91,19 @@ async function openMenu(page: Page, label: string) {
   await expect(page.locator('[class*="MenuContent-menuContent"]').filter({ visible: true })).toHaveCount(1);
 }
 
+// Toolbar buttons that don't fit the width move into the toolbar's More menu.
+async function pressToolbarAction(page: Page, label: string) {
+  const button = page.locator('[class*="PageToolbarButton-toolbarButton"]', { hasText: new RegExp(`^${label}$`) });
+
+  if (await button.count()) {
+    await button.click();
+    return;
+  }
+
+  await openMenu(page, 'More');
+  await page.locator('[class*="MenuItem-menuItem"]', { hasText: new RegExp(`^${label}$`) }).click();
+}
+
 test.describe('every route renders', () => {
   for (const route of STATIC_ROUTES) {
     test(route, async ({ page, problems }) => {
@@ -134,7 +147,7 @@ test('author details: books, series tab, edit modal', async ({ page }) => {
   await page.getByRole('tab', { name: /^Series/ }).click();
   await waitForPage(page);
 
-  await page.locator('[class*="PageToolbarButton-toolbarButton"]', { hasText: /^Edit$/ }).click();
+  await pressToolbarAction(page, 'Edit');
   const modal = page.locator('[class*="ModalContent-modalContent"]');
   await expect(modal).toBeVisible();
   await modal.getByRole('button', { name: 'Cancel' }).click();

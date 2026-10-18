@@ -4,13 +4,17 @@ interface CssExports {
   'danger': string;
   'default': string;
   'disabled': string;
+  'hasIcon': string;
   'info': string;
+  'interactive': string;
   'inverse': string;
   'label': string;
   'large': string;
   'medium': string;
+  'noDot': string;
   'outline': string;
   'primary': string;
+  'purple': string;
   'small': string;
   'success': string;
   'warning': string;

@@ -4,9 +4,12 @@ interface CssExports {
   'danger': string;
   'default': string;
   'disabled': string;
+  'icon': string;
+  'iconSpin': string;
   'info': string;
   'pink': string;
   'purple': string;
+  'spinning': string;
   'success': string;
   'warning': string;
 }

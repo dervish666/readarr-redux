@@ -1,28 +1,38 @@
+/* v5 form row (Sonarr's FormRow "right" layout): label on the left, input and help text on the right. */
 .group {
-  display: flex;
-  margin-bottom: 20px;
+  display: grid;
+  align-items: start;
+  padding: 16px 0;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+
+  column-gap: 32px;
 }
 
-/* Sizes */
-
-.extraSmall {
-  max-width: $formGroupExtraSmallWidth;
+.group + .group {
+  border-top: 1px solid var(--borderColor);
 }
 
-.small {
-  max-width: $formGroupSmallWidth;
+.group:first-child {
+  padding-top: 0;
 }
 
-.medium {
-  max-width: $formGroupMediumWidth;
+.group:last-child {
+  padding-bottom: 0;
 }
 
+/* Sizes: no per-size variation in the v5 rows, kept for the size prop. */
+
+.extraSmall,
+.small,
+.medium,
 .large {
-  max-width: $formGroupLargeWidth;
+  min-width: 0;
 }
 
-@media only screen and (max-width: $breakpointLarge) {
+@media only screen and (max-width: $breakpointMedium) {
   .group {
-    display: block;
+    grid-template-columns: 1fr;
+
+    row-gap: 8px;
   }
 }
