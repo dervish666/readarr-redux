@@ -29,6 +29,11 @@ namespace Readarr.Api.V1.Config
             SharedValidator.RuleFor(c => c.UILanguage)
                            .GreaterThanOrEqualTo(1)
                            .WithMessage("The UI Language value cannot be less than 1");
+
+            SharedValidator.RuleFor(c => c.HeaderColor)
+                           .Must(value => value is "gradient" or "fullColor")
+                           .WithMessage("Header Color must be 'gradient' or 'fullColor'")
+                           .When(c => c.HeaderColor != null);
         }
 
         [RestPutById]

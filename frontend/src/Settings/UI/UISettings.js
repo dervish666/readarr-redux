@@ -11,9 +11,43 @@ import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import { inputTypes, kinds } from 'Helpers/Props';
 import SettingsToolbarConnector from 'Settings/SettingsToolbarConnector';
-import themes from 'Styles/Themes';
-import titleCase from 'Utilities/String/titleCase';
 import translate from 'Utilities/String/translate';
+
+const themeOptions = [
+  {
+    key: 'auto',
+    get value() {
+      return translate('Auto');
+    }
+  },
+  {
+    key: 'dark',
+    get value() {
+      return translate('Dark');
+    }
+  },
+  {
+    key: 'light',
+    get value() {
+      return translate('Light');
+    }
+  }
+];
+
+const headerColorOptions = [
+  {
+    key: 'fullColor',
+    get value() {
+      return translate('FullColor');
+    }
+  },
+  {
+    key: 'gradient',
+    get value() {
+      return translate('Gradient');
+    }
+  }
+];
 
 export const firstDayOfWeekOptions = [
   { key: 0, value: 'Sunday' },
@@ -64,8 +98,6 @@ class UISettings extends Component {
     } = this.props;
 
     const uiLanguages = languages.filter((item) => item.value !== 'Original');
-    const themeOptions = Object.keys(themes)
-      .map((theme) => ({ key: theme, value: titleCase(theme) }));
 
     return (
       <PageContent title={translate('UISettings')}>
@@ -195,6 +227,18 @@ class UISettings extends Component {
                       values={themeOptions}
                       onChange={onInputChange}
                       {...settings.theme}
+                    />
+                  </FormGroup>
+
+                  <FormGroup>
+                    <FormLabel>{translate('HeaderColor')}</FormLabel>
+                    <FormInputGroup
+                      type={inputTypes.SELECT}
+                      name="headerColor"
+                      helpText={translate('HeaderColorHelpText')}
+                      values={headerColorOptions}
+                      onChange={onInputChange}
+                      {...settings.headerColor}
                     />
                   </FormGroup>
 

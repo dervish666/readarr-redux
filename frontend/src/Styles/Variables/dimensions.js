@@ -1,18 +1,21 @@
+// Mirror values in Styles/Variables/variables.css so var(--foo) at runtime
+// matches $foo at build time.
+
 module.exports = {
   // Page
-  pageContentBodyPadding: '20px',
-  pageContentBodyPaddingSmallScreen: '10px',
+  pageContentBodyPadding: '32px',
+  pageContentBodyPaddingSmallScreen: '16px',
 
   // Header
-  headerHeight: '60px',
+  headerHeight: '56px',
 
   // Sidebar
-  sidebarWidth: '210px',
+  sidebarWidth: '220px',
 
   // Toolbar
-  toolbarHeight: '60px',
-  toolbarButtonWidth: '60px',
-  toolbarSeparatorMargin: '20px',
+  toolbarHeight: '52px',
+  toolbarButtonWidth: '100px',
+  toolbarSeparatorMargin: '12px',
 
   // Break Points
   breakpointExtraSmall: '480px',
@@ -47,7 +50,7 @@ module.exports = {
   modalBodyPadding: '30px',
 
   // Author
-  authorIndexColumnPadding: '10px',
-  authorIndexColumnPaddingSmallScreen: '5px',
+  authorIndexColumnPadding: '12px',
+  authorIndexColumnPaddingSmallScreen: '6px',
   authorIndexOverviewInfoRowHeight: '21px'
 };

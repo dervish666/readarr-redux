@@ -15,11 +15,10 @@ function App({ store, history }) {
       <QueryClientProvider client={queryClient}>
         <Provider store={store}>
           <ConnectedRouter history={history}>
-            <ApplyTheme>
-              <PageConnector>
-                <AppRoutes app={App} />
-              </PageConnector>
-            </ApplyTheme>
+            <ApplyTheme />
+            <PageConnector>
+              <AppRoutes app={App} />
+            </PageConnector>
           </ConnectedRouter>
         </Provider>
       </QueryClientProvider>
