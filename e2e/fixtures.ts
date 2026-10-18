@@ -1,7 +1,7 @@
 import { expect, Page, test as base } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
-import { apiKey, baseUrl, screenshotDir } from './env';
+import { allowMissingCovers, apiKey, baseUrl, screenshotDir } from './env';
 
 export interface Problem {
   kind: 'console' | 'pageerror' | 'response' | 'requestfailed';
@@ -11,9 +11,17 @@ export interface Problem {
 // Requests the page aborts on purpose (navigating away mid-fetch) are not failures.
 const IGNORED_REQUEST_FAILURES = ['net::ERR_ABORTED'];
 
+function isMissingCover(status: number, url: string) {
+  return allowMissingCovers && status === 404 && new URL(url).pathname.includes('/MediaCover/');
+}
+
 function attachProblemWatchers(page: Page, problems: Problem[]) {
   page.on('console', (message) => {
-    if (message.type() === 'error') {
+    // Chrome also logs each missing image as a console error, pointing at the image URL.
+    const missingCoverLog = message.text().includes('status of 404') &&
+      Boolean(message.location().url) && isMissingCover(404, message.location().url);
+
+    if (message.type() === 'error' && !missingCoverLog) {
       problems.push({ kind: 'console', text: message.text() });
     }
   });
@@ -23,7 +31,7 @@ function attachProblemWatchers(page: Page, problems: Problem[]) {
   });
 
   page.on('response', (response) => {
-    if (response.status() >= 400) {
+    if (response.status() >= 400 && !isMissingCover(response.status(), response.url())) {
       problems.push({
         kind: 'response',
         text: `${response.status()} ${response.request().method()} ${response.url()}`

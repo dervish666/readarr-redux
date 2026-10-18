@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 import path from 'path';
-import { baseUrl, outputRoot, password, storageStatePath, username } from './env';
+import { baseUrl, browserChannel, outputRoot, password, storageStatePath, username } from './env';
 
 // Browser smoke run over the key pages. Points at any running Readarr:
 //   READARR_URL=http://host:port READARR_API_KEY=... yarn smoke
@@ -30,7 +30,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } }
+      use: { ...devices['Desktop Chrome'], channel: browserChannel, viewport: { width: 1440, height: 900 } }
     }
   ]
 });

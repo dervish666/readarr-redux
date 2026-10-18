@@ -27,5 +27,11 @@ export const screenshotDir = path.resolve(
   process.env.READARR_SCREENSHOT_DIR ?? '_output/e2e/screenshots'
 );
 
+// Set to 1 to ignore 404s on /MediaCover/ images, for a database copy without its cover cache.
+export const allowMissingCovers = process.env.READARR_ALLOW_MISSING_COVERS === '1';
+
+// Optional Playwright channel, e.g. chrome. macOS Local Network privacy blocks the bundled Chromium from LAN hosts.
+export const browserChannel = process.env.READARR_BROWSER_CHANNEL || undefined;
+
 export const outputRoot = path.join(repoRoot, '_output', 'e2e');
 export const storageStatePath = path.join(outputRoot, 'storage-state.json');

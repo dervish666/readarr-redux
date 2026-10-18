@@ -14,6 +14,8 @@ READARR_URL=http://localhost:8787 READARR_API_KEY=... yarn smoke
 | `READARR_USERNAME`, `READARR_PASSWORD` | with forms or basic login | Login for the UI |
 | `READARR_AUTHOR_SLUG` | no | Author the detail checks open; defaults to the first author |
 | `READARR_SCREENSHOT_DIR` | no | Baseline screenshots; defaults to `_output/e2e/screenshots` |
+| `READARR_ALLOW_MISSING_COVERS` | no | `1` ignores 404s on `/MediaCover/` images only, for a copy of the database without the cover cache. Every other 4xx still fails |
+| `READARR_BROWSER_CHANNEL` | no | Playwright browser channel, for example `chrome`. On macOS the bundled Chromium is blocked from LAN hosts by Local Network privacy; installed Chrome is not |
 
 The library needs at least one author with books. Reports, traces and screenshots land in `_output/e2e/`.
 
@@ -44,10 +46,12 @@ The smoke run is meant to point at a second container on Tower running the candi
    INSERT OR REPLACE INTO Config (Key, Value) VALUES
      ('rsssyncinterval', '0'),
      ('enablecompleteddownloadhandling', 'False'),
-     ('writeaudiotags', 'no'),
-     ('writebooktags', 'no');
+     ('writeaudiotags', 'No'),
+     ('writebooktags', 'NewFiles');
    SQL
    ```
+
+   The tag values are enum member names and the match is case-sensitive, so `'no'` makes Settings, Metadata return a 500. `WriteBookTagsType` has no off member; `NewFiles` only writes tags on a fresh import, and step 3 leaves no download client running to make one.
 
    Interactive search stays on, because it only lists releases. The metadata source stays on, because it only writes into the copy.
 
@@ -61,4 +65,4 @@ The smoke run is meant to point at a second container on Tower running the candi
      <candidate image>
    ```
 
-Then `READARR_URL=http://192.168.0.190:8789 READARR_API_KEY=<prod key, copied with config.xml> READARR_USERNAME=... READARR_PASSWORD=... yarn smoke`.
+Then `READARR_URL=http://192.168.0.190:8789 READARR_API_KEY=<prod key, copied with config.xml> READARR_USERNAME=... READARR_PASSWORD=... READARR_ALLOW_MISSING_COVERS=1 yarn smoke`. The staging copy has no `MediaCover` directory, hence the cover flag. From a Mac, add `READARR_BROWSER_CHANNEL=chrome`.
