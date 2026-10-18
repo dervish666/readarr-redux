@@ -3,6 +3,7 @@
 interface CssExports {
   'itemIcon': string;
   'menuButton': string;
+  'menuButtonIcon': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

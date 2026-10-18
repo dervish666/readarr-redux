@@ -11,6 +11,10 @@
   box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--inputFocusBoxShadowColor);
   border-radius: 6px;
 }
+/* Scrollers take focus from code (tabindex -1) so the keyboard can scroll them; no ring for that. */
+[tabindex="-1"]:focus-visible {
+  box-shadow: none;
+}
 /* stylelint-enable */
 
 html,

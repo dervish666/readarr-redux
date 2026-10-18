@@ -104,6 +104,7 @@ import {
   faTrashAlt as fasTrashAlt,
   faUser as fasUser,
   faUserPlus as fasUserPlus,
+  faUsers as fasUsers,
   faVial as fasVial,
   faWrench as fasWrench
 } from '@fortawesome/free-solid-svg-icons';
@@ -121,6 +122,7 @@ export const ARROW_LEFT = fasArrowCircleLeft;
 export const ARROW_RIGHT = fasArrowCircleRight;
 export const ARROW_RIGHT_NO_CIRCLE = fasLongArrowAltRight;
 export const ARROW_UP = fasArrowCircleUp;
+export const AUTHORS = fasUsers;
 export const BACKUP = farFileArchive;
 export const BAN = fasBan;
 export const BOOK = fasBook;

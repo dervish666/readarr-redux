@@ -4,6 +4,7 @@ import keyboardShortcuts, { shortcuts } from 'Components/keyboardShortcuts';
 import IconButton from 'Components/Link/IconButton';
 import Link from 'Components/Link/Link';
 import { icons } from 'Helpers/Props';
+import translate from 'Utilities/String/translate';
 import AuthorSearchInputConnector from './AuthorSearchInputConnector';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import PageHeaderActionsMenuConnector from './PageHeaderActionsMenuConnector';
@@ -54,19 +55,23 @@ class PageHeader extends Component {
           <Link
             className={styles.logoLink}
             to={'/'}
+            aria-label={translate('Home')}
           >
             <img
               className={styles.logo}
               src={`${window.Readarr.urlBase}/Content/Images/logo.svg`}
-              alt="Readarr Logo"
+              alt=""
             />
+            <span className={styles.brandName}>Readarr</span>
           </Link>
         </div>
 
         <div className={styles.sidebarToggleContainer}>
           <IconButton
             id="sidebar-toggle-button"
+            className={styles.sidebarToggle}
             name={icons.NAVBAR_COLLAPSE}
+            aria-label={translate('Menu')}
             onPress={onSidebarToggle}
           />
         </div>

@@ -1,12 +1,13 @@
 .separator {
-  margin: 10px $toolbarSeparatorMargin;
-  height: 40px;
-  border-right: 1px solid #e5e5e5;
-  opacity: 0.35;
+  margin: 0 $toolbarSeparatorMargin;
+  width: 1px;
+  height: 28px;
+  background-color: var(--hairline);
+  opacity: 0.8;
 }
 
 @media only screen and (max-width: $breakpointSmall) {
   .separator {
-    margin: 10px 5px;
+    margin: 0 5px;
   }
 }

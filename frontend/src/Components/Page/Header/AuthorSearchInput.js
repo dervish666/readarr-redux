@@ -340,24 +340,26 @@ class AuthorSearchInput extends Component {
 
     return (
       <div className={styles.wrapper}>
-        <Icon name={icons.SEARCH} />
+        <div className={styles.inputWrapper}>
+          <Icon className={styles.searchIcon} name={icons.SEARCH} />
 
-        <Autosuggest
-          ref={this.setAutosuggestRef}
-          id={name}
-          inputProps={inputProps}
-          theme={theme}
-          focusInputOnSuggestionClick={false}
-          multiSection={true}
-          suggestions={suggestionGroups}
-          getSectionSuggestions={this.getSectionSuggestions}
-          renderSectionTitle={this.renderSectionTitle}
-          getSuggestionValue={this.getSuggestionValue}
-          renderSuggestion={this.renderSuggestion}
-          onSuggestionSelected={this.onSuggestionSelected}
-          onSuggestionsFetchRequested={this.onSuggestionsFetchRequested}
-          onSuggestionsClearRequested={this.onSuggestionsClearRequested}
-        />
+          <Autosuggest
+            ref={this.setAutosuggestRef}
+            id={name}
+            inputProps={inputProps}
+            theme={theme}
+            focusInputOnSuggestionClick={false}
+            multiSection={true}
+            suggestions={suggestionGroups}
+            getSectionSuggestions={this.getSectionSuggestions}
+            renderSectionTitle={this.renderSectionTitle}
+            getSuggestionValue={this.getSuggestionValue}
+            renderSuggestion={this.renderSuggestion}
+            onSuggestionSelected={this.onSuggestionSelected}
+            onSuggestionsFetchRequested={this.onSuggestionsFetchRequested}
+            onSuggestionsClearRequested={this.onSuggestionsClearRequested}
+          />
+        </div>
       </div>
     );
   }

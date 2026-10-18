@@ -1,19 +1,20 @@
-.contentBody {
-  /* 1px for flex-basis so the div grows correctly in Edge/Firefox */
-  flex: 1 0 1px;
-}
-
-.innerContentBody {
-  padding: $pageContentBodyPadding;
-}
-
-@media only screen and (max-width: $breakpointSmall) {
+@layer base {
   .contentBody {
-    flex-basis: auto;
-    overflow-y: hidden !important;
+    flex: 1 0 1px;
   }
 
   .innerContentBody {
-    padding: $pageContentBodyPaddingSmallScreen;
+    padding: var(--pageContentBodyPadding);
+    padding-top: 24px;
+  }
+  @media only screen and (max-width: $breakpointSmall) {
+    .contentBody {
+      flex-basis: auto;
+      overflow-y: hidden !important;
+    }
+
+    .innerContentBody {
+      padding: var(--pageContentBodyPaddingSmallScreen);
+    }
   }
 }
