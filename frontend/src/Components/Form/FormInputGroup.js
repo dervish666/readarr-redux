@@ -11,12 +11,11 @@ import BookshelfInputConnector from './BookshelfInputConnector';
 import CaptchaInputConnector from './CaptchaInputConnector';
 import CheckInput from './CheckInput';
 import DeviceInputConnector from './DeviceInputConnector';
-import DownloadClientSelectInputConnector from './DownloadClientSelectInputConnector';
+import DownloadClientSelectInput from './DownloadClientSelectInput';
 import EnhancedSelectInput from './EnhancedSelectInput';
-import EnhancedSelectInputConnector from './EnhancedSelectInputConnector';
 import FormInputHelpText from './FormInputHelpText';
 import IndexerFlagsSelectInput from './IndexerFlagsSelectInput';
-import IndexerSelectInputConnector from './IndexerSelectInputConnector';
+import IndexerSelectInput from './IndexerSelectInput';
 import KeyValueListInput from './KeyValueListInput';
 import MetadataProfileSelectInputConnector from './MetadataProfileSelectInputConnector';
 import MonitorBooksSelectInput from './MonitorBooksSelectInput';
@@ -25,6 +24,7 @@ import NumberInput from './NumberInput';
 import OAuthInputConnector from './OAuthInputConnector';
 import PasswordInput from './PasswordInput';
 import PathInput from './PathInput';
+import ProviderOptionSelectInput from './ProviderOptionSelectInput';
 import QualityProfileSelectInputConnector from './QualityProfileSelectInputConnector';
 import RootFolderSelectInput from './RootFolderSelectInput';
 import TagSelectInputConnector from './TagSelectInputConnector';
@@ -82,13 +82,13 @@ function getComponent(type) {
       return BookEditionSelectInputConnector;
 
     case inputTypes.INDEXER_SELECT:
-      return IndexerSelectInputConnector;
+      return IndexerSelectInput;
 
     case inputTypes.INDEXER_FLAGS_SELECT:
       return IndexerFlagsSelectInput;
 
     case inputTypes.DOWNLOAD_CLIENT_SELECT:
-      return DownloadClientSelectInputConnector;
+      return DownloadClientSelectInput;
 
     case inputTypes.ROOT_FOLDER_SELECT:
       return RootFolderSelectInput;
@@ -97,7 +97,7 @@ function getComponent(type) {
       return EnhancedSelectInput;
 
     case inputTypes.DYNAMIC_SELECT:
-      return EnhancedSelectInputConnector;
+      return ProviderOptionSelectInput;
 
     case inputTypes.TAG:
       return AuthorTagInput;

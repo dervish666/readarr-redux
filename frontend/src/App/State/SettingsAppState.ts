@@ -6,21 +6,11 @@ import AppSectionState, {
 } from 'App/State/AppSectionState';
 import { MetadataProfileModel } from 'Settings/Profiles/Metadata/useMetadataProfiles';
 import { QualityProfileModel } from 'Settings/Profiles/Quality/useQualityProfiles';
-import DownloadClient from 'typings/DownloadClient';
 import ImportList from 'typings/ImportList';
-import Indexer from 'typings/Indexer';
-import IndexerFlag from 'typings/IndexerFlag';
 import Notification from 'typings/Notification';
 import RootFolder from 'typings/RootFolder';
 import General from 'typings/Settings/General';
 import UiSettings from 'typings/Settings/UiSettings';
-
-export interface DownloadClientAppState
-  extends AppSectionState<DownloadClient>,
-    AppSectionDeleteState,
-    AppSectionSaveState {
-  isTestingAll: boolean;
-}
 
 export type GeneralAppState = AppSectionItemState<General>;
 
@@ -28,13 +18,6 @@ export interface ImportListAppState
   extends AppSectionState<ImportList>,
     AppSectionDeleteState,
     AppSectionSaveState {}
-
-export interface IndexerAppState
-  extends AppSectionState<Indexer>,
-    AppSectionDeleteState,
-    AppSectionSaveState {
-  isTestingAll: boolean;
-}
 
 export interface NotificationAppState
   extends AppSectionState<Notification>,
@@ -48,15 +31,12 @@ export interface QualityProfilesAppState
 
 export type MetadataProfilesAppState = AppSectionState<MetadataProfileModel>;
 
-export type IndexerFlagSettingsAppState = AppSectionState<IndexerFlag>;
 export type UiSettingsAppState = AppSectionState<UiSettings>;
 
 interface SettingsAppState {
-  downloadClients: DownloadClientAppState;
+  advancedSettings: boolean;
   general: GeneralAppState;
   importLists: ImportListAppState;
-  indexerFlags: IndexerFlagSettingsAppState;
-  indexers: IndexerAppState;
   metadataProfiles: MetadataProfilesAppState;
   notifications: NotificationAppState;
   qualityProfiles: QualityProfilesAppState;

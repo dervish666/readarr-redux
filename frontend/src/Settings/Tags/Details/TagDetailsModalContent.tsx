@@ -10,6 +10,8 @@ import ModalContent from 'Components/Modal/ModalContent';
 import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
 import { kinds } from 'Helpers/Props';
+import { useDownloadClientsData } from 'Settings/DownloadClients/DownloadClients/useDownloadClients';
+import { useIndexersData } from 'Settings/Indexers/useIndexers';
 import { useDelayProfiles } from 'Settings/Profiles/Delay/useDelayProfiles';
 import { useReleaseProfiles } from 'Settings/Profiles/Release/useReleaseProfiles';
 import translate from 'Utilities/String/translate';
@@ -21,14 +23,12 @@ interface NamedItem extends ModelBase {
 }
 
 // Authors and these settings are still redux feeds; only the parts read here.
-// Delay and release profiles are on react-query.
+// Delay and release profiles, indexers and download clients are on react-query.
 interface TagLinksState {
   authors: { items: Author[] };
   settings: {
     importLists: { items: NamedItem[] };
     notifications: { items: NamedItem[] };
-    indexers: { items: NamedItem[] };
-    downloadClients: { items: NamedItem[] };
   };
 }
 
@@ -101,13 +101,16 @@ function TagDetailsModalContent({
       allReleaseProfiles.filter((item) => releaseProfileIds.includes(item.id)),
     [allReleaseProfiles, releaseProfileIds]
   );
-  const indexers = useMatchingItems(
-    indexerIds,
-    (state) => state.settings.indexers.items
+  const allIndexers = useIndexersData();
+  const indexers = useMemo(
+    () => allIndexers.filter((item) => indexerIds.includes(item.id)),
+    [allIndexers, indexerIds]
   );
-  const downloadClients = useMatchingItems(
-    downloadClientIds,
-    (state) => state.settings.downloadClients.items
+  const allDownloadClients = useDownloadClientsData();
+  const downloadClients = useMemo(
+    () =>
+      allDownloadClients.filter((item) => downloadClientIds.includes(item.id)),
+    [allDownloadClients, downloadClientIds]
   );
 
   return (

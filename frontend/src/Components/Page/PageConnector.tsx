@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { createSelector } from 'reselect';
 import useTranslations from 'App/useTranslations';
 import useCommands from 'Commands/useCommands';
+import useIndexerFlags from 'Settings/Indexers/useIndexerFlags';
 import { saveDimensions, setIsSidebarVisible } from 'Store/Actions/appActions';
 import { fetchAuthor } from 'Store/Actions/authorActions';
 import { fetchBooks } from 'Store/Actions/bookActions';
@@ -11,7 +12,6 @@ import { fetchCommands } from 'Store/Actions/commandActions';
 import { fetchCustomFilters } from 'Store/Actions/customFilterActions';
 import {
   fetchImportLists,
-  fetchIndexerFlags,
   fetchLanguages,
   fetchMetadataProfiles,
   fetchQualityProfiles,
@@ -46,7 +46,6 @@ interface PageState {
     qualityProfiles: SectionState;
     metadataProfiles: SectionState;
     importLists: SectionState;
-    indexerFlags: SectionState;
   };
   system: {
     status: SectionState & {
@@ -77,7 +76,6 @@ const selectReduxPopulated = (state: PageState) =>
   state.settings.qualityProfiles.isPopulated &&
   state.settings.metadataProfiles.isPopulated &&
   state.settings.importLists.isPopulated &&
-  state.settings.indexerFlags.isPopulated &&
   state.system.status.isPopulated;
 
 const selectReduxErrors = createSelector(
@@ -89,7 +87,6 @@ const selectReduxErrors = createSelector(
   (state: PageState) => state.settings.qualityProfiles.error,
   (state: PageState) => state.settings.metadataProfiles.error,
   (state: PageState) => state.settings.importLists.error,
-  (state: PageState) => state.settings.indexerFlags.error,
   (state: PageState) => state.system.status.error,
   (
     authorError,
@@ -100,7 +97,6 @@ const selectReduxErrors = createSelector(
     qualityProfilesError,
     metadataProfilesError,
     importListsError,
-    indexerFlagsError,
     systemStatusError
   ) => ({
     authorError,
@@ -111,7 +107,6 @@ const selectReduxErrors = createSelector(
     qualityProfilesError,
     metadataProfilesError,
     importListsError,
-    indexerFlagsError,
     systemStatusError,
   })
 );
@@ -130,6 +125,10 @@ function PageConnector({ children }: PageConnectorProps) {
 
   // Primes the react-query command list for every page, as Sonarr's useAppPage does.
   useCommands();
+
+  // Indexer flags label releases and files on every page; load them before any page.
+  const { isFetched: isIndexerFlagsFetched, error: indexerFlagsError } =
+    useIndexerFlags();
 
   const isReduxPopulated = useSelector(selectReduxPopulated);
   const errors = useSelector(selectReduxErrors);
@@ -151,9 +150,12 @@ function PageConnector({ children }: PageConnectorProps) {
     );
   });
 
-  const isPopulated = isReduxPopulated && isTranslationsFetched;
+  const isPopulated =
+    isReduxPopulated && isTranslationsFetched && isIndexerFlagsFetched;
   const hasError =
-    !!translationsError || Object.values(errors).some((error) => !!error);
+    !!translationsError ||
+    !!indexerFlagsError ||
+    Object.values(errors).some((error) => !!error);
 
   useEffect(() => {
     dispatch(fetchAuthor());
@@ -164,7 +166,6 @@ function PageConnector({ children }: PageConnectorProps) {
     dispatch(fetchQualityProfiles());
     dispatch(fetchMetadataProfiles());
     dispatch(fetchImportLists());
-    dispatch(fetchIndexerFlags());
     dispatch(fetchUISettings());
     dispatch(fetchStatus());
     // Redux command feed for the pages not yet on react-query.
@@ -195,6 +196,7 @@ function PageConnector({ children }: PageConnectorProps) {
         version={version}
         isLocalStorageSupported={isLocalStorageSupported}
         translationsError={translationsError ?? undefined}
+        indexerFlagsError={indexerFlagsError ?? undefined}
         {...errors}
       />
     );

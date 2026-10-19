@@ -1,33 +1,6 @@
-import React, { useCallback } from 'react';
-import { useSelector } from 'react-redux';
-import { createSelector } from 'reselect';
-import AppState from 'App/State/AppState';
+import React, { useCallback, useMemo } from 'react';
+import useIndexerFlags from 'Settings/Indexers/useIndexerFlags';
 import EnhancedSelectInput from './EnhancedSelectInput';
-
-const selectIndexerFlagsValues = (selectedFlags: number) =>
-  createSelector(
-    (state: AppState) => state.settings.indexerFlags,
-    (indexerFlags) => {
-      const value = indexerFlags.items.reduce((acc: number[], { id }) => {
-        // eslint-disable-next-line no-bitwise
-        if ((selectedFlags & id) === id) {
-          acc.push(id);
-        }
-
-        return acc;
-      }, []);
-
-      const values = indexerFlags.items.map(({ id, name }) => ({
-        key: id,
-        value: name,
-      }));
-
-      return {
-        value,
-        values,
-      };
-    }
-  );
 
 interface IndexerFlagsSelectInputProps {
   name: string;
@@ -35,10 +8,27 @@ interface IndexerFlagsSelectInputProps {
   onChange(payload: object): void;
 }
 
+// The flags are a bit field: the select edits the set bits, the value is their sum.
 function IndexerFlagsSelectInput(props: IndexerFlagsSelectInputProps) {
   const { indexerFlags, onChange } = props;
+  const { data: allIndexerFlags } = useIndexerFlags();
 
-  const { value, values } = useSelector(selectIndexerFlagsValues(indexerFlags));
+  const { value, values } = useMemo(() => {
+    return {
+      value: allIndexerFlags.reduce((acc: number[], { id }) => {
+        // eslint-disable-next-line no-bitwise
+        if ((indexerFlags & id) === id) {
+          acc.push(id);
+        }
+
+        return acc;
+      }, []),
+      values: allIndexerFlags.map(({ id, name }) => ({
+        key: id,
+        value: name,
+      })),
+    };
+  }, [allIndexerFlags, indexerFlags]);
 
   const onChangeWrapper = useCallback(
     ({ name, value }: { name: string; value: number[] }) => {

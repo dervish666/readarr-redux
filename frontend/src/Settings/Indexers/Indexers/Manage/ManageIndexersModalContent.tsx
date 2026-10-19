@@ -1,6 +1,4 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { IndexerAppState } from 'App/State/SettingsAppState';
 import Alert from 'Components/Alert';
 import Button from 'Components/Link/Button';
 import SpinnerButton from 'Components/Link/SpinnerButton';
@@ -16,11 +14,14 @@ import TableBody from 'Components/Table/TableBody';
 import useSelectState from 'Helpers/Hooks/useSelectState';
 import { kinds } from 'Helpers/Props';
 import {
-  bulkDeleteIndexers,
-  bulkEditIndexers,
+  useBulkDeleteIndexers,
+  useBulkEditIndexers,
+  useSortedIndexers,
+} from 'Settings/Indexers/useIndexers';
+import {
   setManageIndexersSort,
-} from 'Store/Actions/settingsActions';
-import createClientSideCollectionSelector from 'Store/Selectors/createClientSideCollectionSelector';
+  useManageIndexersOptions,
+} from 'Settings/Indexers/useManageIndexersOptionsStore';
 import { SelectStateInputProps } from 'typings/props';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
@@ -87,19 +88,16 @@ interface ManageIndexersModalContentProps {
 function ManageIndexersModalContent(props: ManageIndexersModalContentProps) {
   const { onModalClose } = props;
 
+  const { sortKey, sortDirection } = useManageIndexersOptions();
   const {
+    data: items,
     isFetching,
-    isPopulated,
-    isDeleting,
-    isSaving,
+    isFetched: isPopulated,
     error,
-    items,
-    sortKey,
-    sortDirection,
-  }: IndexerAppState = useSelector(
-    createClientSideCollectionSelector('settings.indexers')
-  );
-  const dispatch = useDispatch();
+  } = useSortedIndexers(sortKey, sortDirection);
+
+  const { bulkDeleteIndexers, isDeleting } = useBulkDeleteIndexers();
+  const { bulkEditIndexers, isSaving } = useBulkEditIndexers();
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -116,12 +114,9 @@ function ManageIndexersModalContent(props: ManageIndexersModalContentProps) {
 
   const selectedCount = selectedIds.length;
 
-  const onSortPress = useCallback(
-    (value: string) => {
-      dispatch(setManageIndexersSort({ sortKey: value }));
-    },
-    [dispatch]
-  );
+  const onSortPress = useCallback((value: string) => {
+    setManageIndexersSort({ sortKey: value });
+  }, []);
 
   const onDeletePress = useCallback(() => {
     setIsDeleteModalOpen(true);
@@ -140,22 +135,20 @@ function ManageIndexersModalContent(props: ManageIndexersModalContentProps) {
   }, [setIsEditModalOpen]);
 
   const onConfirmDelete = useCallback(() => {
-    dispatch(bulkDeleteIndexers({ ids: selectedIds }));
+    bulkDeleteIndexers({ ids: selectedIds });
     setIsDeleteModalOpen(false);
-  }, [selectedIds, dispatch]);
+  }, [selectedIds, bulkDeleteIndexers]);
 
   const onSavePress = useCallback(
     (payload: object) => {
       setIsEditModalOpen(false);
 
-      dispatch(
-        bulkEditIndexers({
-          ids: selectedIds,
-          ...payload,
-        })
-      );
+      bulkEditIndexers({
+        ids: selectedIds,
+        ...payload,
+      });
     },
-    [selectedIds, dispatch]
+    [selectedIds, bulkEditIndexers]
   );
 
   const onTagsPress = useCallback(() => {
@@ -171,15 +164,13 @@ function ManageIndexersModalContent(props: ManageIndexersModalContentProps) {
       setIsSavingTags(true);
       setIsTagsModalOpen(false);
 
-      dispatch(
-        bulkEditIndexers({
-          ids: selectedIds,
-          tags,
-          applyTags,
-        })
-      );
+      bulkEditIndexers({
+        ids: selectedIds,
+        tags,
+        applyTags,
+      });
     },
-    [selectedIds, dispatch]
+    [selectedIds, bulkEditIndexers]
   );
 
   const onSelectAllChange = useCallback(

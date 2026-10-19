@@ -7,7 +7,7 @@ import AuthorStatusFilterBuilderRowValue from './AuthorStatusFilterBuilderRowVal
 import BoolFilterBuilderRowValue from './BoolFilterBuilderRowValue';
 import DateFilterBuilderRowValue from './DateFilterBuilderRowValue';
 import FilterBuilderRowValueConnector from './FilterBuilderRowValueConnector';
-import IndexerFilterBuilderRowValueConnector from './IndexerFilterBuilderRowValueConnector';
+import IndexerFilterBuilderRowValue from './IndexerFilterBuilderRowValue';
 import MetadataProfileFilterBuilderRowValueConnector from './MetadataProfileFilterBuilderRowValueConnector';
 import ProtocolFilterBuilderRowValue from './ProtocolFilterBuilderRowValue';
 import QualityFilterBuilderRowValueConnector from './QualityFilterBuilderRowValueConnector';
@@ -58,7 +58,7 @@ function getRowValueConnector(selectedFilterBuilderProp) {
       return DateFilterBuilderRowValue;
 
     case filterBuilderValueTypes.INDEXER:
-      return IndexerFilterBuilderRowValueConnector;
+      return IndexerFilterBuilderRowValue;
 
     case filterBuilderValueTypes.METADATA_PROFILE:
       return MetadataProfileFilterBuilderRowValueConnector;

@@ -1,9 +1,5 @@
 import { uniq } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
-import { useSelector } from 'react-redux';
-import AppState from 'App/State/AppState';
-import { IndexerAppState } from 'App/State/SettingsAppState';
-import { Tag } from 'App/State/TagsAppState';
 import Form from 'Components/Form/Form';
 import FormGroup from 'Components/Form/FormGroup';
 import FormInputGroup from 'Components/Form/FormInputGroup';
@@ -15,8 +11,8 @@ import ModalContent from 'Components/Modal/ModalContent';
 import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
 import { inputTypes, kinds, sizes } from 'Helpers/Props';
-import createTagsSelector from 'Store/Selectors/createTagsSelector';
-import Indexer from 'typings/Indexer';
+import { useIndexersData } from 'Settings/Indexers/useIndexers';
+import { useTagList } from 'Tags/useTags';
 import translate from 'Utilities/String/translate';
 import styles from './TagsModalContent.css';
 
@@ -29,17 +25,15 @@ interface TagsModalContentProps {
 function TagsModalContent(props: TagsModalContentProps) {
   const { ids, onModalClose, onApplyTagsPress } = props;
 
-  const allIndexers: IndexerAppState = useSelector(
-    (state: AppState) => state.settings.indexers
-  );
-  const tagList: Tag[] = useSelector(createTagsSelector());
+  const allIndexers = useIndexersData();
+  const tagList = useTagList();
 
   const [tags, setTags] = useState<number[]>([]);
   const [applyTags, setApplyTags] = useState('add');
 
   const indexersTags = useMemo(() => {
     const tags = ids.reduce((acc: number[], id) => {
-      const s = allIndexers.items.find((s: Indexer) => s.id === id);
+      const s = allIndexers.find((s) => s.id === id);
 
       if (s) {
         acc.push(...s.tags);

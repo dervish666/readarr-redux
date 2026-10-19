@@ -1,6 +1,4 @@
 import React, { useCallback } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import AppState from 'App/State/AppState';
 import FieldSet from 'Components/FieldSet';
 import Icon from 'Components/Icon';
 import IconButton from 'Components/Link/IconButton';
@@ -12,10 +10,8 @@ import Table from 'Components/Table/Table';
 import TableBody from 'Components/Table/TableBody';
 import TableRow from 'Components/Table/TableRow';
 import { icons, kinds } from 'Helpers/Props';
-import {
-  testAllDownloadClients,
-  testAllIndexers,
-} from 'Store/Actions/settingsActions';
+import { useTestAllDownloadClients } from 'Settings/DownloadClients/DownloadClients/useDownloadClients';
+import { useTestAllIndexers } from 'Settings/Indexers/useIndexers';
 import titleCase from 'Utilities/String/titleCase';
 import translate from 'Utilities/String/translate';
 import HealthItemLink from './HealthItemLink';
@@ -56,26 +52,20 @@ function getKind(type: string) {
 }
 
 function Health() {
-  const dispatch = useDispatch();
   const { data, isFetched, isFetching, isLoading } = useHealth();
-
-  // Test all still runs through the redux settings actions until Settings converts.
-  const isTestingAllDownloadClients = useSelector(
-    (state: AppState) => state.settings.downloadClients.isTestingAll
-  );
-  const isTestingAllIndexers = useSelector(
-    (state: AppState) => state.settings.indexers.isTestingAll
-  );
+  const { testAllDownloadClients, isTestingAllDownloadClients } =
+    useTestAllDownloadClients();
+  const { testAllIndexers, isTestingAllIndexers } = useTestAllIndexers();
 
   const healthIssues = !!data.length;
 
   const handleTestAllDownloadClientsPress = useCallback(() => {
-    dispatch(testAllDownloadClients());
-  }, [dispatch]);
+    testAllDownloadClients();
+  }, [testAllDownloadClients]);
 
   const handleTestAllIndexersPress = useCallback(() => {
-    dispatch(testAllIndexers());
-  }, [dispatch]);
+    testAllIndexers();
+  }, [testAllIndexers]);
 
   return (
     <FieldSet

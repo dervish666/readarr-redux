@@ -11,8 +11,8 @@ import SettingsCardStatus, {
 import TagList from 'Components/TagList';
 import useModalOpenState from 'Helpers/Hooks/useModalOpenState';
 import { icons, kinds } from 'Helpers/Props';
+import { IndexerModel } from 'Settings/Indexers/useIndexers';
 import { Tag } from 'Tags/useTags';
-import Indexer from 'typings/Indexer';
 import translate from 'Utilities/String/translate';
 import EditReleaseProfileModal from './EditReleaseProfileModal';
 import {
@@ -23,7 +23,7 @@ import styles from './ReleaseProfileItem.css';
 
 interface ReleaseProfileItemProps extends ReleaseProfileModel {
   tagList: ReadonlyArray<Tag>;
-  indexerList: Indexer[];
+  indexerList: readonly IndexerModel[];
 }
 
 function ReleaseProfileItem({

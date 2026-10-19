@@ -4,8 +4,9 @@ import TableRowCell from 'Components/Table/Cells/TableRowCell';
 import TableSelectCell from 'Components/Table/Cells/TableSelectCell';
 import Column from 'Components/Table/Column';
 import TableRow from 'Components/Table/TableRow';
-import TagListConnector from 'Components/TagListConnector';
+import TagList from 'Components/TagList';
 import { kinds } from 'Helpers/Props';
+import { useTagList } from 'Tags/useTags';
 import { SelectStateInputProps } from 'typings/props';
 import translate from 'Utilities/String/translate';
 import styles from './ManageDownloadClientsModalRow.css';
@@ -39,6 +40,8 @@ function ManageDownloadClientsModalRow(
     tags,
     onSelectedChange,
   } = props;
+
+  const tagList = useTagList();
 
   const onSelectedChangeWrapper = useCallback(
     (result: SelectStateInputProps) => {
@@ -80,7 +83,7 @@ function ManageDownloadClientsModalRow(
       </TableRowCell>
 
       <TableRowCell className={styles.tags}>
-        <TagListConnector tags={tags} />
+        <TagList tags={tags} tagList={tagList} />
       </TableRowCell>
     </TableRow>
   );

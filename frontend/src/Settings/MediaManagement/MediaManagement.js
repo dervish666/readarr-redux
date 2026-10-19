@@ -10,7 +10,7 @@ import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import { inputTypes, kinds, sizes } from 'Helpers/Props';
-import RemotePathMappingsConnector from 'Settings/DownloadClients/RemotePathMappings/RemotePathMappingsConnector';
+import RemotePathMappings from 'Settings/DownloadClients/RemotePathMappings/RemotePathMappings';
 import SettingsToolbarConnector from 'Settings/SettingsToolbarConnector';
 import translate from 'Utilities/String/translate';
 import NamingConnector from './Naming/NamingConnector';
@@ -67,7 +67,7 @@ class MediaManagement extends Component {
 
         <PageContentBody>
           <RootFolders />
-          <RemotePathMappingsConnector />
+          <RemotePathMappings />
           <NamingConnector />
 
           {

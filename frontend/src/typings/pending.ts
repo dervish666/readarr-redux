@@ -1,3 +1,6 @@
+import Field from './Field';
+import Provider from './Provider';
+
 export interface ValidationFailure {
   isWarning: boolean;
   propertyName: string;
@@ -36,4 +39,21 @@ export interface Pending<T> {
 
 export type PendingSection<T> = {
   [Prop in keyof T]: Pending<T[Prop]>;
+};
+
+// A provider field with its own pending state, as ProviderFieldFormGroup takes it.
+export interface PendingField
+  extends Field,
+    Omit<Pending<Field['value']>, 'value' | 'previousValue'> {
+  pending: boolean;
+  previousValue?: Field['value'];
+}
+
+// selectSettings flattens implementationName and turns fields into PendingFields.
+export type PendingProviderSection<T extends Provider> = Omit<
+  PendingSection<T>,
+  'fields' | 'implementationName'
+> & {
+  implementationName: string;
+  fields: PendingField[];
 };

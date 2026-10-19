@@ -14,6 +14,7 @@ function ErrorPage(props) {
     qualityProfilesError,
     metadataProfilesError,
     uiSettingsError,
+    indexerFlagsError,
     systemStatusError
   } = props;
 
@@ -35,6 +36,8 @@ function ErrorPage(props) {
     errorMessage = getErrorMessage(metadataProfilesError, 'Failed to load metadata profiles from API');
   } else if (uiSettingsError) {
     errorMessage = getErrorMessage(uiSettingsError, 'Failed to load UI settings from API');
+  } else if (indexerFlagsError) {
+    errorMessage = getErrorMessage(indexerFlagsError, 'Failed to load indexer flags from API');
   } else if (systemStatusError) {
     errorMessage = getErrorMessage(uiSettingsError, 'Failed to load system status from API');
   }
@@ -62,6 +65,7 @@ ErrorPage.propTypes = {
   qualityProfilesError: PropTypes.object,
   metadataProfilesError: PropTypes.object,
   uiSettingsError: PropTypes.object,
+  indexerFlagsError: PropTypes.object,
   systemStatusError: PropTypes.object
 };
 
