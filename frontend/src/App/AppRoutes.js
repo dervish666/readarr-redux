@@ -6,7 +6,7 @@ import History from 'Activity/History/History';
 import Queue from 'Activity/Queue/Queue';
 import AuthorDetailsPage from 'Author/Details/AuthorDetailsPage';
 import AuthorIndex from 'Author/Index/AuthorIndex';
-import BookDetailsPageConnector from 'Book/Details/BookDetailsPageConnector';
+import BookDetailsPage from 'Book/Details/BookDetailsPage';
 import BookIndex from 'Book/Index/BookIndex';
 import Bookshelf from 'Bookshelf/Bookshelf';
 import CalendarPageConnector from 'Calendar/CalendarPageConnector';
@@ -107,7 +107,7 @@ function AppRoutes(props) {
 
       <Route
         path="/book/:titleSlug"
-        component={BookDetailsPageConnector}
+        component={BookDetailsPage}
       />
 
       {/*

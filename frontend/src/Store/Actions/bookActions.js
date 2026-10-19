@@ -1,16 +1,12 @@
-import _ from 'lodash';
-import { createAction } from 'redux-actions';
 import { batchActions } from 'redux-batched-actions';
-import bookEntities from 'Book/bookEntities';
-import { sortDirections } from 'Helpers/Props';
 import { createThunk, handleThunks } from 'Store/thunks';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
-import { removeItem, set, update, updateItem } from './baseActions';
+import { removeItem, set, update } from './baseActions';
 import createHandleActions from './Creators/createHandleActions';
-import createRemoveItemHandler from './Creators/createRemoveItemHandler';
-import createSaveProviderHandler from './Creators/createSaveProviderHandler';
-import createSetClientSideCollectionSortReducer from './Creators/Reducers/createSetClientSideCollectionSortReducer';
-import createSetSettingValueReducer from './Creators/Reducers/createSetSettingValueReducer';
+
+// The redux books feed, kept for its unconverted readers (the header search and the
+// book editor's JS delete modal). Fetched at startup by PageConnector and kept current
+// by SignalR and the react-query book hooks (useUpdateBookCaches).
 
 //
 // Variables
@@ -24,57 +20,19 @@ export const defaultState = {
   isFetching: false,
   isPopulated: false,
   error: null,
-  isSaving: false,
-  saveError: null,
-  sortKey: 'releaseDate',
-  sortDirection: sortDirections.DESCENDING,
-  items: [],
-  pendingChanges: {},
-  sortPredicates: {
-    rating: function(item) {
-      return item.ratings.value;
-    }
-  }
+  items: []
 };
-
-export const persistState = [
-  'books.sortKey',
-  'books.sortDirection'
-];
 
 //
 // Actions Types
 
 export const FETCH_BOOKS = 'books/fetchBooks';
-export const SET_BOOKS_SORT = 'books/setBooksSort';
-export const CLEAR_BOOKS = 'books/clearBooks';
-export const SET_BOOK_VALUE = 'books/setBookValue';
-export const SAVE_BOOK = 'books/saveBook';
-export const DELETE_BOOK = 'books/deleteBook';
 export const DELETE_AUTHOR_BOOKS = 'books/deleteAuthorBooks';
-export const TOGGLE_BOOK_MONITORED = 'books/toggleBookMonitored';
-export const TOGGLE_BOOKS_MONITORED = 'books/toggleBooksMonitored';
 
 //
 // Action Creators
 
 export const fetchBooks = createThunk(FETCH_BOOKS);
-export const setBooksSort = createAction(SET_BOOKS_SORT);
-export const clearBooks = createAction(CLEAR_BOOKS);
-export const toggleBookMonitored = createThunk(TOGGLE_BOOK_MONITORED);
-export const toggleBooksMonitored = createThunk(TOGGLE_BOOKS_MONITORED);
-
-export const saveBook = createThunk(SAVE_BOOK);
-
-export const deleteBook = createThunk(DELETE_BOOK, (payload) => {
-  return {
-    ...payload,
-    queryParams: {
-      deleteFiles: payload.deleteFiles,
-      addImportListExclusion: payload.addImportListExclusion
-    }
-  };
-});
 
 export const deleteAuthorBooks = createThunk(DELETE_AUTHOR_BOOKS, (payload) => {
   return {
@@ -82,13 +40,6 @@ export const deleteAuthorBooks = createThunk(DELETE_AUTHOR_BOOKS, (payload) => {
     queryParams: {
       authorId: payload.authorId
     }
-  };
-});
-
-export const setBookValue = createAction(SET_BOOK_VALUE, (payload) => {
-  return {
-    section: 'books',
-    ...payload
   };
 });
 
@@ -137,9 +88,6 @@ export const actionHandlers = handleThunks({
     return abortRequest;
   },
 
-  [SAVE_BOOK]: createSaveProviderHandler(section, '/book'),
-  [DELETE_BOOK]: createRemoveItemHandler(section, '/book'),
-
   [DELETE_AUTHOR_BOOKS]: function(getState, payload, dispatch) {
     const { authorId } = payload;
     const books = getState().books.items;
@@ -147,115 +95,10 @@ export const actionHandlers = handleThunks({
     const toDelete = books.filter((x) => x.authorId === authorId);
 
     dispatch(batchActions(toDelete.map((b) => removeItem({ section, id: b.id }))));
-  },
-
-  [TOGGLE_BOOK_MONITORED]: function(getState, payload, dispatch) {
-    const {
-      bookId,
-      bookEntity = bookEntities.BOOKS,
-      monitored
-    } = payload;
-
-    const bookSection = _.last(bookEntity.split('.'));
-
-    dispatch(updateItem({
-      id: bookId,
-      section: bookSection,
-      isSaving: true
-    }));
-
-    const promise = createAjaxRequest({
-      url: `/book/${bookId}`,
-      method: 'PUT',
-      data: JSON.stringify({ monitored }),
-      dataType: 'json'
-    }).request;
-
-    promise.done((data) => {
-      dispatch(updateItem({
-        id: bookId,
-        section: bookSection,
-        isSaving: false,
-        monitored
-      }));
-    });
-
-    promise.fail((xhr) => {
-      dispatch(updateItem({
-        id: bookId,
-        section: bookSection,
-        isSaving: false
-      }));
-    });
-  },
-
-  [TOGGLE_BOOKS_MONITORED]: function(getState, payload, dispatch) {
-    const {
-      bookIds,
-      bookEntity = bookEntities.BOOKS,
-      monitored
-    } = payload;
-
-    dispatch(batchActions(
-      bookIds.map((bookId) => {
-        return updateItem({
-          id: bookId,
-          section: bookEntity,
-          isSaving: true
-        });
-      })
-    ));
-
-    const promise = createAjaxRequest({
-      url: '/book/monitor',
-      method: 'PUT',
-      data: JSON.stringify({ bookIds, monitored }),
-      dataType: 'json'
-    }).request;
-
-    promise.done((data) => {
-      dispatch(batchActions(
-        bookIds.map((bookId) => {
-          return updateItem({
-            id: bookId,
-            section: bookEntity,
-            isSaving: false,
-            monitored
-          });
-        })
-      ));
-    });
-
-    promise.fail((xhr) => {
-      dispatch(batchActions(
-        bookIds.map((bookId) => {
-          return updateItem({
-            id: bookId,
-            section: bookEntity,
-            isSaving: false
-          });
-        })
-      ));
-    });
   }
 });
 
 //
 // Reducers
 
-export const reducers = createHandleActions({
-
-  [SET_BOOKS_SORT]: createSetClientSideCollectionSortReducer(section),
-
-  [SET_BOOK_VALUE]: createSetSettingValueReducer(section),
-
-  [CLEAR_BOOKS]: (state) => {
-    return Object.assign({}, state, {
-      isFetching: false,
-      isPopulated: false,
-      error: null,
-      items: []
-    });
-  }
-
-}, defaultState, section);
+export const reducers = createHandleActions({}, defaultState, section);
