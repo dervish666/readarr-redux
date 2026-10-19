@@ -7,6 +7,11 @@ import { QueryClient, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { useDispatch } from 'react-redux';
 import ModelBase from 'App/ModelBase';
+import Author from 'Author/Author';
+import Book from 'Book/Book';
+import { bookBelongsTo } from 'Book/useBooks';
+import BookFile from 'BookFile/BookFile';
+import { bookFileBelongsTo } from 'BookFile/useBookFiles';
 import Command from 'Commands/Command';
 import { useUpdateCommand } from 'Commands/useCommands';
 import { setAppValue, setVersion } from 'Store/Actions/appActions';
@@ -21,6 +26,11 @@ import {
 import { fetchQueueDetails } from 'Store/Actions/queueActions';
 import { fetchRootFolders } from 'Store/Actions/settingsActions';
 import { fetchTags } from 'Store/Actions/tagActions';
+import {
+  removeCachedItem,
+  removeCachedItems,
+  updateCachedItem,
+} from 'Utilities/Fetch/queryCache';
 import { repopulatePage } from 'Utilities/pagePopulator';
 import SignalRLogger from 'Utilities/SignalRLogger';
 
@@ -38,12 +48,10 @@ interface SignalRMessage {
 // The react-query side of the bridge. Each message marks the queries under these
 // /api/v1 path prefixes stale, so any react-query consumer refetches what changed.
 // Each Stage 2 and 3 PR that moves a domain over keeps (or sharpens) its entry here
-// and drops the redux dispatch below. queue/status and command are absent on purpose:
-// their messages carry the new value, which the switch below writes into the cache.
+// and drops the redux dispatch below. queue/status, command, author, book and bookfile
+// are absent on purpose: their messages carry the new value, which the switch below
+// writes into the cache (invalidating only for an action it can't apply).
 const QUERY_KEYS_BY_MESSAGE: Record<string, string[]> = {
-  author: ['/author'],
-  book: ['/book'],
-  bookfile: ['/bookfile'],
   calendar: ['/calendar'],
   health: ['/health'],
   qualitydefinition: ['/qualitydefinition'],
@@ -173,39 +181,81 @@ function SignalRListener() {
         return;
       }
 
-      case 'book':
+      case 'book': {
+        const book = body.resource as unknown as Book;
+
+        // v1 has no edition message; a book change may have moved its editions.
+        queryClient.invalidateQueries({ queryKey: ['/edition'] });
+
         if (body.action === 'updated') {
+          // Some book messages (track imported) carry no statistics; the merge keeps
+          // the cached ones.
+          updateCachedItem<Book>(queryClient, '/book', book, bookBelongsTo);
           dispatch(updateItem({ section: 'books', ...body.resource }));
         } else if (body.action === 'deleted') {
+          removeCachedItem<Book>(queryClient, '/book', book.id);
           dispatch(removeItem({ section: 'books', id: body.resource.id }));
+        } else {
+          queryClient.invalidateQueries({ queryKey: ['/book'] });
         }
         return;
+      }
 
-      case 'bookfile':
+      case 'bookfile': {
+        const bookFile = body.resource as unknown as BookFile;
+
         if (body.action === 'updated') {
+          updateCachedItem<BookFile>(
+            queryClient,
+            '/bookfile',
+            bookFile,
+            bookFileBelongsTo
+          );
           dispatch(updateItem({ section: 'bookFiles', ...body.resource }));
         } else if (body.action === 'deleted') {
+          removeCachedItem<BookFile>(queryClient, '/bookfile', bookFile.id);
           dispatch(removeItem({ section: 'bookFiles', id: body.resource.id }));
 
           repopulatePage('bookFileDeleted');
+        } else {
+          queryClient.invalidateQueries({ queryKey: ['/bookfile'] });
         }
 
         // Repopulate the page to handle recently imported file
         repopulatePage('bookFileUpdated');
         return;
+      }
 
       case 'health':
         // The sidebar badge and Status page are on react-query; invalidateQueries above refetches.
         return;
 
-      case 'author':
+      case 'author': {
+        const author = body.resource as unknown as Author;
+
         if (body.action === 'updated') {
+          // The author list is unfiltered, so a new author is added to it.
+          updateCachedItem<Author>(queryClient, '/author', author, () => true);
           dispatch(updateItem({ section: 'authors', ...body.resource }));
         } else if (body.action === 'deleted') {
+          removeCachedItem<Author>(queryClient, '/author', author.id);
+          removeCachedItems<Book>(
+            queryClient,
+            '/book',
+            (b) => b.authorId === author.id
+          );
+          removeCachedItems<BookFile>(
+            queryClient,
+            '/bookfile',
+            (f) => f.authorId === author.id
+          );
           dispatch(removeItem({ section: 'authors', id: body.resource.id }));
           dispatch(deleteAuthorBooks({ authorId: body.resource.id }));
+        } else {
+          queryClient.invalidateQueries({ queryKey: ['/author'] });
         }
         return;
+      }
 
       case 'qualitydefinition':
         // Settings > Quality is on react-query; invalidateQueries above refetches it.

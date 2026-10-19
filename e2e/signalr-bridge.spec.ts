@@ -1,9 +1,10 @@
 import { api, expect, openRoute, test } from './fixtures';
 import { holdCommandRefetches, withQueryClient } from './reactTree';
 
-// Proves the SignalR listener feeds react-query, not only redux: the /author query
-// goes stale when its SignalR message arrives, and command progress is written into
-// the ['/command'] list. The POST response only ever says "queued", so a "completed"
+// Proves the SignalR listener feeds react-query, not only redux: the author message
+// writes the author into the ['/author'] list (emptied first, and with no observer on
+// the author details page to refetch it), and command progress is written into the
+// ['/command'] list. The POST response only ever says "queued", so a "completed"
 // entry can only have come from SignalR.
 
 interface Author {
@@ -20,7 +21,7 @@ interface Command {
   status: string;
 }
 
-test('SignalR messages invalidate react-query caches', async ({ page }) => {
+test('SignalR messages update react-query caches', async ({ page }) => {
   const [author] = await api<Author[]>(page, '/author');
   expect(author, 'the library has no authors').toBeTruthy();
 
@@ -51,9 +52,9 @@ test('SignalR messages invalidate react-query caches', async ({ page }) => {
   // The refresh sends command progress and an author update over SignalR.
   await expect.poll(
     () => withQueryClient<boolean>(page, `
-      return client.getQueryState(['/author']).isInvalidated;
+      return (client.getQueryData(['/author']) || []).some((a) => a.id === ${author.id});
     `),
-    { timeout: 60_000, message: 'the /author query never went stale from SignalR' }
+    { timeout: 60_000, message: 'SignalR never wrote the author into the /author list' }
   ).toBe(true);
 
   await expect.poll(
