@@ -18,7 +18,7 @@ import FormInputHelpText from './FormInputHelpText';
 import IndexerFlagsSelectInput from './IndexerFlagsSelectInput';
 import IndexerSelectInput from './IndexerSelectInput';
 import KeyValueListInput from './KeyValueListInput';
-import MetadataProfileSelectInputConnector from './MetadataProfileSelectInputConnector';
+import MetadataProfileSelectInput from './MetadataProfileSelectInput';
 import MonitorBooksSelectInput from './MonitorBooksSelectInput';
 import MonitorNewItemsSelectInput from './MonitorNewItemsSelectInput';
 import NumberInput from './NumberInput';
@@ -26,7 +26,7 @@ import OAuthInputConnector from './OAuthInputConnector';
 import PasswordInput from './PasswordInput';
 import PathInput from './PathInput';
 import ProviderOptionSelectInput from './ProviderOptionSelectInput';
-import QualityProfileSelectInputConnector from './QualityProfileSelectInputConnector';
+import QualityProfileSelectInput from './QualityProfileSelectInput';
 import RootFolderSelectInput from './RootFolderSelectInput';
 import TagSelectInputConnector from './TagSelectInputConnector';
 import TextArea from './TextArea';
@@ -74,10 +74,10 @@ function getComponent(type) {
       return PathInput;
 
     case inputTypes.QUALITY_PROFILE_SELECT:
-      return QualityProfileSelectInputConnector;
+      return QualityProfileSelectInput;
 
     case inputTypes.METADATA_PROFILE_SELECT:
-      return MetadataProfileSelectInputConnector;
+      return MetadataProfileSelectInput;
 
     case inputTypes.BOOK_EDITION_SELECT:
       return BookEditionSelectInput;

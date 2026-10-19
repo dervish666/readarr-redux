@@ -7,7 +7,6 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
 import { Tab, TabList, TabPanel, Tabs } from 'react-tabs';
 import AuthorPoster from 'Author/AuthorPoster';
 import { getAuthorStatusDetails } from 'Author/AuthorStatus';
@@ -20,11 +19,7 @@ import useAuthors, {
   useToggleAuthorMonitored,
 } from 'Author/useAuthors';
 import BookEditorFooter from 'Book/Editor/BookEditorFooter';
-import {
-  useAuthorBooks,
-  useSaveBookEditor,
-  useToggleBooksMonitored,
-} from 'Book/useBooks';
+import { useAuthorBooks, useToggleBooksMonitored } from 'Book/useBooks';
 import BookFile from 'BookFile/BookFile';
 import BookFileEditorTable from 'BookFile/Editor/BookFileEditorTable';
 import useBookFiles from 'BookFile/useBookFiles';
@@ -59,9 +54,7 @@ import RetagPreviewModal from 'Retag/RetagPreviewModal';
 import useAuthorSeries from 'Series/useAuthorSeries';
 import { useMetadataProfile } from 'Settings/Profiles/Metadata/useMetadataProfiles';
 import QualityProfileName from 'Settings/Profiles/Quality/QualityProfileName';
-import { clearBookFiles, fetchBookFiles } from 'Store/Actions/bookFileActions';
 import { SelectStateInputProps } from 'typings/props';
-import { ApiError } from 'Utilities/Fetch/fetchJson';
 import formatBytes from 'Utilities/Number/formatBytes';
 import {
   registerPagePopulator,
@@ -85,14 +78,6 @@ interface ExpandedState {
   series: Record<number, boolean>;
 }
 
-// The book editor's bulk delete is still the redux bookIndex thunk (DeleteBookModal).
-interface BookIndexDeleteState {
-  bookIndex: {
-    isDeleting: boolean;
-    deleteError?: ApiError | null;
-  };
-}
-
 function getFanartUrl(author: {
   images: { coverType: string; url: string }[];
 }) {
@@ -104,7 +89,6 @@ interface AuthorDetailsProps {
 }
 
 function AuthorDetails({ authorId }: AuthorDetailsProps) {
-  const dispatch = useDispatch();
   const executeCommand = useExecuteCommand();
 
   const author = useAuthor(authorId);
@@ -114,11 +98,6 @@ function AuthorDetails({ authorId }: AuthorDetailsProps) {
   const { toggleAuthorMonitored, isTogglingAuthorMonitored } =
     useToggleAuthorMonitored();
   const { toggleBooksMonitored, togglingBookIds } = useToggleBooksMonitored();
-  const { saveBookEditor, isSavingBookEditor, saveBookEditorError } =
-    useSaveBookEditor();
-
-  const { isDeleting: isDeletingBooks, deleteError: deleteBooksError } =
-    useSelector((state: BookIndexDeleteState) => state.bookIndex);
 
   const {
     data: books,
@@ -246,22 +225,11 @@ function AuthorDetails({ authorId }: AuthorDetailsProps) {
   const wasRefreshing = usePrevious(isRefreshing);
   const wasRenaming = usePrevious(isRenaming);
 
-  // The book editor's JS delete modal (Book/Editor/Delete) lists the selected books'
-  // files from the redux bookFiles feed, so the page keeps fetching and clearing it.
   const populate = useCallback(() => {
     refetchBooks();
     refetchBookFiles();
     refetchSeries();
-    dispatch(fetchBookFiles({ authorId }));
-  }, [authorId, dispatch, refetchBooks, refetchBookFiles, refetchSeries]);
-
-  useEffect(() => {
-    dispatch(fetchBookFiles({ authorId }));
-
-    return () => {
-      dispatch(clearBookFiles());
-    };
-  }, [authorId, dispatch]);
+  }, [refetchBooks, refetchBookFiles, refetchSeries]);
 
   // The Search tab's releases stay while the page shows this author.
   const searchPayload = useMemo(() => ({ authorId }), [authorId]);
@@ -404,13 +372,6 @@ function AuthorDetails({ authorId }: AuthorDetailsProps) {
       });
     },
     [setSelectState]
-  );
-
-  const handleSaveSelected = useCallback(
-    (changes: { monitored?: boolean }) => {
-      saveBookEditor({ bookIds: selectedBookIds, ...changes });
-    },
-    [selectedBookIds, saveBookEditor]
   );
 
   const handleExpandAllPress = useCallback(() => {
@@ -993,17 +954,7 @@ function AuthorDetails({ authorId }: AuthorDetailsProps) {
         />
       </PageContentBody>
 
-      {isEditorActive ? (
-        <BookEditorFooter
-          bookIds={selectedBookIds}
-          selectedCount={selectedBookIds.length}
-          isSaving={isSavingBookEditor}
-          saveError={saveBookEditorError}
-          isDeleting={isDeletingBooks}
-          deleteError={deleteBooksError}
-          onSaveSelected={handleSaveSelected}
-        />
-      ) : null}
+      {isEditorActive ? <BookEditorFooter bookIds={selectedBookIds} /> : null}
     </PageContent>
   );
 }

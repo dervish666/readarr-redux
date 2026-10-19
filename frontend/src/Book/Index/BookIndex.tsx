@@ -4,7 +4,6 @@ import { useSelector } from 'react-redux';
 import { useHistory } from 'react-router-dom';
 import NoAuthor from 'Author/NoAuthor';
 import BookEditorFooter from 'Book/Editor/BookEditorFooter';
-import { SaveBookEditorPayload, useSaveBookEditor } from 'Book/useBooks';
 import * as commandNames from 'Commands/commandNames';
 import { useCommandExecuting, useExecuteCommand } from 'Commands/useCommands';
 import Alert from 'Components/Alert';
@@ -49,7 +48,6 @@ import styles from './BookIndex.css';
 
 interface IndexState {
   app: { dimensions: { isSmallScreen: boolean } };
-  bookIndex: { isDeleting: boolean; deleteError?: object };
 }
 
 interface JumpBarItems {
@@ -78,11 +76,6 @@ function BookIndex() {
     (state: IndexState) => state.app.dimensions.isSmallScreen
   );
 
-  // The book editor's bulk delete is still a redux thunk (Book/Editor/Delete).
-  const { isDeleting, deleteError } = useSelector(
-    (state: IndexState) => state.bookIndex
-  );
-
   const executeCommand = useExecuteCommand();
   const isRefreshingAuthors = useCommandExecuting(
     commandNames.BULK_REFRESH_AUTHOR
@@ -95,9 +88,6 @@ function BookIndex() {
   const isMissingSearching = useCommandExecuting(
     commandNames.MISSING_BOOK_SEARCH
   );
-
-  const { saveBookEditor, isSavingBookEditor, saveBookEditorError } =
-    useSaveBookEditor();
 
   const [scroller, setScroller] = useState<HTMLElement | null>(null);
 
@@ -258,13 +248,6 @@ function BookIndex() {
     scrollPositions.bookIndex = scrollTop;
     setJumpToCharacter(undefined);
   }, []);
-
-  const handleSaveSelected = useCallback(
-    (changes: Omit<SaveBookEditorPayload, 'bookIds'>) => {
-      saveBookEditor({ bookIds: selectedBookIds, ...changes });
-    },
-    [selectedBookIds, saveBookEditor]
-  );
 
   const viewProps = {
     items,
@@ -445,15 +428,7 @@ function BookIndex() {
       </BookIndexSelectProvider>
 
       {isLoaded && isSelectMode ? (
-        <BookEditorFooter
-          bookIds={selectedBookIds}
-          selectedCount={selectedBookIds.length}
-          isSaving={isSavingBookEditor}
-          saveError={saveBookEditorError}
-          isDeleting={isDeleting}
-          deleteError={deleteError}
-          onSaveSelected={handleSaveSelected}
-        />
+        <BookEditorFooter bookIds={selectedBookIds} />
       ) : null}
 
       <BookIndexPosterOptionsModal

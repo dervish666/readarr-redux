@@ -2,15 +2,9 @@ import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useHistory } from 'react-router-dom';
-import RetagAuthorModal from 'Author/Editor/AudioTags/RetagAuthorModal';
 import AuthorEditorFooter from 'Author/Editor/AuthorEditorFooter';
-import OrganizeAuthorModal from 'Author/Editor/Organize/OrganizeAuthorModal';
 import NoAuthor from 'Author/NoAuthor';
-import {
-  FILTERS,
-  SaveAuthorEditorPayload,
-  useSaveAuthorEditor,
-} from 'Author/useAuthors';
+import { FILTERS } from 'Author/useAuthors';
 import * as commandNames from 'Commands/commandNames';
 import { useCommandExecuting, useExecuteCommand } from 'Commands/useCommands';
 import Alert from 'Components/Alert';
@@ -56,7 +50,6 @@ import styles from './AuthorIndex.css';
 
 interface IndexState {
   app: { dimensions: { isSmallScreen: boolean } };
-  authorIndex: { isDeleting: boolean; deleteError?: object };
 }
 
 interface JumpBarItems {
@@ -85,21 +78,11 @@ function AuthorIndex() {
     (state: IndexState) => state.app.dimensions.isSmallScreen
   );
 
-  // The author editor's bulk delete is still a redux thunk (Author/Editor/Delete).
-  const { isDeleting, deleteError } = useSelector(
-    (state: IndexState) => state.authorIndex
-  );
-
   const executeCommand = useExecuteCommand();
   const isRefreshingAuthor = useCommandExecuting(
     commandNames.BULK_REFRESH_AUTHOR
   );
   const isRssSyncExecuting = useCommandExecuting(commandNames.RSS_SYNC);
-  const isOrganizingAuthor = useCommandExecuting(commandNames.RENAME_AUTHOR);
-  const isRetaggingAuthor = useCommandExecuting(commandNames.RETAG_AUTHOR);
-
-  const { saveAuthorEditor, isSavingAuthorEditor, saveAuthorEditorError } =
-    useSaveAuthorEditor();
 
   const [scroller, setScroller] = useState<HTMLElement | null>(null);
 
@@ -120,8 +103,6 @@ function AuthorIndex() {
     useState(false);
   const [isOverviewOptionsModalOpen, setIsOverviewOptionsModalOpen] =
     useState(false);
-  const [isOrganizeModalOpen, setIsOrganizeModalOpen] = useState(false);
-  const [isRetagModalOpen, setIsRetagModalOpen] = useState(false);
   const [isSelectMode, setIsSelectMode] = useState(false);
 
   const [selectState, setSelectState] = useSelectState();
@@ -243,34 +224,9 @@ function AuthorIndex() {
     setJumpToCharacter(undefined);
   }, []);
 
-  const handleSaveSelected = useCallback(
-    (changes: Omit<SaveAuthorEditorPayload, 'authorIds'>) => {
-      saveAuthorEditor({ authorIds: selectedAuthorIds, ...changes });
-    },
-    [selectedAuthorIds, saveAuthorEditor]
-  );
-
-  const handleOrganizeModalClose = useCallback(
-    (organized?: boolean) => {
-      setIsOrganizeModalOpen(false);
-
-      if (organized === true) {
-        handleSelectAllChange({ value: false });
-      }
-    },
-    [handleSelectAllChange]
-  );
-
-  const handleRetagModalClose = useCallback(
-    (retagged?: boolean) => {
-      setIsRetagModalOpen(false);
-
-      if (retagged === true) {
-        handleSelectAllChange({ value: false });
-      }
-    },
-    [handleSelectAllChange]
-  );
+  const handleSelectionClear = useCallback(() => {
+    handleSelectAllChange({ value: false });
+  }, [handleSelectAllChange]);
 
   const viewProps = {
     items,
@@ -434,17 +390,7 @@ function AuthorIndex() {
       {isLoaded && isSelectMode ? (
         <AuthorEditorFooter
           authorIds={selectedAuthorIds}
-          selectedCount={selectedAuthorIds.length}
-          isSaving={isSavingAuthorEditor}
-          saveError={saveAuthorEditorError}
-          isDeleting={isDeleting}
-          deleteError={deleteError}
-          isOrganizingAuthor={isOrganizingAuthor}
-          isRetaggingAuthor={isRetaggingAuthor}
-          showMetadataProfile={true}
-          onSaveSelected={handleSaveSelected}
-          onOrganizeAuthorPress={() => setIsOrganizeModalOpen(true)}
-          onRetagAuthorPress={() => setIsRetagModalOpen(true)}
+          onSelectionClear={handleSelectionClear}
         />
       ) : null}
 
@@ -456,18 +402,6 @@ function AuthorIndex() {
       <AuthorIndexOverviewOptionsModal
         isOpen={isOverviewOptionsModalOpen}
         onModalClose={() => setIsOverviewOptionsModalOpen(false)}
-      />
-
-      <OrganizeAuthorModal
-        isOpen={isOrganizeModalOpen}
-        authorIds={selectedAuthorIds}
-        onModalClose={handleOrganizeModalClose}
-      />
-
-      <RetagAuthorModal
-        isOpen={isRetagModalOpen}
-        authorIds={selectedAuthorIds}
-        onModalClose={handleRetagModalClose}
       />
     </PageContent>
   );
