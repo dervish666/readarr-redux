@@ -32,7 +32,7 @@ function AuthorTagInput({
   onChange,
   ...otherProps
 }: AuthorTagInputProps) {
-  const { data: allTags, isFetched } = useTags();
+  const { data: allTags, isSuccess } = useTags();
   const hasCheckedValue = useRef(false);
 
   const sortedTags = useMemo(
@@ -67,9 +67,11 @@ function AuthorTagInput({
 
   const { addTag } = useAddTag(handleTagCreated);
 
-  // Drop ids of tags that no longer exist, once the tag list has loaded.
+  // Drop ids of tags that no longer exist, once the tag list has loaded. isFetched is
+  // also true after a failed fetch, when allTags is the empty fallback and every id
+  // would be dropped, so wait for a successful load.
   useEffect(() => {
-    if (!isFetched || hasCheckedValue.current) {
+    if (!isSuccess || hasCheckedValue.current) {
       return;
     }
 
@@ -78,7 +80,7 @@ function AuthorTagInput({
     if (value.length !== tags.length) {
       onChange({ name, value: tags.map((tag) => tag.id as number) });
     }
-  }, [isFetched, name, value, tags, onChange]);
+  }, [isSuccess, name, value, tags, onChange]);
 
   const handleTagAdd = useCallback(
     (tag: TagInputTag) => {
@@ -110,6 +112,7 @@ function AuthorTagInput({
   return (
     <TagInput
       {...otherProps}
+      name={name}
       tags={tags}
       tagList={tagList}
       onTagAdd={handleTagAdd}

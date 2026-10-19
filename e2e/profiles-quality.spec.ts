@@ -32,7 +32,10 @@ interface DelayProfile {
 interface QualityDefinition {
   id: number;
   title: string;
-  quality: { name: string };
+  quality: { id: number; name: string };
+  weight: number;
+  minSize: number | null;
+  maxSize: number | null;
 }
 
 
@@ -243,6 +246,32 @@ test('quality definitions: a title edit warns on leaving, saves only the changed
   } finally {
     // Always write the original back: a read can come from the server's stale cache
     // and claim the title is already restored.
+    await api(page, '/qualitydefinition/update', { method: 'PUT', data: [original] });
+  }
+});
+
+test('quality definitions: an audio minimum in MB saves as kilobits and keeps the rest of the row', async ({ page }) => {
+  const definitions = await api<QualityDefinition[]>(page, '/qualitydefinition');
+  // Unknown Audio, MP3, FLAC and M4B are the size-checked qualities.
+  const original = definitions.find((d) => [10, 11, 12, 13].includes(d.quality.id))!;
+  const megabytes = original.minSize === 5 * 8192 ? 6 : 5;
+
+  try {
+    await openRoute(page, '/settings/quality');
+
+    const minSizeInput = page.locator(`input[name="${original.id}.minSize"]`);
+    await expect(minSizeInput).toBeVisible();
+    await minSizeInput.fill(String(megabytes));
+    await minSizeInput.blur();
+
+    const saved = page.waitForRequest((request) => {
+      return request.url().includes('/api/v1/qualitydefinition/update') && request.method() === 'PUT';
+    });
+    await page.getByRole('button', { name: 'Save' }).click();
+    const body = (await saved).postDataJSON() as QualityDefinition[];
+
+    expect(body).toEqual([{ ...original, minSize: megabytes * 8192 }]);
+  } finally {
     await api(page, '/qualitydefinition/update', { method: 'PUT', data: [original] });
   }
 });

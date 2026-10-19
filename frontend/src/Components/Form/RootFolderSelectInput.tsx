@@ -46,7 +46,7 @@ function RootFolderSelectInput({
   onChange,
   ...otherProps
 }: RootFolderSelectInputProps) {
-  const { data: rootFolders, isFetched } = useRootFolders();
+  const { data: rootFolders, isSuccess } = useRootFolders();
   const [isAddNewRootFolderModalOpen, setIsAddNewRootFolderModalOpen] =
     useState(false);
   const hasSetDefault = useRef(false);
@@ -107,8 +107,9 @@ function RootFolderSelectInput({
 
   useEffect(() => {
     // Wait for the list before choosing a default, or a value that is about to
-    // appear in it would be replaced.
-    if (!isFetched) {
+    // appear in it would be replaced. A failed fetch also sets isFetched, with an
+    // empty list that would blank the saved path, so wait for a successful load.
+    if (!isSuccess) {
       return;
     }
 
@@ -139,7 +140,7 @@ function RootFolderSelectInput({
     ) {
       onChange({ name, value: defaultValue.key });
     }
-  }, [isFetched, name, value, values, previousValues, onChange]);
+  }, [isSuccess, name, value, values, previousValues, onChange]);
 
   const handleChange = useCallback(
     (change: { name: string; value: string }) => {

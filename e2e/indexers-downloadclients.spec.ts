@@ -1,6 +1,7 @@
 import { Locator, Page } from '@playwright/test';
 import { api, expect, openRoute, Problem, test } from './fixtures';
 import { apiKey, baseUrl } from './env';
+import { withQueryClient } from './reactTree';
 
 // Settings > Indexers and Settings > Download Clients moved to react-query. Every
 // provider made here points at 127.0.0.1:1 and is saved disabled, so nothing reaches
@@ -44,6 +45,11 @@ interface IndexerConfig {
 interface DownloadClientConfig {
   id: number;
   autoRedownloadFailed: boolean;
+}
+
+interface Tag {
+  id: number;
+  label: string;
 }
 
 interface ValidationFailure {
@@ -114,6 +120,7 @@ function allowExpectedFailures(problems: Problem[], path: string, count: number)
 }
 
 async function deleteLeftovers(page: Page) {
+  // Providers first, so their tags are no longer in use.
   for (const path of ['/indexer', '/downloadclient']) {
     const items = await api<ProviderResource[]>(page, path);
 
@@ -129,6 +136,15 @@ async function deleteLeftovers(page: Page) {
 
   for (const mapping of mappings.filter((m) => m.remotePath.includes(PREFIX))) {
     await page.request.fetch(`${baseUrl}/api/v1/remotepathmapping/${mapping.id}`, {
+      method: 'DELETE',
+      headers: { 'X-Api-Key': apiKey }
+    });
+  }
+
+  const tags = await api<Tag[]>(page, '/tag');
+
+  for (const tag of tags.filter((t) => t.label.startsWith(PREFIX))) {
+    await page.request.fetch(`${baseUrl}/api/v1/tag/${tag.id}`, {
       method: 'DELETE',
       headers: { 'X-Api-Key': apiKey }
     });
@@ -473,4 +489,69 @@ test('health: Test All for download clients posts through react-query and spins 
 
   release();
   await expect(button.locator('[class*="Icon-spinning"]')).toHaveCount(0);
+});
+
+test('tags: a download client saved while the tag list fails to load keeps its tags', async ({ page, problems }) => {
+  const name = uniqueName('client');
+  const tag = await api<Tag>(page, '/tag', { method: 'POST', data: { label: uniqueName('tag') } });
+
+  const schema = await api<(DownloadClientResource & { implementation: string })[]>(page, '/downloadclient/schema');
+  const sabnzbd = schema.find((s) => s.implementation === 'Sabnzbd')!;
+  const fields = sabnzbd.fields.map((f) => {
+    const values: Record<string, unknown> = { host: UNREACHABLE_HOST, port: 1, apiKey: 'e2e' };
+
+    return f.name in values ? { ...f, value: values[f.name] } : f;
+  });
+
+  const client = await api<DownloadClientResource>(page, '/downloadclient?forceSave=true', {
+    method: 'POST',
+    data: { ...sabnzbd, name, enable: false, fields, tags: [tag.id] }
+  });
+
+  await openRoute(page, '/settings/downloadclients');
+
+  // From here every /tag load fails, and the tag list is dropped from the cache so
+  // the input's own load is the one that fails. The input used to take a failed load
+  // as an empty tag list and drop every id, so the next save stripped the tags.
+  await page.route((url) => url.pathname.endsWith('/api/v1/tag'), (route) => route.fulfill({
+    status: 500,
+    contentType: 'application/json',
+    body: '{"message":"e2e"}'
+  }));
+  await withQueryClient(page, `client.removeQueries({ queryKey: ['/tag'] });`);
+
+  await card(page, name).click();
+  const editModal = modal(page, 'Edit Download Client - SABnzbd');
+  await expect(editModal).toBeVisible();
+
+  // react-query retries three times before it gives up on /tag.
+  await expect.poll(() => withQueryClient<string | undefined>(page, `
+    return client.getQueryState(['/tag'])?.status;
+  `), { timeout: 30_000 }).toBe('error');
+
+  // Give the input a render after the failure, which is when it used to prune.
+  await page.waitForTimeout(500);
+
+  await formGroup(editModal, /^Name$/).locator('input').fill(`${name}-renamed`);
+
+  const saved = page.waitForRequest((request) => {
+    return request.url().includes(`/api/v1/downloadclient/${client.id}`) && request.method() === 'PUT';
+  });
+  await editModal.getByRole('button', { name: 'Save' }).click();
+  const sent = (await saved).postDataJSON() as DownloadClientResource & { tags: number[] };
+  expect(sent.tags).toEqual([tag.id]);
+  await expect(editModal).toHaveCount(0);
+
+  const stored = await api<DownloadClientResource & { tags: number[] }>(page, `/downloadclient/${client.id}`);
+  expect(stored.tags).toEqual([tag.id]);
+
+  // The failed tag loads are the point of the test; anything else still fails it.
+  for (let i = problems.length - 1; i >= 0; i--) {
+    const text = problems[i].text;
+
+    if ((problems[i].kind === 'response' && text.startsWith('500') && text.includes('/api/v1/tag')) ||
+      (problems[i].kind === 'console' && text.includes('status of 500'))) {
+      problems.splice(i, 1);
+    }
+  }
 });

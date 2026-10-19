@@ -2,7 +2,7 @@ import { Locator, Page, Request } from '@playwright/test';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { api, expect, openRoute, test } from './fixtures';
+import { api, expect, openRoute, test, waitForPage } from './fixtures';
 import { apiKey, baseUrl } from './env';
 import { withQueryClient, withReduxStore } from './reactTree';
 
@@ -100,6 +100,12 @@ function queryTagLabels(page: Page) {
   return withQueryClient<string[] | null>(page, `
     const tags = client.getQueryData(['/tag']);
     return tags ? tags.map((tag) => tag.label) : null;
+  `);
+}
+
+function addAuthorRootFolder(page: Page) {
+  return withReduxStore<string | undefined>(page, `
+    return store.getState().search.authorDefaults.rootFolderPath;
   `);
 }
 
@@ -386,4 +392,64 @@ test('custom filters: save and delete through the builder on a redux-fed page', 
 
   await list.getByRole('button', { name: 'Close' }).click();
   expect((await api<CustomFilter[]>(page, '/customFilter')).map((f) => f.label)).not.toContain(label);
+});
+
+test('root folders: the add author root folder default survives a failed root folder load', async ({ page, problems }) => {
+  // The saved default lives in the redux-localstorage blob. Any path works: only the
+  // failed load is under test, nothing is added.
+  const savedPath = path.join(os.tmpdir(), `${PREFIX}-default-root`);
+
+  await openRoute(page, '/add/search');
+  await page.evaluate((rootFolderPath) => {
+    const blob = JSON.parse(localStorage.getItem('readarr') ?? '{}');
+    blob.search = { ...blob.search, authorDefaults: { ...blob.search?.authorDefaults, rootFolderPath } };
+    localStorage.setItem('readarr', JSON.stringify(blob));
+  }, savedPath);
+  await page.reload();
+  await waitForPage(page);
+  await expect.poll(() => addAuthorRootFolder(page)).toBe(savedPath);
+
+  const [author] = await api<Record<string, unknown>[]>(page, '/author');
+
+  // A made-up author not in the library, so the result opens the add modal.
+  await page.route((url) => url.pathname.endsWith('/api/v1/search'), (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify([{
+      id: 1,
+      foreignId: `${PREFIX}-author`,
+      author: { ...author, id: 0, foreignAuthorId: `${PREFIX}-author`, titleSlug: `${PREFIX}-author`, authorName: `${PREFIX} author`, folder: `${PREFIX} author`, images: [] }
+    }])
+  }));
+
+  // From here every /rootFolder load fails, and the list is dropped from the cache so
+  // the select's own load is the one that fails. The select used to take a failed
+  // load as an empty list and replace the saved default with a blank one.
+  await page.route((url) => url.pathname.endsWith('/api/v1/rootFolder'), (route) => route.fulfill({
+    status: 500,
+    contentType: 'application/json',
+    body: '{"message":"e2e"}'
+  }));
+  await withQueryClient(page, `client.removeQueries({ queryKey: ['/rootFolder'] });`);
+
+  await page.getByPlaceholder(/^e\.g\./).fill(`${PREFIX} author`);
+  await page.locator('[class*="AddNewAuthorSearchResult-searchResult"]').first().click();
+  await expect(modal(page, 'Add New Author')).toBeVisible();
+
+  await expect.poll(() => withQueryClient<string | undefined>(page, `
+    return client.getQueryState(['/rootFolder'])?.status;
+  `), { timeout: 30_000 }).toBe('error');
+
+  // Give the select a render after the failure, which is when it used to pick a default.
+  await page.waitForTimeout(500);
+  expect(await addAuthorRootFolder(page)).toBe(savedPath);
+
+  for (let i = problems.length - 1; i >= 0; i--) {
+    const text = problems[i].text;
+
+    if ((problems[i].kind === 'response' && text.startsWith('500') && text.includes('/api/v1/rootFolder')) ||
+      (problems[i].kind === 'console' && text.includes('status of 500'))) {
+      problems.splice(i, 1);
+    }
+  }
 });

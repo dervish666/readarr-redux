@@ -348,4 +348,56 @@ test.describe('settings on react-query', () => {
     await expect(advancedButton(page)).toHaveText('Show Advanced');
     await expect(mediaManagementAdvanced).toHaveCount(0);
   });
+
+  test('advanced settings: a value saved by the old redux store carries over once', async ({ page }) => {
+    await openRoute(page, '/settings/mediamanagement');
+
+    // Stand in for an upgrade: the flag only in the redux-localstorage blob, no new key.
+    const setLegacy = (value: boolean | null) => page.evaluate((legacyValue) => {
+      for (const key of Object.keys(localStorage).filter((k) => k.endsWith('_advanced_settings'))) {
+        localStorage.removeItem(key);
+      }
+
+      const blob = JSON.parse(localStorage.getItem('readarr') ?? '{}');
+      blob.settings = { ...blob.settings };
+
+      if (legacyValue === null) {
+        delete blob.settings.advancedSettings;
+      } else {
+        blob.settings.advancedSettings = legacyValue;
+      }
+
+      localStorage.setItem('readarr', JSON.stringify(blob));
+    }, value);
+
+    const storedFlag = () => page.evaluate(() => {
+      const key = Object.keys(localStorage).find((k) => k.endsWith('_advanced_settings'));
+
+      return key ? JSON.parse(localStorage.getItem(key)!).state.showAdvancedSettings : null;
+    });
+
+    try {
+      await setLegacy(true);
+      await page.reload();
+      await expect(advancedButton(page)).toHaveText('Hide Advanced');
+      expect(await storedFlag()).toBe(true);
+
+      // redux-localstorage drops the old path the next time it writes its blob, so the
+      // flag has to live under the new key from here on.
+      await page.reload();
+      await expect(advancedButton(page)).toHaveText('Hide Advanced');
+
+      // Once the new key exists the old value no longer wins.
+      await advancedButton(page).click();
+      await expect(advancedButton(page)).toHaveText('Show Advanced');
+      await page.evaluate(() => {
+        const blob = JSON.parse(localStorage.getItem('readarr') ?? '{}');
+        localStorage.setItem('readarr', JSON.stringify({ ...blob, settings: { ...blob.settings, advancedSettings: true } }));
+      });
+      await page.reload();
+      await expect(advancedButton(page)).toHaveText('Show Advanced');
+    } finally {
+      await setLegacy(null);
+    }
+  });
 });
