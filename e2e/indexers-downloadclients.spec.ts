@@ -510,15 +510,16 @@ test('tags: a download client saved while the tag list fails to load keeps its t
 
   await openRoute(page, '/settings/downloadclients');
 
-  // From here every /tag load fails, and the tag list is dropped from the cache so
-  // the input's own load is the one that fails. The input used to take a failed load
-  // as an empty tag list and drop every id, so the next save stripped the tags.
+  // From here every /tag load fails. The input used to take a failed load as an empty
+  // tag list and drop every id, so the next save stripped the tags. Since stage 3 the
+  // app loads tags before any page renders (a failed first load shows the error page),
+  // so the failure a page can meet is a refetch: invalidate, and let it fail.
   await page.route((url) => url.pathname.endsWith('/api/v1/tag'), (route) => route.fulfill({
     status: 500,
     contentType: 'application/json',
     body: '{"message":"e2e"}'
   }));
-  await withQueryClient(page, `client.removeQueries({ queryKey: ['/tag'] });`);
+  await withQueryClient(page, `client.invalidateQueries({ queryKey: ['/tag'], exact: true });`);
 
   await card(page, name).click();
   const editModal = modal(page, 'Edit Download Client - SABnzbd');
