@@ -5,7 +5,7 @@ import { expect, openRoute, test } from './fixtures';
 
 // The local library has no history and an empty blocklist, so the fixture checks
 // serve /history and /blocklist (Readarr v1 shapes) and cancel every dialog that
-// would write. The empty-state checks use the real, empty API.
+// would write. The last check uses the real API, empty or not.
 
 function readFixture(name: string) {
   return fs.readFileSync(path.join(__dirname, 'fixtures', name), 'utf8');
@@ -153,12 +153,60 @@ test('blocklist fixture: rows, details, and remove and clear dialogs cancel', as
   expect(writes, 'a cancelled dialog sent a history or blocklist write').toEqual([]);
 });
 
-test('history and blocklist: the real, empty API shows the empty messages', async ({ page }) => {
-  await openRoute(page, '/activity/history');
-  await expect(page.getByText('No history.', { exact: true })).toBeVisible();
-  await expect(page.locator('tbody tr')).toHaveCount(0);
+interface PagedRecords<T> {
+  totalRecords: number;
+  records: T[];
+}
 
+interface HistoryRecord {
+  author?: { authorName: string };
+  book?: { title: string };
+}
+
+interface BlocklistRecord {
+  sourceTitle: string;
+}
+
+function waitForApiGet(page: Page, apiPath: string) {
+  return page.waitForResponse((response) => {
+    return response.request().method() === 'GET' && new URL(response.url()).pathname.endsWith(`/api/v1${apiPath}`);
+  });
+}
+
+// A fresh local backend has no history and no blocklist, so this is where the empty
+// messages get checked. A copy of a real database (staging) has rows, so there the
+// same check holds the rows the page shows against the API's own first page.
+test('history and blocklist: the real API shows its rows, or the empty messages', async ({ page }) => {
+  const historyResponse = waitForApiGet(page, '/history');
+  await openRoute(page, '/activity/history');
+  const history = (await (await historyResponse).json()) as PagedRecords<HistoryRecord>;
+
+  if (history.totalRecords === 0) {
+    await expect(page.getByText('No history.', { exact: true })).toBeVisible();
+    await expect(page.locator('tbody tr')).toHaveCount(0);
+  } else {
+    await expect(page.getByText('No history.', { exact: true })).toHaveCount(0);
+    await expect(page.locator('tbody tr')).toHaveCount(history.records.length);
+
+    const first = history.records[0];
+    const firstText = first.book?.title ?? first.author?.authorName;
+
+    if (firstText) {
+      await expect(page.locator('tbody tr').first()).toContainText(firstText);
+    }
+  }
+
+  const blocklistResponse = waitForApiGet(page, '/blocklist');
   await openRoute(page, '/activity/blocklist');
-  await expect(page.getByText('No history blocklist', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Clear', exact: true })).toBeDisabled();
+  const blocklist = (await (await blocklistResponse).json()) as PagedRecords<BlocklistRecord>;
+
+  if (blocklist.totalRecords === 0) {
+    await expect(page.getByText('No history blocklist', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Clear', exact: true })).toBeDisabled();
+  } else {
+    await expect(page.getByText('No history blocklist', { exact: true })).toHaveCount(0);
+    await expect(page.locator('tbody tr')).toHaveCount(blocklist.records.length);
+    await expect(page.locator('tbody tr').first()).toContainText(blocklist.records[0].sourceTitle);
+    await expect(page.getByRole('button', { name: 'Clear', exact: true })).toBeEnabled();
+  }
 });

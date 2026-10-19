@@ -1,6 +1,7 @@
 import { Page, Request, Response } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
+import { apiKey, baseUrl } from './env';
 import { api, expect, openRoute, test } from './fixtures';
 
 // System pages on react-query. These run against the local backend's real data
@@ -19,6 +20,12 @@ interface Health {
 interface Backup {
   id: number;
   name: string;
+}
+
+interface Command {
+  id: number;
+  name: string;
+  status: string;
 }
 
 interface LogFile {
@@ -120,16 +127,19 @@ test('tasks: running Check Health spins and the row updates over SignalR', async
     });
   });
 
-  // The first task list says Check Health last ran in 2020, so any newer run is
-  // visible in the row. Later fetches are the backend's real answer.
-  let served = false;
+  // The real last run can be anything: years ago locally, minutes ago on a staging
+  // copy whose scheduler is running (and whose other tasks send system/task messages
+  // that refetch the list). So every task list before the click says Check Health
+  // last ran in 2020, and every one after it is the backend's real answer.
+  const realBefore = (await api<Task[]>(page, '/system/task')).find((t) => t.taskName === 'CheckHealth');
+  expect(realBefore, 'no Check Health task').toBeTruthy();
+  let aging = true;
 
   await page.route((url) => url.pathname.endsWith('/api/v1/system/task'), async (route) => {
-    if (served || route.request().method() !== 'GET') {
+    if (!aging || route.request().method() !== 'GET') {
       return route.fallback();
     }
 
-    served = true;
     const response = await route.fetch();
     const tasks = (await response.json()) as Task[];
     const aged = tasks.map((t) => (t.taskName === 'CheckHealth' ? { ...t, lastExecution: '2020-01-01T00:00:00Z' } : t));
@@ -143,6 +153,7 @@ test('tasks: running Check Health spins and the row updates over SignalR', async
   const checkHealth = row(page, 'Check Health');
   const lastExecution = checkHealth.locator('[class*="ScheduledTaskRow-lastExecution"]');
   await expect(lastExecution).toContainText('years ago');
+  const agedTitle = await lastExecution.getAttribute('title');
 
   await markWindow(page);
 
@@ -160,6 +171,7 @@ test('tasks: running Check Health spins and the row updates over SignalR', async
     new MutationObserver(check).observe(cell, { subtree: true, childList: true, attributes: true });
   });
 
+  aging = false;
   await checkHealth.locator('[class*="ScheduledTaskRow-actions"] button').click();
 
   await expect.poll(
@@ -169,61 +181,96 @@ test('tasks: running Check Health spins and the row updates over SignalR', async
 
   await expect(lastExecution).not.toContainText('years ago', { timeout: 30_000 });
   await expect(lastExecution).toContainText(/seconds? ago|minute ago/);
+  await expect(lastExecution).not.toHaveAttribute('title', agedTitle ?? '');
 
   expect(taskFrames.length, 'no system/task SignalR message arrived').toBeGreaterThan(0);
   await expectSameWindow(page);
 
   const tasks = await api<Task[]>(page, '/system/task');
   const real = tasks.find((t) => t.taskName === 'CheckHealth');
-  expect(new Date(real?.lastExecution ?? 0).getTime()).toBeGreaterThan(Date.now() - 5 * 60_000);
+  const realAfter = new Date(real?.lastExecution ?? 0).getTime();
+  expect(realAfter, 'Check Health did not run again').toBeGreaterThan(new Date(realBefore!.lastExecution).getTime());
+  expect(realAfter).toBeGreaterThan(Date.now() - 5 * 60_000);
 });
 
 test('backups: create through the UI, restore dialogs cancel, then delete it', async ({ page }) => {
+  // A large database (the staging copy) takes about two minutes to back up.
+  test.setTimeout(300_000);
+
   const restores = await blockRestores(page);
   const before = await api<Backup[]>(page, '/system/backup');
 
-  await openRoute(page, '/system/backup');
-  await expect(page.getByRole('heading', { name: /System · Backups/ })).toBeVisible();
-  await markWindow(page);
+  try {
+    await openRoute(page, '/system/backup');
+    await expect(page.getByRole('heading', { name: /System · Backups/ })).toBeVisible();
+    await markWindow(page);
 
-  // The toolbar restore opens the upload form, with Restore disabled until a file is picked.
-  await page.getByRole('button', { name: 'Restore Backup' }).first().click();
-  await expect(modal(page).locator('input[type="file"]')).toHaveCount(1);
-  await expect(modal(page).getByRole('button', { name: 'Restore' })).toBeDisabled();
-  await modal(page).getByRole('button', { name: 'Cancel' }).click();
-  await expect(modal(page)).toHaveCount(0);
+    // The toolbar restore opens the upload form, with Restore disabled until a file is picked.
+    await page.getByRole('button', { name: 'Restore Backup' }).first().click();
+    await expect(modal(page).locator('input[type="file"]')).toHaveCount(1);
+    await expect(modal(page).getByRole('button', { name: 'Restore' })).toBeDisabled();
+    await modal(page).getByRole('button', { name: 'Cancel' }).click();
+    await expect(modal(page)).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Backup Now' }).click();
+    const commandResponse = page.waitForResponse((response) => {
+      return response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/api/v1/command');
+    });
+    await page.getByRole('button', { name: 'Backup Now' }).click();
+    const command = (await (await commandResponse).json()) as Command;
+    expect(command.name).toBe('Backup');
 
-  // The new backup shows up without a reload once the Backup command finishes.
-  await expect(page.locator('tbody tr')).toHaveCount(before.length + 1, { timeout: 60_000 });
-  await expectSameWindow(page);
+    const commandStatus = async () => (await api<Command>(page, `/command/${command.id}`)).status;
 
-  const after = await api<Backup[]>(page, '/system/backup');
-  const created = after.find((b) => !before.some((o) => o.id === b.id));
-  expect(created, 'no new backup on the server').toBeTruthy();
+    await expect.poll(commandStatus, {
+      message: 'the Backup command never finished',
+      timeout: 240_000,
+      intervals: [2_000]
+    }).toMatch(/^(completed|failed|aborted)$/);
+    expect(await commandStatus(), 'the Backup command did not complete').toBe('completed');
 
-  const createdRow = row(page, created!.name);
-  await expect(createdRow).toHaveCount(1);
+    const after = await api<Backup[]>(page, '/system/backup');
+    const created = after.filter((b) => !before.some((o) => o.id === b.id));
+    expect(created.length, 'no new backup on the server').toBeGreaterThan(0);
+    const newest = created[created.length - 1];
 
-  // The row's restore asks about this backup by name; cancel it.
-  await createdRow.getByRole('button', { name: 'Restore Backup' }).click();
-  await expect(modal(page)).toContainText(`Would you like to restore the backup '${created!.name}'?`);
-  await modal(page).getByRole('button', { name: 'Cancel' }).click();
-  await expect(modal(page)).toHaveCount(0);
+    // The new backup shows up without a reload once the Backup command finishes.
+    await expect(page.locator('tbody tr')).toHaveCount(after.length, { timeout: 30_000 });
+    await expectSameWindow(page);
 
-  // Delete the backup this test made.
-  await createdRow.getByRole('button', { name: 'Delete Backup' }).click();
-  await expect(modal(page)).toContainText(created!.name);
-  await modal(page).getByRole('button', { name: 'Delete' }).click();
+    const createdRow = row(page, newest.name);
+    await expect(createdRow).toHaveCount(1);
 
-  await expect(createdRow).toHaveCount(0);
-  await expect(page.locator('tbody tr')).toHaveCount(before.length);
-  await expectSameWindow(page);
+    // The row's restore asks about this backup by name; cancel it.
+    await createdRow.getByRole('button', { name: 'Restore Backup' }).click();
+    await expect(modal(page)).toContainText(`Would you like to restore the backup '${newest.name}'?`);
+    await modal(page).getByRole('button', { name: 'Cancel' }).click();
+    await expect(modal(page)).toHaveCount(0);
 
-  const final = await api<Backup[]>(page, '/system/backup');
-  expect(final.map((b) => b.id)).toEqual(before.map((b) => b.id));
-  expect(restores, 'a restore request left the browser').toEqual([]);
+    // Delete the backup this test made.
+    await createdRow.getByRole('button', { name: 'Delete Backup' }).click();
+    await expect(modal(page)).toContainText(newest.name);
+    await modal(page).getByRole('button', { name: 'Delete' }).click();
+
+    await expect(createdRow).toHaveCount(0);
+    await expect(page.locator('tbody tr')).toHaveCount(after.length - 1);
+    await expectSameWindow(page);
+
+    const final = await api<Backup[]>(page, '/system/backup');
+    expect(final.map((b) => b.id)).not.toContain(newest.id);
+    expect(restores, 'a restore request left the browser').toEqual([]);
+  } finally {
+    // Whatever happened above, no backup made during the test is left behind.
+    const leftovers = (await api<Backup[]>(page, '/system/backup')).filter((b) => !before.some((o) => o.id === b.id));
+
+    for (const backup of leftovers) {
+      const response = await page.request.fetch(`${baseUrl}/api/v1/system/backup/${backup.id}`, {
+        method: 'DELETE',
+        headers: { 'X-Api-Key': apiKey }
+      });
+
+      expect(response.ok(), `could not delete leftover backup ${backup.name}: ${response.status()}`).toBeTruthy();
+    }
+  }
 });
 
 test('log files and updater log files list the real files', async ({ page }) => {

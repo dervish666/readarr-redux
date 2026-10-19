@@ -183,7 +183,16 @@ test('tags: a tag made in a tag input reaches Settings > Tags and the redux feed
   await clientNavigate(page, '/authors');
   await page.locator('[class*="ToolbarMenuButton-menuButton"]', { hasText: 'Filter' }).click();
   await page.locator('[class*="MenuItem-menuItem"]', { hasText: 'Custom Filters' }).click();
+  // With no saved author filters this opens the builder; with some (a real library
+  // usually has them) it opens the list first, and Add Custom Filter opens the builder.
   const builder = modal(page, /^Custom Filter$/);
+  const filterList = modal(page, 'Custom Filters');
+  await expect(builder.or(filterList)).toBeVisible();
+
+  if (await filterList.isVisible()) {
+    await filterList.getByRole('button', { name: 'Add Custom Filter' }).click();
+  }
+
   await expect(builder).toBeVisible();
   await builder.locator('select').first().selectOption({ label: 'Tags' });
   await builder.locator('[class*="TagInput"] input').last().fill(label.slice(0, 10));
