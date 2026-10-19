@@ -44,7 +44,9 @@ test('SignalR messages invalidate react-query caches', async ({ page }) => {
   );
   await page.locator('[class*="PageToolbarButton-toolbarButton"]', { hasText: 'Refresh & Scan' }).click();
   const posted = (await (await commandPost).json()) as Command;
-  expect(posted.status).toBe('queued');
+  // The POST can answer after the command has started; either way it is not complete yet,
+  // so reaching 'completed' below can only come from SignalR.
+  expect(['queued', 'started']).toContain(posted.status);
 
   // The refresh sends command progress and an author update over SignalR.
   await expect.poll(
