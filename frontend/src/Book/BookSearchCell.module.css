@@ -1,4 +1,4 @@
-.BookSearchCell {
+.bookSearchCell {
   composes: cell from 'Components/Table/Cells/TableRowCell.module.css';
 
   width: 70px;

@@ -56,14 +56,6 @@
     margin-left: -10px;
     border-bottom-width: 0;
     content: ' ';
-
-    &.default {
-      border-top-color: var(--paperCard);
-    }
-
-    &.inverse {
-      border-top-color: var(--ink);
-    }
   }
 
   &.default {
@@ -85,14 +77,6 @@
     left: 1px;
     border-left-width: 0;
     content: ' ';
-
-    &.default {
-      border-right-color: var(--paperCard);
-    }
-
-    &.inverse {
-      border-right-color: var(--ink);
-    }
   }
 
   &.default {
@@ -114,14 +98,6 @@
     margin-left: -10px;
     border-top-width: 0;
     content: ' ';
-
-    &.default {
-      border-bottom-color: var(--paperCard);
-    }
-
-    &.inverse {
-      border-bottom-color: var(--ink);
-    }
   }
 
   &.default {
@@ -143,14 +119,6 @@
     bottom: -10px;
     border-right-width: 0;
     content: ' ';
-
-    &.default {
-      border-left-color: var(--paperCard);
-    }
-
-    &.inverse {
-      border-left-color: var(--ink);
-    }
   }
 
   &.default {

@@ -9,11 +9,6 @@ const response = await fetch(initializeUrl);
 
 window.Readarr = await response.json();
 
-/* eslint-disable no-undef, @typescript-eslint/ban-ts-comment */
-// @ts-ignore 2304
-__webpack_public_path__ = `${window.Readarr.urlBase}/`;
-/* eslint-enable no-undef, @typescript-eslint/ban-ts-comment */
-
 // React 18.3 warns in development builds about patterns the JS components still use
 // (defaultProps on function components, findDOMNode). Drop those two until the components move off them.
 const error = console.error;

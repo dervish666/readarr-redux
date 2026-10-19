@@ -158,3 +158,5 @@ _temp_*/**/*
 CLAUDE.md
 AGENTS.md
 .recall/
+
+frontend/src/**/*.module.css.d.ts
