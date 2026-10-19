@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useBook, useDeleteBook } from 'Book/useBooks';
 import FormGroup from 'Components/Form/FormGroup';
 import FormInputGroup from 'Components/Form/FormInputGroup';
@@ -29,7 +29,7 @@ function DeleteBookModalContent({
   authorSlug,
   onModalClose,
 }: DeleteBookModalContentProps) {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { book } = useBook(bookId);
   const { deleteBook } = useDeleteBook();
 
@@ -54,7 +54,7 @@ function DeleteBookModalContent({
     setAddImportListExclusion(false);
     onModalClose();
 
-    history.push(`${window.Readarr.urlBase}/author/${authorSlug}`);
+    navigate(`/author/${authorSlug}`);
   }, [
     bookId,
     authorSlug,
@@ -62,7 +62,7 @@ function DeleteBookModalContent({
     addImportListExclusion,
     deleteBook,
     onModalClose,
-    history,
+    navigate,
   ]);
 
   const { bookFileCount = 0, sizeOnDisk = 0 } = book?.statistics ?? {};

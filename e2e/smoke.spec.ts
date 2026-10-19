@@ -50,7 +50,8 @@ const STATIC_ROUTES = [
   '/system/backup',
   '/system/updates',
   '/system/events',
-  '/system/logs/files'
+  '/system/logs/files',
+  '/system/logs/files/update'
 ];
 
 interface SignalRMessage {

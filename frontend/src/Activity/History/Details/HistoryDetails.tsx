@@ -87,7 +87,7 @@ interface HistoryDetailsProps {
   data: HistoryData;
 }
 
-// Shared with the author history popover, which still passes redux rows.
+// Shared with the author history popover.
 function HistoryDetails({ eventType, sourceTitle, data }: HistoryDetailsProps) {
   const { shortDateFormat, timeFormat } = useUiSettingsValues();
 
