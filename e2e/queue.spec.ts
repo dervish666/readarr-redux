@@ -1,7 +1,7 @@
 import { Page, Request } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
-import { expect, openRoute, test } from './fixtures';
+import { api, expect, openRoute, test } from './fixtures';
 
 // The local library's queue is empty, so these checks serve a fixture for the queue
 // requests (Readarr v1 shapes) and stub the one write they press, Import anyway.
@@ -126,4 +126,44 @@ test('queue fixture: Import anyway posts ignoreMatchThreshold', async ({ page })
   await row(page, 'Fixture Book Blocked').getByRole('button', { name: 'Import anyway' }).click();
 
   await expect.poll(() => posted).toEqual([{ ignoreMatchThreshold: true, replaceDestination: false }]);
+});
+
+// Live updates over real SignalR. RefreshMonitoredDownloads makes the backend publish
+// QueueUpdatedEvent even with no download clients, which broadcasts `queue` (the page
+// must refetch) and, after a 5 s debounce, `queue/status` with the server's real counts
+// (the sidebar must drop the fixture's 2 without any request).
+test('queue: a real SignalR queue message refetches the page and updates the count', async ({ page }) => {
+  let queueGets = 0;
+
+  page.on('request', (request) => {
+    if (request.method() === 'GET' && new URL(request.url()).pathname.endsWith('/api/v1/queue')) {
+      queueGets += 1;
+    }
+  });
+
+  await serveQueueFixture(page);
+  await openRoute(page, '/activity/queue');
+  await expect(page.locator('tbody tr')).toHaveCount(2);
+
+  const queueLink = page.locator('[class*="PageSidebarItem-link"]', { hasText: /^Queue/ });
+  await expect(queueLink.locator('[class*="PageSidebarItem-status"]')).toHaveText('2');
+
+  // Control: nothing refetches the queue on its own.
+  const before = queueGets;
+  await page.waitForTimeout(3000);
+  expect(queueGets, 'the queue refetched with no SignalR message').toBe(before);
+
+  const real = await api<{ totalCount: number }>(page, '/queue/status');
+  expect(real.totalCount, 'this check needs a server queue that differs from the fixture').not.toBe(2);
+
+  await api(page, '/command', { method: 'POST', data: { name: 'RefreshMonitoredDownloads' } });
+
+  await expect.poll(() => queueGets, {
+    timeout: 30_000,
+    message: 'the queue page never refetched after a real `queue` SignalR message'
+  }).toBeGreaterThan(before);
+
+  // The status wrapper stays in the sidebar; with no items it renders no label, so its text is empty.
+  const expected = real.totalCount > 0 ? String(real.totalCount) : '';
+  await expect(queueLink.locator('[class*="PageSidebarItem-status"]')).toHaveText(expected, { timeout: 30_000 });
 });
