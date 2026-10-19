@@ -7,7 +7,7 @@ import translate from 'Utilities/String/translate';
 import AuthorTagInput from './AuthorTagInput';
 // import translate from 'Utilities/String/translate';
 import AutoCompleteInput from './AutoCompleteInput';
-import BookEditionSelectInputConnector from './BookEditionSelectInputConnector';
+import BookEditionSelectInput from './BookEditionSelectInput';
 import BookshelfInput from './BookshelfInput';
 import CaptchaInputConnector from './CaptchaInputConnector';
 import CheckInput from './CheckInput';
@@ -80,7 +80,7 @@ function getComponent(type) {
       return MetadataProfileSelectInputConnector;
 
     case inputTypes.BOOK_EDITION_SELECT:
-      return BookEditionSelectInputConnector;
+      return BookEditionSelectInput;
 
     case inputTypes.INDEXER_SELECT:
       return IndexerSelectInput;
@@ -292,6 +292,7 @@ FormInputGroup.propTypes = {
   max: PropTypes.number,
   unit: PropTypes.string,
   buttons: PropTypes.oneOfType([PropTypes.node, PropTypes.arrayOf(PropTypes.node)]),
+  placeholder: PropTypes.string,
   helpText: PropTypes.string,
   helpTexts: PropTypes.arrayOf(PropTypes.string),
   helpTextWarning: PropTypes.string,

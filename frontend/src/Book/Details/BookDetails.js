@@ -3,7 +3,7 @@ import React, { Component } from 'react';
 import { Tab, TabList, TabPanel, Tabs } from 'react-tabs';
 import AuthorHistoryTable from 'Author/History/AuthorHistoryTable';
 import DeleteBookModal from 'Book/Delete/DeleteBookModal';
-import EditBookModalConnector from 'Book/Edit/EditBookModalConnector';
+import EditBookModal from 'Book/Edit/EditBookModal';
 import BookFileEditorTable from 'BookFile/Editor/BookFileEditorTable';
 import IconButton from 'Components/Link/IconButton';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
@@ -308,12 +308,10 @@ class BookDetails extends Component {
             onModalClose={this.onRetagModalClose}
           />
 
-          <EditBookModalConnector
+          <EditBookModal
             isOpen={isEditBookModalOpen}
             bookId={id}
-            authorId={author.id}
             onModalClose={this.onEditBookModalClose}
-            onDeleteAuthorPress={this.onDeleteBookPress}
           />
 
           <DeleteBookModal

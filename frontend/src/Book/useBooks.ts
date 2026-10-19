@@ -68,6 +68,20 @@ export const useAuthorBooks = (authorId?: number) => {
   return useBooks(authorId ? { authorId } : undefined, !!authorId);
 };
 
+// One book, fresh from GET /book?bookIds={id} (no embedded author), for the edit and
+// delete modals. SignalR book messages merge into this list like any other.
+export const useBook = (bookId?: number) => {
+  const { data, ...result } = useBooks(
+    bookId ? { bookIds: [bookId] } : undefined,
+    !!bookId
+  );
+
+  return {
+    ...result,
+    book: data.find((book) => book.id === bookId),
+  };
+};
+
 // A book added by SignalR or a mutation belongs in a cached list when the list is
 // unfiltered or filtered to its author. Lists by id or slug are left alone.
 export const bookBelongsTo = (params: QueryParams | undefined, book: Book) => {

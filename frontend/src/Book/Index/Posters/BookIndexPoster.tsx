@@ -3,7 +3,7 @@ import AuthorPoster from 'Author/AuthorPoster';
 import DeleteAuthorModal from 'Author/Delete/DeleteAuthorModal';
 import EditAuthorModal from 'Author/Edit/EditAuthorModal';
 import Book from 'Book/Book';
-import EditBookModalConnector from 'Book/Edit/EditBookModalConnector';
+import EditBookModal from 'Book/Edit/EditBookModal';
 import * as commandNames from 'Commands/commandNames';
 import { useExecuteCommand } from 'Commands/useCommands';
 import IconButton from 'Components/Link/IconButton';
@@ -231,9 +231,8 @@ function BookIndexPoster(props: BookIndexPosterProps) {
         onModalClose={handleDeleteAuthorModalClose}
       />
 
-      <EditBookModalConnector
+      <EditBookModal
         isOpen={isEditBookModalOpen}
-        authorId={authorId}
         bookId={bookId}
         onModalClose={handleEditBookModalClose}
       />
