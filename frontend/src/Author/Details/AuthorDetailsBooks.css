@@ -1,0 +1,18 @@
+.bookType {
+  overflow: hidden;
+  border: 1px solid var(--borderColor);
+  border-radius: 12px;
+  background-color: var(--cardBackgroundColor);
+}
+
+.books {
+  padding-top: 4px;
+}
+
+@media only screen and (max-width: $breakpointSmall) {
+  .bookType {
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+}

@@ -1,7 +1,5 @@
 import * as app from './appActions';
 import * as author from './authorActions';
-import * as authorDetails from './authorDetailsActions';
-import * as authorHistory from './authorHistoryActions';
 import * as authorIndex from './authorIndexActions';
 import * as books from './bookActions';
 import * as bookFiles from './bookFileActions';
@@ -20,7 +18,6 @@ import * as queue from './queueActions';
 import * as releases from './releaseActions';
 import * as retagPreview from './retagPreviewActions';
 import * as search from './searchActions';
-import * as series from './seriesActions';
 import * as settings from './settingsActions';
 import * as system from './systemActions';
 import * as tags from './tagActions';
@@ -29,8 +26,6 @@ import * as wanted from './wantedActions';
 export default [
   app,
   author,
-  authorDetails,
-  authorHistory,
   authorIndex,
   bookFiles,
   bookHistory,
@@ -49,7 +44,6 @@ export default [
   releases,
   retagPreview,
   search,
-  series,
   settings,
   system,
   tags,

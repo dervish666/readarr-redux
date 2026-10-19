@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import AuthorNameLink from 'Author/AuthorNameLink';
 import DeleteAuthorModal from 'Author/Delete/DeleteAuthorModal';
-import EditAuthorModalConnector from 'Author/Edit/EditAuthorModalConnector';
+import EditAuthorModal from 'Author/Edit/EditAuthorModal';
 import BookNameLink from 'Book/BookNameLink';
 import EditBookModalConnector from 'Book/Edit/EditBookModalConnector';
 import HeartRating from 'Components/HeartRating';
@@ -340,7 +340,7 @@ class BookIndexRow extends Component {
           })
         }
 
-        <EditAuthorModalConnector
+        <EditAuthorModal
           isOpen={isEditAuthorModalOpen}
           authorId={authorId}
           onModalClose={this.onEditAuthorModalClose}

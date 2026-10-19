@@ -99,7 +99,7 @@ test('commands: a task run spins, clears and completes in the react-query list',
   release();
 });
 
-test('commands: a redux-started author refresh shows on the converted Tasks page', async ({ page }) => {
+test('commands: an author page refresh reaches both lists and shows on the Tasks page', async ({ page }) => {
   const [author] = await api<Author[]>(page, '/author');
   expect(author, 'the library has no authors').toBeTruthy();
 
@@ -111,10 +111,11 @@ test('commands: a redux-started author refresh shows on the converted Tasks page
   const command = (await (await post).json()) as Command;
   expect(command.name).toBe('RefreshAuthor');
 
-  // Started through redux executeCommand, so it is in the redux feed...
+  // Started through useExecuteCommand, which also adds it to the redux feed the
+  // unconverted pages read...
   await expect.poll(() => reduxCommandStatus(page, command.id)).not.toBeNull();
 
-  // ...and in the react-query list the converted pages read.
+  // ...and to the react-query list.
   await expect.poll(() => queryCommandStatus(page, command.id), {
     message: 'the react-query command list never saw the redux-started refresh'
   }).not.toBeNull();

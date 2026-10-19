@@ -1,11 +1,9 @@
 import _ from 'lodash';
 import moment from 'moment';
-import React from 'react';
 import { createAction } from 'redux-actions';
 import { batchActions } from 'redux-batched-actions';
 import bookEntities from 'Book/bookEntities';
-import Icon from 'Components/Icon';
-import { filterTypePredicates, filterTypes, icons, sortDirections } from 'Helpers/Props';
+import { filterTypePredicates, filterTypes, sortDirections } from 'Helpers/Props';
 import { createThunk, handleThunks } from 'Store/thunks';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
 import dateFilterPredicate from 'Utilities/Date/dateFilterPredicate';
@@ -16,7 +14,6 @@ import createRemoveItemHandler from './Creators/createRemoveItemHandler';
 import createSaveProviderHandler from './Creators/createSaveProviderHandler';
 import createSetClientSideCollectionSortReducer from './Creators/Reducers/createSetClientSideCollectionSortReducer';
 import createSetSettingValueReducer from './Creators/Reducers/createSetSettingValueReducer';
-import createSetTableOptionReducer from './Creators/Reducers/createSetTableOptionReducer';
 
 //
 // Variables
@@ -198,81 +195,12 @@ export const defaultState = {
     rating: function(item) {
       return item.ratings.value;
     }
-  },
-
-  columns: [
-    {
-      name: 'select',
-      columnLabel: 'Select',
-      isSortable: false,
-      isVisible: true,
-      isModifiable: false,
-      isHidden: true
-    },
-    {
-      name: 'monitored',
-      columnLabel: 'Monitored',
-      isVisible: true,
-      isModifiable: false
-    },
-    {
-      name: 'title',
-      label: 'Title',
-      isSortable: true,
-      isVisible: true
-    },
-    {
-      name: 'series',
-      label: 'Series',
-      isSortable: true,
-      isVisible: false
-    },
-    {
-      name: 'releaseDate',
-      label: 'Release Date',
-      isSortable: true,
-      isVisible: true
-    },
-    {
-      name: 'pageCount',
-      label: 'Pages',
-      isSortable: true,
-      isVisible: true
-    },
-    {
-      name: 'rating',
-      label: 'Rating',
-      isSortable: true,
-      isVisible: true
-    },
-    {
-      name: 'indexerFlags',
-      columnLabel: () => translate('IndexerFlags'),
-      label: React.createElement(Icon, {
-        name: icons.FLAG,
-        title: () => translate('IndexerFlags')
-      }),
-      isVisible: false
-    },
-    {
-      name: 'status',
-      label: 'Status',
-      isVisible: true,
-      isSortable: true
-    },
-    {
-      name: 'actions',
-      columnLabel: 'Actions',
-      isVisible: true,
-      isModifiable: false
-    }
-  ]
+  }
 };
 
 export const persistState = [
   'books.sortKey',
-  'books.sortDirection',
-  'books.columns'
+  'books.sortDirection'
 ];
 
 //
@@ -280,7 +208,6 @@ export const persistState = [
 
 export const FETCH_BOOKS = 'books/fetchBooks';
 export const SET_BOOKS_SORT = 'books/setBooksSort';
-export const SET_BOOKS_TABLE_OPTION = 'books/setBooksTableOption';
 export const CLEAR_BOOKS = 'books/clearBooks';
 export const SET_BOOK_VALUE = 'books/setBookValue';
 export const SAVE_BOOK = 'books/saveBook';
@@ -294,7 +221,6 @@ export const TOGGLE_BOOKS_MONITORED = 'books/toggleBooksMonitored';
 
 export const fetchBooks = createThunk(FETCH_BOOKS);
 export const setBooksSort = createAction(SET_BOOKS_SORT);
-export const setBooksTableOption = createAction(SET_BOOKS_TABLE_OPTION);
 export const clearBooks = createAction(CLEAR_BOOKS);
 export const toggleBookMonitored = createThunk(TOGGLE_BOOK_MONITORED);
 export const toggleBooksMonitored = createThunk(TOGGLE_BOOKS_MONITORED);
@@ -481,8 +407,6 @@ export const actionHandlers = handleThunks({
 export const reducers = createHandleActions({
 
   [SET_BOOKS_SORT]: createSetClientSideCollectionSortReducer(section),
-
-  [SET_BOOKS_TABLE_OPTION]: createSetTableOptionReducer(section),
 
   [SET_BOOK_VALUE]: createSetSettingValueReducer(section),
 

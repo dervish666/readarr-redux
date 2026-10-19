@@ -77,7 +77,8 @@ async function authorEditSelectOptions(page: Page, label: string) {
   const editButton = page.getByRole('button', { name: 'Edit', exact: true });
 
   if (!await editButton.isVisible()) {
-    await page.getByRole('button', { name: 'More' }).click();
+    // The toolbar's More menu, not the overview's More link on the same page.
+    await page.locator('[class*="ToolbarMenuButton-menuButton"]', { hasText: 'More' }).click();
   }
 
   await page.locator('[class*="MenuItem-menuItem"], button').filter({ hasText: /^\s*Edit\s*$/ }).first().click();

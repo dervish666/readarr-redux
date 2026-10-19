@@ -266,7 +266,7 @@ function SignalRListener() {
         return;
 
       case 'queue/details':
-        // Kept redux feed: author, calendar and wanted read state.queue.details.
+        // Kept redux feed: calendar and wanted read state.queue.details.
         dispatch(fetchQueueDetails());
         return;
 

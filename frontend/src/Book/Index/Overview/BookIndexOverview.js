@@ -3,7 +3,7 @@ import React, { Component } from 'react';
 import TextTruncate from 'react-text-truncate';
 import AuthorPoster from 'Author/AuthorPoster';
 import DeleteAuthorModal from 'Author/Delete/DeleteAuthorModal';
-import EditAuthorModalConnector from 'Author/Edit/EditAuthorModalConnector';
+import EditAuthorModal from 'Author/Edit/EditAuthorModal';
 import BookIndexProgressBar from 'Book/Index/ProgressBar/BookIndexProgressBar';
 import CheckInput from 'Components/Form/CheckInput';
 import IconButton from 'Components/Link/IconButton';
@@ -264,7 +264,7 @@ class BookIndexOverview extends Component {
           </div>
         </div>
 
-        <EditAuthorModalConnector
+        <EditAuthorModal
           isOpen={isEditAuthorModalOpen}
           authorId={id}
           onModalClose={this.onEditAuthorModalClose}

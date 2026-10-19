@@ -27,7 +27,7 @@ interface BulkQueueData {
 }
 
 // After a queue change, refresh the queue page and sidebar count (react-query) and
-// the queue details feed that author, calendar and wanted pages still read from redux.
+// the queue details feed that the calendar and wanted pages still read from redux.
 const useRefreshQueue = () => {
   const queryClient = useQueryClient();
   const dispatch = useDispatch();

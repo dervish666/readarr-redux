@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import DeleteAuthorModal from 'Author/Delete/DeleteAuthorModal';
-import EditAuthorModalConnector from 'Author/Edit/EditAuthorModalConnector';
+import EditAuthorModal from 'Author/Edit/EditAuthorModal';
 import IconButton from 'Components/Link/IconButton';
 import SpinnerIconButton from 'Components/Link/SpinnerIconButton';
 import VirtualTableRowCell from 'Components/Table/Cells/VirtualTableRowCell';
@@ -77,7 +77,7 @@ class BookIndexActionsCell extends Component {
           onPress={this.onEditAuthorPress}
         />
 
-        <EditAuthorModalConnector
+        <EditAuthorModal
           isOpen={isEditAuthorModalOpen}
           authorId={id}
           onModalClose={this.onEditAuthorModalClose}

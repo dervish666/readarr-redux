@@ -17,7 +17,9 @@ function InteractiveSearchTable(props) {
 }
 
 InteractiveSearchTable.propTypes = {
-  type: PropTypes.string.isRequired
+  type: PropTypes.string.isRequired,
+  authorId: PropTypes.number,
+  bookId: PropTypes.number
 };
 
 export default InteractiveSearchTable;

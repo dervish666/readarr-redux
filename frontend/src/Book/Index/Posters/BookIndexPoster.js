@@ -2,7 +2,7 @@ import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import AuthorPoster from 'Author/AuthorPoster';
 import DeleteAuthorModal from 'Author/Delete/DeleteAuthorModal';
-import EditAuthorModalConnector from 'Author/Edit/EditAuthorModalConnector';
+import EditAuthorModal from 'Author/Edit/EditAuthorModal';
 import EditBookModalConnector from 'Book/Edit/EditBookModalConnector';
 import BookIndexProgressBar from 'Book/Index/ProgressBar/BookIndexProgressBar';
 import CheckInput from 'Components/Form/CheckInput';
@@ -284,7 +284,7 @@ class BookIndexPoster extends Component {
             {...otherProps}
           />
 
-          <EditAuthorModalConnector
+          <EditAuthorModal
             isOpen={isEditAuthorModalOpen}
             authorId={authorId}
             onModalClose={this.onEditAuthorModalClose}

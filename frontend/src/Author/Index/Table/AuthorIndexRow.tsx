@@ -3,7 +3,7 @@ import React, { useCallback, useState } from 'react';
 import AuthorBanner from 'Author/AuthorBanner';
 import AuthorNameLink from 'Author/AuthorNameLink';
 import DeleteAuthorModal from 'Author/Delete/DeleteAuthorModal';
-import EditAuthorModalConnector from 'Author/Edit/EditAuthorModalConnector';
+import EditAuthorModal from 'Author/Edit/EditAuthorModal';
 import {
   useAuthorIndexSelect,
   useIsAuthorSelected,
@@ -348,7 +348,7 @@ function AuthorIndexRow({ authorId, columns }: AuthorIndexRowProps) {
         return null;
       })}
 
-      <EditAuthorModalConnector
+      <EditAuthorModal
         isOpen={isEditAuthorModalOpen}
         authorId={authorId}
         onModalClose={handleEditAuthorModalClose}

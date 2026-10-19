@@ -1,17 +1,11 @@
 import _ from 'lodash';
-import { createAction } from 'redux-actions';
-import { batchActions } from 'redux-batched-actions';
 import { filterTypePredicates, filterTypes, sortDirections } from 'Helpers/Props';
 import { createThunk, handleThunks } from 'Store/thunks';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
 import dateFilterPredicate from 'Utilities/Date/dateFilterPredicate';
-import { set, updateItem } from './baseActions';
-import { fetchBooks } from './bookActions';
+import { updateItem } from './baseActions';
 import createFetchHandler from './Creators/createFetchHandler';
 import createHandleActions from './Creators/createHandleActions';
-import createRemoveItemHandler from './Creators/createRemoveItemHandler';
-import createSaveProviderHandler from './Creators/createSaveProviderHandler';
-import createSetSettingValueReducer from './Creators/Reducers/createSetSettingValueReducer';
 
 //
 // Variables
@@ -156,73 +150,22 @@ export const defaultState = {
   saveError: null,
   items: [],
   sortKey: 'sortName',
-  sortDirection: sortDirections.ASCENDING,
-  pendingChanges: {}
+  sortDirection: sortDirections.ASCENDING
 };
 
 //
 // Actions Types
 
 export const FETCH_AUTHOR = 'authors/fetchAuthor';
-export const SET_AUTHOR_VALUE = 'authors/setAuthorValue';
-export const SAVE_AUTHOR = 'authors/saveAuthor';
-export const DELETE_AUTHOR = 'authors/deleteAuthor';
-
 export const TOGGLE_AUTHOR_MONITORED = 'authors/toggleAuthorMonitored';
-export const TOGGLE_BOOK_MONITORED = 'authors/toggleBookMonitored';
-export const UPDATE_BOOK_MONITORED = 'authors/updateBookMonitored';
 
 //
 // Action Creators
 
 export const fetchAuthor = createThunk(FETCH_AUTHOR);
-export const saveAuthor = createThunk(SAVE_AUTHOR, (payload) => {
-  const newPayload = {
-    ...payload
-  };
 
-  if (payload.moveFiles) {
-    newPayload.queryParams = {
-      moveFiles: true
-    };
-  }
-
-  delete newPayload.moveFiles;
-
-  return newPayload;
-});
-
-export const deleteAuthor = createThunk(DELETE_AUTHOR, (payload) => {
-  return {
-    ...payload,
-    queryParams: {
-      deleteFiles: payload.deleteFiles,
-      addImportListExclusion: payload.addImportListExclusion
-    }
-  };
-});
-
+// Still used by the bookshelf (JS). The author pages save through Author/useAuthors.ts.
 export const toggleAuthorMonitored = createThunk(TOGGLE_AUTHOR_MONITORED);
-export const toggleBookMonitored = createThunk(TOGGLE_BOOK_MONITORED);
-export const updateBookMonitor = createThunk(UPDATE_BOOK_MONITORED);
-
-export const setAuthorValue = createAction(SET_AUTHOR_VALUE, (payload) => {
-  return {
-    section,
-    ...payload
-  };
-});
-
-//
-// Helpers
-
-function getSaveAjaxOptions({ ajaxOptions, payload }) {
-  if (payload.moveFolder) {
-    ajaxOptions.url = `${ajaxOptions.url}?moveFolder=true`;
-  }
-
-  return ajaxOptions;
-}
 
 //
 // Action Handlers
@@ -230,8 +173,6 @@ function getSaveAjaxOptions({ ajaxOptions, payload }) {
 export const actionHandlers = handleThunks({
 
   [FETCH_AUTHOR]: createFetchHandler(section, '/author'),
-  [SAVE_AUTHOR]: createSaveProviderHandler(section, '/author', { getAjaxOptions: getSaveAjaxOptions }),
-  [DELETE_AUTHOR]: createRemoveItemHandler(section, '/author'),
 
   [TOGGLE_AUTHOR_MONITORED]: (getState, payload, dispatch) => {
     const {
@@ -273,120 +214,10 @@ export const actionHandlers = handleThunks({
         isSaving: false
       }));
     });
-  },
-
-  [TOGGLE_BOOK_MONITORED]: function(getState, payload, dispatch) {
-    const {
-      authorId: id,
-      seasonNumber,
-      monitored
-    } = payload;
-
-    const author = _.find(getState().authors.items, { id });
-    const seasons = _.cloneDeep(author.seasons);
-    const season = _.find(seasons, { seasonNumber });
-
-    season.isSaving = true;
-
-    dispatch(updateItem({
-      id,
-      section,
-      seasons
-    }));
-
-    season.monitored = monitored;
-
-    const promise = createAjaxRequest({
-      url: `/author/${id}`,
-      method: 'PUT',
-      data: JSON.stringify({
-        ...author,
-        seasons
-      }),
-      dataType: 'json'
-    }).request;
-
-    promise.done((data) => {
-      const books = _.filter(getState().books.items, { authorId: id, seasonNumber });
-
-      dispatch(batchActions([
-        updateItem({
-          id,
-          section,
-          ...data
-        }),
-
-        ...books.map((book) => {
-          return updateItem({
-            id: book.id,
-            section: 'books',
-            monitored
-          });
-        })
-      ]));
-    });
-
-    promise.fail((xhr) => {
-      dispatch(updateItem({
-        id,
-        section,
-        seasons: author.seasons
-      }));
-    });
-  },
-
-  [UPDATE_BOOK_MONITORED]: function(getState, payload, dispatch) {
-    const {
-      id,
-      monitor
-    } = payload;
-
-    const authorToUpdate = { id };
-
-    if (monitor !== 'None') {
-      authorToUpdate.monitored = true;
-    }
-
-    dispatch(set({
-      section,
-      isSaving: true
-    }));
-
-    const promise = createAjaxRequest({
-      url: '/bookshelf',
-      method: 'POST',
-      data: JSON.stringify({
-        authors: [{ id }],
-        monitoringOptions: { monitor }
-      }),
-      dataType: 'json'
-    }).request;
-
-    promise.done((data) => {
-      dispatch(fetchBooks({ authorId: id }));
-
-      dispatch(set({
-        section,
-        isSaving: false,
-        saveError: null
-      }));
-    });
-
-    promise.fail((xhr) => {
-      dispatch(set({
-        section,
-        isSaving: false,
-        saveError: xhr
-      }));
-    });
   }
 });
 
 //
 // Reducers
 
-export const reducers = createHandleActions({
-
-  [SET_AUTHOR_VALUE]: createSetSettingValueReducer(section)
-
-}, defaultState, section);
+export const reducers = createHandleActions({}, defaultState, section);

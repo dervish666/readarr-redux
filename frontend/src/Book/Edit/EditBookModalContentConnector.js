@@ -3,9 +3,9 @@ import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
+import { queryClient } from 'App/queryClient';
 import { saveBook, setBookValue } from 'Store/Actions/bookActions';
 import { saveEditions } from 'Store/Actions/editionActions';
-import { fetchSeries } from 'Store/Actions/seriesActions';
 import createAuthorSelector from 'Store/Selectors/createAuthorSelector';
 import createBookSelector from 'Store/Selectors/createBookSelector';
 import selectSettings from 'Store/Selectors/selectSettings';
@@ -59,8 +59,7 @@ function createMapStateToProps() {
 const mapDispatchToProps = {
   dispatchSetBookValue: setBookValue,
   dispatchSaveBook: saveBook,
-  dispatchSaveEditions: saveEditions,
-  dispatchFetchSeries: fetchSeries
+  dispatchSaveEditions: saveEditions
 };
 
 class EditBookModalContentConnector extends Component {
@@ -84,7 +83,7 @@ class EditBookModalContentConnector extends Component {
   onSavePress = (metadataSaved) => {
     // The book's series may have changed, and the author page lists them
     if (metadataSaved) {
-      this.props.dispatchFetchSeries({ authorId: this.props.authorId });
+      queryClient.invalidateQueries({ queryKey: ['/series'] });
     }
 
     this.props.dispatchSaveBook({
@@ -117,7 +116,6 @@ EditBookModalContentConnector.propTypes = {
   dispatchSetBookValue: PropTypes.func.isRequired,
   dispatchSaveBook: PropTypes.func.isRequired,
   dispatchSaveEditions: PropTypes.func.isRequired,
-  dispatchFetchSeries: PropTypes.func.isRequired,
   onModalClose: PropTypes.func.isRequired
 };
 

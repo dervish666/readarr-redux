@@ -4,7 +4,7 @@ import { Redirect, Route } from 'react-router-dom';
 import Blocklist from 'Activity/Blocklist/Blocklist';
 import History from 'Activity/History/History';
 import Queue from 'Activity/Queue/Queue';
-import AuthorDetailsPageConnector from 'Author/Details/AuthorDetailsPageConnector';
+import AuthorDetailsPage from 'Author/Details/AuthorDetailsPage';
 import AuthorIndex from 'Author/Index/AuthorIndex';
 import BookDetailsPageConnector from 'Book/Details/BookDetailsPageConnector';
 import BookIndexConnector from 'Book/Index/BookIndexConnector';
@@ -102,7 +102,7 @@ function AppRoutes(props) {
 
       <Route
         path="/author/:titleSlug"
-        component={AuthorDetailsPageConnector}
+        component={AuthorDetailsPage}
       />
 
       <Route

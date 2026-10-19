@@ -3,16 +3,35 @@
 interface CssExports {
   'authorNavigationButton': string;
   'authorNavigationButtons': string;
-  'authorUpButton': string;
+  'backdrop': string;
+  'backdropOverlay': string;
+  'chipText': string;
+  'chipsRow': string;
   'contentContainer': string;
-  'errorMessage': string;
+  'details': string;
+  'detailsChips': string;
+  'detailsLabel': string;
   'filterIcon': string;
+  'header': string;
+  'headerContent': string;
+  'heroFooter': string;
+  'info': string;
   'innerContentBody': string;
   'metadataMessage': string;
+  'monitoredToggle': string;
+  'overview': string;
+  'overviewClamped': string;
+  'overviewFrame': string;
+  'overviewLabel': string;
+  'overviewSection': string;
+  'overviewToggle': string;
+  'path': string;
+  'poster': string;
   'selectedTab': string;
   'tab': string;
-  'tabContent': string;
   'tabList': string;
+  'title': string;
+  'titleRow': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

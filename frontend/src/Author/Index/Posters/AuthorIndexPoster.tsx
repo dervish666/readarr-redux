@@ -2,7 +2,7 @@ import classNames from 'classnames';
 import React, { useCallback, useState } from 'react';
 import AuthorPoster from 'Author/AuthorPoster';
 import DeleteAuthorModal from 'Author/Delete/DeleteAuthorModal';
-import EditAuthorModalConnector from 'Author/Edit/EditAuthorModalConnector';
+import EditAuthorModal from 'Author/Edit/EditAuthorModal';
 import AuthorIndexProgressBar from 'Author/Index/ProgressBar/AuthorIndexProgressBar';
 import AuthorIndexPosterSelect from 'Author/Index/Select/AuthorIndexPosterSelect';
 import { useAuthorIndexSelect } from 'Author/Index/Select/AuthorIndexSelectContext';
@@ -219,7 +219,7 @@ function AuthorIndexPoster(props: AuthorIndexPosterProps) {
         sortKey={sortKey}
       />
 
-      <EditAuthorModalConnector
+      <EditAuthorModal
         isOpen={isEditAuthorModalOpen}
         authorId={authorId}
         onModalClose={handleEditAuthorModalClose}

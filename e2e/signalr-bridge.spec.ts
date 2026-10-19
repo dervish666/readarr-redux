@@ -1,11 +1,12 @@
+import { Page } from '@playwright/test';
 import { api, expect, openRoute, test } from './fixtures';
 import { holdCommandRefetches, withQueryClient } from './reactTree';
 
 // Proves the SignalR listener feeds react-query, not only redux: the author message
-// writes the author into the ['/author'] list (emptied first, and with no observer on
-// the author details page to refetch it), and command progress is written into the
-// ['/command'] list. The POST response only ever says "queued", so a "completed"
-// entry can only have come from SignalR.
+// writes the author into the ['/author'] list (emptied first, on a page that doesn't
+// refetch it), and command progress is written into the ['/command'] list. The POST
+// response only ever says "queued", so a "completed" entry can only have come from
+// SignalR.
 
 interface Author {
   id: number;
@@ -21,6 +22,15 @@ interface Command {
   status: string;
 }
 
+// Moves within the app without a reload, so the query cache keeps its state.
+async function clientNavigate(page: Page, route: string) {
+  await page.evaluate((path) => {
+    const urlBase = (window as unknown as { Readarr: { urlBase: string } }).Readarr.urlBase;
+    window.history.pushState({}, '', `${urlBase}${path}`);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }, route);
+}
+
 test('SignalR messages update react-query caches', async ({ page }) => {
   // A refresh of a big author against a slow metadata source can run for minutes.
   test.setTimeout(420_000);
@@ -28,7 +38,9 @@ test('SignalR messages update react-query caches', async ({ page }) => {
   const [author] = await api<Author[]>(page, '/author');
   expect(author, 'the library has no authors').toBeTruthy();
 
-  await openRoute(page, `/author/${author.titleSlug}`);
+  // Not the author page: it reads the author from ['/author'] and, once the author is
+  // gone from that list, leaves for the index as it does after a delete.
+  await openRoute(page, '/system/status');
 
   // A system/task message also refetches /command; hold that so the "completed"
   // below can only come from the command messages.
@@ -57,6 +69,8 @@ test('SignalR messages update react-query caches', async ({ page }) => {
     `),
     { timeout: 30_000, message: 'SignalR never wrote the author into the /author list' }
   ).toBe(true);
+
+  await clientNavigate(page, `/author/${author.titleSlug}`);
 
   const commandPost = page.waitForResponse(
     (r) => r.url().includes('/api/v1/command') && r.request().method() === 'POST'

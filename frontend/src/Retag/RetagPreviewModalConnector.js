@@ -32,6 +32,9 @@ class RetagPreviewModalConnector extends Component {
 }
 
 RetagPreviewModalConnector.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  authorId: PropTypes.number,
+  bookId: PropTypes.number,
   clearRetagPreview: PropTypes.func.isRequired,
   onModalClose: PropTypes.func.isRequired
 };

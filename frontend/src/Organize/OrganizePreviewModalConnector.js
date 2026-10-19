@@ -32,6 +32,9 @@ class OrganizePreviewModalConnector extends Component {
 }
 
 OrganizePreviewModalConnector.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  authorId: PropTypes.number,
+  bookId: PropTypes.number,
   clearOrganizePreview: PropTypes.func.isRequired,
   onModalClose: PropTypes.func.isRequired
 };
