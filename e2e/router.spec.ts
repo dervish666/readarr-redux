@@ -78,8 +78,10 @@ test('router: author and book deep links survive a reload, and the header search
   expect(new URL(page.url()).pathname).toBe(href);
 
   await openRoute(page, '/system/status');
+  // Pick the author suggestion once the fuse worker offers it. Enter before then goes
+  // to add new search, which is the search box's normal behaviour, not a router fault.
   await page.locator('[class*="AuthorSearchInput-wrapper"] input').fill(author.authorName);
-  await page.keyboard.press('Enter');
+  await page.locator('[class*="AuthorSearchResult-result"]', { hasText: author.authorName }).first().click();
   await expect.poll(() => path(page)).toBe(`/author/${author.titleSlug}`);
 });
 
