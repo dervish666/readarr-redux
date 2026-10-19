@@ -12,13 +12,11 @@ import * as editions from './editionActions';
 import * as interactiveImportActions from './interactiveImportActions';
 import * as oAuth from './oAuthActions';
 import * as organizePreview from './organizePreviewActions';
-import * as queue from './queueActions';
 import * as releases from './releaseActions';
 import * as retagPreview from './retagPreviewActions';
 import * as settings from './settingsActions';
 import * as system from './systemActions';
 import * as tags from './tagActions';
-import * as wanted from './wantedActions';
 
 export default [
   app,
@@ -35,11 +33,9 @@ export default [
   interactiveImportActions,
   oAuth,
   organizePreview,
-  queue,
   releases,
   retagPreview,
   settings,
   system,
-  tags,
-  wanted
+  tags
 ];

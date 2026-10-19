@@ -23,13 +23,13 @@ import {
   finishCommand,
   updateCommand,
 } from 'Store/Actions/commandActions';
-import { fetchQueueDetails } from 'Store/Actions/queueActions';
 import { fetchRootFolders } from 'Store/Actions/settingsActions';
 import { fetchTags } from 'Store/Actions/tagActions';
 import {
   removeCachedItem,
   removeCachedItems,
   updateCachedItem,
+  updateCachedPagedItem,
 } from 'Utilities/Fetch/queryCache';
 import { repopulatePage } from 'Utilities/pagePopulator';
 import SignalRLogger from 'Utilities/SignalRLogger';
@@ -48,9 +48,10 @@ interface SignalRMessage {
 // The react-query side of the bridge. Each message marks the queries under these
 // /api/v1 path prefixes stale, so any react-query consumer refetches what changed.
 // Each Stage 2 and 3 PR that moves a domain over keeps (or sharpens) its entry here
-// and drops the redux dispatch below. queue/status, command, author, book, bookfile and
-// calendar are absent on purpose: their messages carry the new value, which the switch
-// below writes into the cache (invalidating only for an action it can't apply).
+// and drops the redux dispatch below. queue/status, command, author, book, bookfile,
+// calendar and the wanted messages are absent on purpose: their messages carry the new
+// value, which the switch below writes into the cache (invalidating only for an action
+// it can't apply).
 const QUERY_KEYS_BY_MESSAGE: Record<string, string[]> = {
   health: ['/health'],
   qualitydefinition: ['/qualitydefinition'],
@@ -59,8 +60,6 @@ const QUERY_KEYS_BY_MESSAGE: Record<string, string[]> = {
   rootfolder: ['/rootFolder'],
   'system/task': ['/system/task'],
   tag: ['/tag', '/tag/detail'],
-  'wanted/cutoff': ['/wanted/cutoff'],
-  'wanted/missing': ['/wanted/missing'],
 };
 
 function invalidateQueries(queryClient: QueryClient, name: string) {
@@ -275,9 +274,7 @@ function SignalRListener() {
         return;
 
       case 'queue/details':
-        // invalidateQueries above refetches the calendar's details; the wanted pages
-        // still read the redux feed.
-        dispatch(fetchQueueDetails());
+        // The calendar's queue details are on react-query; invalidateQueries above refetches them.
         return;
 
       case 'queue/status':
@@ -290,25 +287,15 @@ function SignalRListener() {
         return;
 
       case 'wanted/cutoff':
-        if (body.action === 'updated') {
-          dispatch(
-            updateItem({
-              section: 'wanted.cutoffUnmet',
-              updateOnly: true,
-              ...body.resource,
-            })
-          );
-        }
-        return;
-
       case 'wanted/missing':
+        // Every book change sends both. The resource has no author, so merge it into
+        // the rows already shown; a book that gains a file leaves the list when its
+        // bookFileUpdated repopulate refetches the page, as before.
         if (body.action === 'updated') {
-          dispatch(
-            updateItem({
-              section: 'wanted.missing',
-              updateOnly: true,
-              ...body.resource,
-            })
+          updateCachedPagedItem<Book>(
+            queryClient,
+            name === 'wanted/cutoff' ? '/wanted/cutoff' : '/wanted/missing',
+            body.resource as unknown as Book
           );
         }
         return;

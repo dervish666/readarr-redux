@@ -1,7 +1,6 @@
 import _ from 'lodash';
 import { createAction } from 'redux-actions';
 import { batchActions } from 'redux-batched-actions';
-import bookEntities from 'Book/bookEntities';
 import { sortDirections } from 'Helpers/Props';
 import { createThunk, handleThunks } from 'Store/thunks';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
@@ -121,11 +120,9 @@ export const actionHandlers = handleThunks({
 
   [DELETE_BOOK_FILE]: function(getState, payload, dispatch) {
     const {
-      id: bookFileId,
-      bookEntity: bookEntity = bookEntities.BOOKS
+      id: bookFileId
     } = payload;
 
-    const bookSection = _.last(bookEntity.split('.'));
     const deletePromise = deleteBookFileHelper(getState, payload, dispatch);
 
     deletePromise.done(() => {
@@ -135,7 +132,7 @@ export const actionHandlers = handleThunks({
       dispatch(batchActions([
         ...booksWithRemovedFiles.map((book) => {
           return updateItem({
-            section: bookSection,
+            section: 'books',
             ...book,
             bookFileId: 0,
             hasFile: false

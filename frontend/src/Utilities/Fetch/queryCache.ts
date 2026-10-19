@@ -1,5 +1,6 @@
 import { QueryClient, QueryKey } from '@tanstack/react-query';
 import ModelBase from 'App/ModelBase';
+import { PagedQueryResponse } from 'Helpers/Hooks/usePagedApiQuery';
 import { QueryParams } from 'Utilities/Fetch/getQueryString';
 
 // Helpers for list queries keyed [path] or [path, params] (see useApiQuery). They
@@ -126,4 +127,32 @@ export function paramMatches(
   }
 
   return Number(param) === value;
+}
+
+// Merges an item into every cached page under the path (paged lists, keyed
+// [path, params, page, ...]) that already holds it. Nothing is added: a new item
+// belongs on whichever page the server sorts it to.
+export function updateCachedPagedItem<T extends ModelBase>(
+  queryClient: QueryClient,
+  path: string,
+  item: Partial<T> & ModelBase
+) {
+  queryClient
+    .getQueriesData<PagedQueryResponse<T>>({ queryKey: [path] })
+    .forEach(([queryKey, data]) => {
+      if (!data || !Array.isArray(data.records)) {
+        return;
+      }
+
+      if (!data.records.some((record) => record.id === item.id)) {
+        return;
+      }
+
+      queryClient.setQueryData<PagedQueryResponse<T>>(queryKey, {
+        ...data,
+        records: data.records.map((record) =>
+          record.id === item.id ? { ...record, ...item } : record
+        ),
+      });
+    });
 }
