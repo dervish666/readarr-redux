@@ -298,6 +298,7 @@ FormInputGroup.propTypes = {
   helpTextWarning: PropTypes.string,
   helpLink: PropTypes.string,
   autoFocus: PropTypes.bool,
+  readOnly: PropTypes.bool,
   includeNoChange: PropTypes.bool,
   includeNoChangeDisabled: PropTypes.bool,
   selectedValueOptions: PropTypes.object,
@@ -305,7 +306,8 @@ FormInputGroup.propTypes = {
   pending: PropTypes.bool,
   errors: PropTypes.arrayOf(PropTypes.object),
   warnings: PropTypes.arrayOf(PropTypes.object),
-  onChange: PropTypes.func.isRequired
+  onChange: PropTypes.func.isRequired,
+  onFocus: PropTypes.func
 };
 
 FormInputGroup.defaultProps = {

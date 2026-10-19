@@ -6,11 +6,10 @@ import createFetchHandler from './Creators/createFetchHandler';
 import createHandleActions from './Creators/createHandleActions';
 import createClearReducer from './Creators/Reducers/createClearReducer';
 
-// Only the queue details feed is left in redux. The queue page, its options and the
-// sidebar count are on react-query (Activity/Queue). Calendar and wanted still read
-// state.queue.details until they move over in Stage 3 (author details never read it
-// and no longer fetches it); SignalR's queue/details message and every queue mutation
-// refresh it.
+// Only the queue details feed is left in redux, for the wanted pages until they move
+// over in Stage 3. The queue page, its options, the sidebar count and the calendar's
+// queue details are on react-query (Activity/Queue); SignalR's queue/details message
+// and every queue mutation refresh both.
 
 //
 // Variables

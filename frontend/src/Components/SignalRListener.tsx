@@ -48,11 +48,10 @@ interface SignalRMessage {
 // The react-query side of the bridge. Each message marks the queries under these
 // /api/v1 path prefixes stale, so any react-query consumer refetches what changed.
 // Each Stage 2 and 3 PR that moves a domain over keeps (or sharpens) its entry here
-// and drops the redux dispatch below. queue/status, command, author, book and bookfile
-// are absent on purpose: their messages carry the new value, which the switch below
-// writes into the cache (invalidating only for an action it can't apply).
+// and drops the redux dispatch below. queue/status, command, author, book, bookfile and
+// calendar are absent on purpose: their messages carry the new value, which the switch
+// below writes into the cache (invalidating only for an action it can't apply).
 const QUERY_KEYS_BY_MESSAGE: Record<string, string[]> = {
-  calendar: ['/calendar'],
   health: ['/health'],
   qualitydefinition: ['/qualitydefinition'],
   queue: ['/queue'],
@@ -146,13 +145,13 @@ function SignalRListener() {
 
     switch (name) {
       case 'calendar':
+        // The calendar's controller broadcasts as 'book' (its resource name), so this
+        // message doesn't arrive today; merge it the same way if it ever does.
         if (body.action === 'updated') {
-          dispatch(
-            updateItem({
-              section: 'calendar',
-              updateOnly: true,
-              ...body.resource,
-            })
+          updateCachedItem<Book>(
+            queryClient,
+            '/calendar',
+            body.resource as unknown as Book
           );
         }
         return;
@@ -191,12 +190,17 @@ function SignalRListener() {
           // Some book messages (track imported) carry no statistics; the merge keeps
           // the cached ones.
           updateCachedItem<Book>(queryClient, '/book', book, bookBelongsTo);
+          // Calendar lists only take changes to books they already show (a refresh
+          // that adds books refetches the calendar when it ends).
+          updateCachedItem<Book>(queryClient, '/calendar', book);
           dispatch(updateItem({ section: 'books', ...body.resource }));
         } else if (body.action === 'deleted') {
           removeCachedItem<Book>(queryClient, '/book', book.id);
+          removeCachedItem<Book>(queryClient, '/calendar', book.id);
           dispatch(removeItem({ section: 'books', id: body.resource.id }));
         } else {
           queryClient.invalidateQueries({ queryKey: ['/book'] });
+          queryClient.invalidateQueries({ queryKey: ['/calendar'] });
         }
         return;
       }
@@ -244,6 +248,11 @@ function SignalRListener() {
             '/book',
             (b) => b.authorId === author.id
           );
+          removeCachedItems<Book>(
+            queryClient,
+            '/calendar',
+            (b) => b.authorId === author.id
+          );
           removeCachedItems<BookFile>(
             queryClient,
             '/bookfile',
@@ -266,7 +275,8 @@ function SignalRListener() {
         return;
 
       case 'queue/details':
-        // Kept redux feed: calendar and wanted read state.queue.details.
+        // invalidateQueries above refetches the calendar's details; the wanted pages
+        // still read the redux feed.
         dispatch(fetchQueueDetails());
         return;
 
@@ -315,7 +325,7 @@ function SignalRListener() {
         return;
 
       case 'tag':
-        // Redux feed for the author, book, calendar and settings pages.
+        // Redux feed for the author, book and settings pages.
         if (body.action === 'sync') {
           dispatch(fetchTags());
         }

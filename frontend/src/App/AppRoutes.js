@@ -9,7 +9,7 @@ import AuthorIndex from 'Author/Index/AuthorIndex';
 import BookDetailsPage from 'Book/Details/BookDetailsPage';
 import BookIndex from 'Book/Index/BookIndex';
 import Bookshelf from 'Bookshelf/Bookshelf';
-import CalendarPageConnector from 'Calendar/CalendarPageConnector';
+import CalendarPage from 'Calendar/CalendarPage';
 import NotFound from 'Components/NotFound';
 import Switch from 'Components/Router/Switch';
 import AddNewItem from 'Search/AddNewItem';
@@ -116,7 +116,7 @@ function AppRoutes(props) {
 
       <Route
         path="/calendar"
-        component={CalendarPageConnector}
+        component={CalendarPage}
       />
 
       {/*
