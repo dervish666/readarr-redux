@@ -59,3 +59,17 @@ test('shell: the sidebar toggles from the header on a small screen', async ({ pa
   await expect(page).toHaveURL(/\/calendar$/);
   await expect(calendarLink).not.toBeInViewport();
 });
+
+test('shell: picking "Search for" in the header search opens add new without a crash', async ({ page }) => {
+  const [author] = await api<{ authorName: string }[]>(page, '/author');
+  await openRoute(page, '/system/status');
+
+  await page.locator('input[name="authorSearch"]').fill(author.authorName);
+  await expect(page.locator('[class*="AuthorSearchResult-result"]').first()).toBeVisible();
+  await page.locator('[class*="addNewAuthorSuggestion"]').click();
+
+  await expect(page).toHaveURL(/\/add\/search\?term=/);
+  await expect(page.locator('input[name="authorSearch"]')).toBeVisible();
+  // The fixture fails the test on the page error this used to throw.
+  await page.waitForTimeout(1000);
+});
