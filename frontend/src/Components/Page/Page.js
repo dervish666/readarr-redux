@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
-import AppUpdatedModalConnector from 'App/AppUpdatedModalConnector';
+import AppUpdatedModal from 'App/AppUpdatedModal';
 import ColorImpairedContext from 'App/ColorImpairedContext';
 import ConnectionLostModalConnector from 'App/ConnectionLostModalConnector';
 import SignalRListener from 'Components/SignalRListener';
@@ -57,10 +57,6 @@ class Page extends Component {
     });
   };
 
-  onUpdatedModalClose = () => {
-    this.setState({ isUpdatedModalOpen: false });
-  };
-
   onConnectionLostModalClose = () => {
     this.setState({ isConnectionLostModalOpen: false });
   };
@@ -101,10 +97,7 @@ class Page extends Component {
             {children}
           </div>
 
-          <AppUpdatedModalConnector
-            isOpen={this.state.isUpdatedModalOpen}
-            onModalClose={this.onUpdatedModalClose}
-          />
+          <AppUpdatedModal isOpen={this.state.isUpdatedModalOpen} />
 
           <ConnectionLostModalConnector
             isOpen={this.state.isConnectionLostModalOpen}

@@ -14,7 +14,9 @@ import UiSettings from 'typings/Settings/UiSettings';
 export interface DownloadClientAppState
   extends AppSectionState<DownloadClient>,
     AppSectionDeleteState,
-    AppSectionSaveState {}
+    AppSectionSaveState {
+  isTestingAll: boolean;
+}
 
 export type GeneralAppState = AppSectionItemState<General>;
 
@@ -26,7 +28,9 @@ export interface ImportListAppState
 export interface IndexerAppState
   extends AppSectionState<Indexer>,
     AppSectionDeleteState,
-    AppSectionSaveState {}
+    AppSectionSaveState {
+  isTestingAll: boolean;
+}
 
 export interface NotificationAppState
   extends AppSectionState<Notification>,

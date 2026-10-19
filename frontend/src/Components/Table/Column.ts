@@ -4,6 +4,7 @@ type PropertyFunction<T> = () => T;
 
 interface Column {
   name: string;
+  className?: string;
   label: string | PropertyFunction<string> | React.ReactNode;
   columnLabel?: string | PropertyFunction<string>;
   isSortable?: boolean;

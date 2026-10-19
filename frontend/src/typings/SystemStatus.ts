@@ -5,6 +5,8 @@ interface SystemStatus {
   authenticationNoneConfirmed: boolean;
   branch: string;
   buildTime: string;
+  databaseType: string;
+  databaseVersion: string;
   instanceName: string;
   isAdmin: boolean;
   isDebug: boolean;
@@ -19,6 +21,8 @@ interface SystemStatus {
   mode: string;
   osName: string;
   osVersion: string;
+  packageAuthor?: string;
+  packageVersion?: string;
   packageUpdateMechanism: string;
   packageUpdateMechanismMessage: string;
   runtimeName: string;

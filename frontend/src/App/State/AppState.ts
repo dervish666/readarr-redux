@@ -39,6 +39,7 @@ export interface CustomFilter {
 export interface AppSectionState {
   isConnected: boolean;
   isReconnecting: boolean;
+  isRestarting: boolean;
   version: string;
   prevVersion?: string;
   dimensions: {

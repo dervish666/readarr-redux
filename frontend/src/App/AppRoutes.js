@@ -28,8 +28,8 @@ import QualityConnector from 'Settings/Quality/QualityConnector';
 import Settings from 'Settings/Settings';
 import TagSettings from 'Settings/Tags/TagSettings';
 import UISettingsConnector from 'Settings/UI/UISettingsConnector';
-import BackupsConnector from 'System/Backup/BackupsConnector';
-import LogsTableConnector from 'System/Events/LogsTableConnector';
+import Backups from 'System/Backup/Backups';
+import LogsTable from 'System/Events/LogsTable';
 import Logs from 'System/Logs/Logs';
 import Status from 'System/Status/Status';
 import Tasks from 'System/Tasks/Tasks';
@@ -248,7 +248,7 @@ function AppRoutes(props) {
 
       <Route
         path="/system/backup"
-        component={BackupsConnector}
+        component={Backups}
       />
 
       <Route
@@ -258,7 +258,7 @@ function AppRoutes(props) {
 
       <Route
         path="/system/events"
-        component={LogsTableConnector}
+        component={LogsTable}
       />
 
       <Route

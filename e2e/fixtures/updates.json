@@ -1,0 +1,31 @@
+[
+  {
+    "version": "99.0.0.990001",
+    "branch": "develop",
+    "releaseDate": "2026-10-01T12:00:00Z",
+    "fileName": "Readarr.develop.99.0.0.990001.linux-core-x64.tar.gz",
+    "url": "https://example.invalid/readarr/99.0.0.990001.tar.gz",
+    "installed": false,
+    "installedOn": null,
+    "installable": false,
+    "latest": true,
+    "changes": {
+      "new": ["Fixture change: a new thing"],
+      "fixed": ["Fixture fix: a broken thing"]
+    },
+    "hash": "fixture-hash-990001"
+  },
+  {
+    "version": "__CURRENT_VERSION__",
+    "branch": "develop",
+    "releaseDate": "2026-09-01T12:00:00Z",
+    "fileName": "Readarr.develop.current.linux-core-x64.tar.gz",
+    "url": "https://example.invalid/readarr/current.tar.gz",
+    "installed": true,
+    "installedOn": "2026-09-02T12:00:00Z",
+    "installable": false,
+    "latest": false,
+    "changes": null,
+    "hash": "fixture-hash-current"
+  }
+]

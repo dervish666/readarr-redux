@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { createSelector } from 'reselect';
 import AppState from 'App/State/AppState';
 import * as commandNames from 'Commands/commandNames';
 import Alert from 'Components/Alert';
@@ -12,49 +11,26 @@ import InlineMarkdown from 'Components/Markdown/InlineMarkdown';
 import ConfirmModal from 'Components/Modal/ConfirmModal';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
+import PageHeading from 'Components/Page/PageHeading';
 import { icons, kinds } from 'Helpers/Props';
 import { executeCommand } from 'Store/Actions/commandActions';
 import { fetchGeneralSettings } from 'Store/Actions/settingsActions';
-import { fetchUpdates } from 'Store/Actions/systemActions';
 import createCommandExecutingSelector from 'Store/Selectors/createCommandExecutingSelector';
-import createSystemStatusSelector from 'Store/Selectors/createSystemStatusSelector';
 import createUISettingsSelector from 'Store/Selectors/createUISettingsSelector';
+import { useSystemStatusData } from 'System/Status/useSystemStatus';
 import { UpdateMechanism } from 'typings/Settings/General';
 import formatDate from 'Utilities/Date/formatDate';
 import formatDateTime from 'Utilities/Date/formatDateTime';
 import translate from 'Utilities/String/translate';
 import UpdateChanges from './UpdateChanges';
+import useUpdates from './useUpdates';
 import styles from './Updates.css';
 
 const VERSION_REGEX = /\d+\.\d+\.\d+\.\d+/i;
 
-function createUpdatesSelector() {
-  return createSelector(
-    (state: AppState) => state.system.updates,
-    (state: AppState) => state.settings.general,
-    (updates, generalSettings) => {
-      const { error: updatesError, items } = updates;
-
-      const isFetching = updates.isFetching || generalSettings.isFetching;
-      const isPopulated = updates.isPopulated && generalSettings.isPopulated;
-
-      return {
-        isFetching,
-        isPopulated,
-        updatesError,
-        generalSettingsError: generalSettings.error,
-        items,
-        updateMechanism: generalSettings.item.updateMechanism,
-      };
-    }
-  );
-}
-
 function Updates() {
   const currentVersion = useSelector((state: AppState) => state.app.version);
-  const { packageUpdateMechanismMessage } = useSelector(
-    createSystemStatusSelector()
-  );
+  const { packageUpdateMechanismMessage } = useSystemStatusData();
   const { shortDateFormat, longDateFormat, timeFormat } = useSelector(
     createUISettingsSelector()
   );
@@ -63,13 +39,21 @@ function Updates() {
   );
 
   const {
-    isFetching,
-    isPopulated,
-    updatesError,
-    generalSettingsError,
-    items,
-    updateMechanism,
-  } = useSelector(createUpdatesSelector());
+    data: items,
+    isFetched: isUpdatesFetched,
+    isLoading: isLoadingUpdates,
+    error: updatesError,
+  } = useUpdates();
+
+  // General settings (the update mechanism) are still redux until Settings converts.
+  const generalSettings = useSelector(
+    (state: AppState) => state.settings.general
+  );
+  const generalSettingsError = generalSettings.error;
+  const updateMechanism = generalSettings.item.updateMechanism;
+
+  const isFetching = isLoadingUpdates || generalSettings.isFetching;
+  const isPopulated = isUpdatesFetched && generalSettings.isPopulated;
 
   const dispatch = useDispatch();
   const [isMajorUpdateModalOpen, setIsMajorUpdateModalOpen] = useState(false);
@@ -128,13 +112,14 @@ function Updates() {
   }, [setIsMajorUpdateModalOpen]);
 
   useEffect(() => {
-    dispatch(fetchUpdates());
     dispatch(fetchGeneralSettings());
   }, [dispatch]);
 
   return (
     <PageContent title={translate('Updates')}>
       <PageContentBody>
+        <PageHeading scope={translate('System')} title={translate('Updates')} />
+
         {isPopulated || hasError ? null : <LoadingIndicator />}
 
         {noUpdates ? (

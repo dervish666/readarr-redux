@@ -19,7 +19,6 @@ import {
 } from 'Store/Actions/commandActions';
 import { fetchQueueDetails } from 'Store/Actions/queueActions';
 import { fetchQualityDefinitions } from 'Store/Actions/settingsActions';
-import { fetchHealth } from 'Store/Actions/systemActions';
 import { fetchTagDetails, fetchTags } from 'Store/Actions/tagActions';
 import { repopulatePage } from 'Utilities/pagePopulator';
 import SignalRLogger from 'Utilities/SignalRLogger';
@@ -190,7 +189,7 @@ function SignalRListener() {
         return;
 
       case 'health':
-        dispatch(fetchHealth());
+        // The sidebar badge and Status page are on react-query; invalidateQueries above refetches.
         return;
 
       case 'author':
@@ -249,6 +248,7 @@ function SignalRListener() {
         return;
 
       case 'system/task':
+        // The task list is on react-query (invalidated above). Commands are still redux.
         dispatch(fetchCommands());
         return;
 
