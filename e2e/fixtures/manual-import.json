@@ -1,0 +1,155 @@
+[
+  {
+    "id": 990301,
+    "path": "/e2e-import/E2E Import One.epub",
+    "name": "E2E Import One",
+    "size": 1048576,
+    "author": {
+      "id": 990001,
+      "authorName": "E2E Import Author",
+      "sortName": "e2e import author",
+      "titleSlug": "e2e-import-author",
+      "foreignAuthorId": "e2e-990001",
+      "path": "/e2e/E2E Import Author",
+      "monitored": false,
+      "monitorNewItems": "none",
+      "qualityProfileId": 1,
+      "metadataProfileId": 1,
+      "status": "continuing",
+      "ended": false,
+      "images": [],
+      "links": [],
+      "genres": [],
+      "tags": [],
+      "added": "2026-10-19T00:00:00Z",
+      "ratings": {
+        "votes": 0,
+        "value": 0,
+        "popularity": 0
+      }
+    },
+    "book": {
+      "id": 990101,
+      "title": "E2E Import One",
+      "authorId": 990001,
+      "foreignBookId": "e2e-990101",
+      "foreignEditionId": "e2e-edition-990101",
+      "titleSlug": "e2e-990101",
+      "monitored": false,
+      "anyEditionOk": true,
+      "releaseDate": "2001-01-01T00:00:00Z",
+      "pageCount": 100,
+      "genres": [],
+      "images": [],
+      "links": [],
+      "added": "2026-10-19T00:00:00Z",
+      "grabbed": false,
+      "ratings": {
+        "votes": 0,
+        "value": 0,
+        "popularity": 0
+      }
+    },
+    "foreignEditionId": "e2e-edition-990101",
+    "quality": {
+      "quality": {
+        "id": 3,
+        "name": "EPUB"
+      },
+      "revision": {
+        "version": 1,
+        "real": 0,
+        "isRepack": false
+      }
+    },
+    "qualityWeight": 12,
+    "indexerFlags": 0,
+    "rejections": [],
+    "audioTags": {
+      "authors": [
+        "E2E Import Author"
+      ],
+      "bookTitle": "E2E Import One"
+    },
+    "additionalFile": false,
+    "replaceExistingFiles": false,
+    "disableReleaseSwitching": false,
+    "releaseGroup": "E2E"
+  },
+  {
+    "id": 990302,
+    "path": "/e2e-import/E2E Import Two.epub",
+    "name": "E2E Import Two",
+    "size": 2097152,
+    "author": {
+      "id": 990001,
+      "authorName": "E2E Import Author",
+      "sortName": "e2e import author",
+      "titleSlug": "e2e-import-author",
+      "foreignAuthorId": "e2e-990001",
+      "path": "/e2e/E2E Import Author",
+      "monitored": false,
+      "monitorNewItems": "none",
+      "qualityProfileId": 1,
+      "metadataProfileId": 1,
+      "status": "continuing",
+      "ended": false,
+      "images": [],
+      "links": [],
+      "genres": [],
+      "tags": [],
+      "added": "2026-10-19T00:00:00Z",
+      "ratings": {
+        "votes": 0,
+        "value": 0,
+        "popularity": 0
+      }
+    },
+    "book": {
+      "id": 990102,
+      "title": "E2E Import Two",
+      "authorId": 990001,
+      "foreignBookId": "e2e-990102",
+      "foreignEditionId": "e2e-edition-990102",
+      "titleSlug": "e2e-990102",
+      "monitored": false,
+      "anyEditionOk": true,
+      "releaseDate": "2001-01-01T00:00:00Z",
+      "pageCount": 100,
+      "genres": [],
+      "images": [],
+      "links": [],
+      "added": "2026-10-19T00:00:00Z",
+      "grabbed": false,
+      "ratings": {
+        "votes": 0,
+        "value": 0,
+        "popularity": 0
+      }
+    },
+    "foreignEditionId": "e2e-edition-990102",
+    "quality": {
+      "quality": {
+        "id": 3,
+        "name": "EPUB"
+      },
+      "revision": {
+        "version": 1,
+        "real": 0,
+        "isRepack": false
+      }
+    },
+    "qualityWeight": 12,
+    "indexerFlags": 0,
+    "rejections": [],
+    "audioTags": {
+      "authors": [
+        "E2E Import Author"
+      ],
+      "bookTitle": "E2E Import Two"
+    },
+    "additionalFile": false,
+    "replaceExistingFiles": false,
+    "disableReleaseSwitching": false
+  }
+]

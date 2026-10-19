@@ -1,0 +1,44 @@
+[
+  {
+    "id": 990401,
+    "authorId": 0,
+    "bookId": 0,
+    "path": "/e2e-unmapped/E2E Unmapped 1.epub",
+    "size": 2048,
+    "dateAdded": "2026-10-18T10:00:00Z",
+    "quality": {
+      "quality": {
+        "id": 3,
+        "name": "EPUB"
+      },
+      "revision": {
+        "version": 1,
+        "real": 0,
+        "isRepack": false
+      }
+    },
+    "qualityWeight": 12,
+    "qualityCutoffNotMet": false
+  },
+  {
+    "id": 990402,
+    "authorId": 0,
+    "bookId": 0,
+    "path": "/e2e-unmapped/E2E Unmapped 2.epub",
+    "size": 4096,
+    "dateAdded": "2026-10-18T10:00:00Z",
+    "quality": {
+      "quality": {
+        "id": 3,
+        "name": "EPUB"
+      },
+      "revision": {
+        "version": 1,
+        "real": 0,
+        "isRepack": false
+      }
+    },
+    "qualityWeight": 12,
+    "qualityCutoffNotMet": false
+  }
+]

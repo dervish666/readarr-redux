@@ -6,7 +6,7 @@ import SortDirection from 'Helpers/Props/SortDirection';
 import findSelectedFilters from 'Utilities/Filter/findSelectedFilters';
 
 // Client side filter and sort for lists held in react-query, the TypeScript form of
-// Utilities/Array/filterCollection and sortCollection that the redux selectors use.
+// the redux selectors' filterCollection and sortCollection (both gone with them).
 // Ported from Sonarr's Utilities/Filter/clientSideFilterAndSort.ts.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

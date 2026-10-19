@@ -1413,6 +1413,7 @@
   "UnableToLoadEvents": "Unable to load events",
   "UnableToLoadTasks": "Unable to load tasks",
   "Unavailable": "Unavailable",
+  "UnmappedFilesEmpty": "Success! My work is done, all files on disk are matched to known books.",
   "UnmappedFilesOnly": "Unmapped Files Only",
   "UnmonitoredOnly": "Unmonitored Only",
   "Unreleased": "Unreleased",

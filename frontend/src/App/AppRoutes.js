@@ -34,7 +34,7 @@ import Logs from 'System/Logs/Logs';
 import Status from 'System/Status/Status';
 import Tasks from 'System/Tasks/Tasks';
 import Updates from 'System/Updates/Updates';
-import UnmappedFilesTableConnector from 'UnmappedFiles/UnmappedFilesTableConnector';
+import UnmappedFiles from 'UnmappedFiles/UnmappedFiles';
 import getPathWithUrlBase from 'Utilities/getPathWithUrlBase';
 import CutoffUnmet from 'Wanted/CutoffUnmet/CutoffUnmet';
 import Missing from 'Wanted/Missing/Missing';
@@ -97,7 +97,7 @@ function AppRoutes(props) {
 
       <Route
         path="/unmapped"
-        component={UnmappedFilesTableConnector}
+        component={UnmappedFiles}
       />
 
       <Route
