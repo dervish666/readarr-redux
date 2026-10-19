@@ -16,3 +16,8 @@
 .scroller {
   flex: 1 1 auto;
 }
+
+.author {
+  padding: 8px;
+  border-bottom: 1px solid var(--borderColor);
+}

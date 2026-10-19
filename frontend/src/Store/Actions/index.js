@@ -8,8 +8,6 @@ import * as bookIndex from './bookIndexActions';
 import * as captcha from './captchaActions';
 import * as commands from './commandActions';
 import * as customFilters from './customFilterActions';
-import * as editions from './editionActions';
-import * as interactiveImportActions from './interactiveImportActions';
 import * as oAuth from './oAuthActions';
 import * as settings from './settingsActions';
 import * as system from './systemActions';
@@ -26,8 +24,6 @@ export default [
   captcha,
   commands,
   customFilters,
-  editions,
-  interactiveImportActions,
   oAuth,
   settings,
   system,

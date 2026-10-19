@@ -2,7 +2,6 @@
 // Please do not change this file!
 interface CssExports {
   'additionalFile': string;
-  'customFormatTooltip': string;
   'label': string;
   'path': string;
   'quality': string;

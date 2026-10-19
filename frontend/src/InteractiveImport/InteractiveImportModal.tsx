@@ -1,0 +1,70 @@
+import React, { useCallback, useEffect, useState } from 'react';
+import Modal from 'Components/Modal/Modal';
+import usePrevious from 'Helpers/Hooks/usePrevious';
+import { sizes } from 'Helpers/Props';
+import translate from 'Utilities/String/translate';
+import InteractiveImportSelectFolderModalContent from './Folder/InteractiveImportSelectFolderModalContent';
+import InteractiveImportModalContent, {
+  InteractiveImportModalContentProps,
+} from './Interactive/InteractiveImportModalContent';
+
+interface InteractiveImportModalProps
+  extends Omit<InteractiveImportModalContentProps, 'modalTitle'> {
+  isOpen: boolean;
+  modalTitle?: string;
+}
+
+// Manual import: without a folder or download id it asks for a folder first.
+function InteractiveImportModal({
+  isOpen,
+  folder,
+  downloadId,
+  modalTitle = translate('ManualImport'),
+  onModalClose,
+  ...otherProps
+}: InteractiveImportModalProps) {
+  const [folderPath, setFolderPath] = useState<string | undefined>(folder);
+  const previousIsOpen = usePrevious(isOpen);
+
+  useEffect(() => {
+    setFolderPath(folder);
+  }, [folder]);
+
+  // A picked folder is forgotten when the modal closes.
+  useEffect(() => {
+    if (previousIsOpen && !isOpen) {
+      setFolderPath(folder);
+    }
+  }, [folder, previousIsOpen, isOpen]);
+
+  const handleFolderSelect = useCallback((path: string) => {
+    setFolderPath(path);
+  }, []);
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      size={sizes.EXTRA_EXTRA_LARGE}
+      closeOnBackgroundClick={false}
+      onModalClose={onModalClose}
+    >
+      {folderPath || downloadId ? (
+        <InteractiveImportModalContent
+          {...otherProps}
+          folder={folderPath}
+          downloadId={downloadId}
+          modalTitle={modalTitle}
+          onModalClose={onModalClose}
+        />
+      ) : (
+        <InteractiveImportSelectFolderModalContent
+          modalTitle={modalTitle}
+          onFolderSelect={handleFolderSelect}
+          onModalClose={onModalClose}
+        />
+      )}
+    </Modal>
+  );
+}
+
+export default InteractiveImportModal;
