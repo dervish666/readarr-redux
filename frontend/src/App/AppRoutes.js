@@ -8,7 +8,7 @@ import AuthorDetailsPage from 'Author/Details/AuthorDetailsPage';
 import AuthorIndex from 'Author/Index/AuthorIndex';
 import BookDetailsPageConnector from 'Book/Details/BookDetailsPageConnector';
 import BookIndex from 'Book/Index/BookIndex';
-import BookshelfConnector from 'Bookshelf/BookshelfConnector';
+import Bookshelf from 'Bookshelf/Bookshelf';
 import CalendarPageConnector from 'Calendar/CalendarPageConnector';
 import NotFound from 'Components/NotFound';
 import Switch from 'Components/Router/Switch';
@@ -86,7 +86,7 @@ function AppRoutes(props) {
       <Route
         exact={true}
         path="/shelf"
-        component={BookshelfConnector}
+        component={Bookshelf}
       />
 
       <Route

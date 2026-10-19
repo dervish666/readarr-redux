@@ -2,36 +2,42 @@
   display: flex;
   align-items: stretch;
   overflow: hidden;
-  margin: 2px 4px;
+  margin: 3px 4px;
   border: 1px solid var(--borderColor);
-  border-radius: 4px;
-  background-color: var(--seasonBackgroundColor);
+  border-radius: 8px;
+  background-color: var(--paperCard);
+  color: var(--inkSoft);
+  font-size: 12px;
+  font-family: $defaultFontFamily;
+  line-height: 22px;
   cursor: default;
 }
 
 .info {
-  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  padding: 0 6px 0 2px;
 }
 
-.bookType {
-  padding: 0 4px;
-  border-width: 0 1px;
-  border-style: solid;
-  border-color: var(--borderColor);
-  background-color: var(--white);
-  color: var(--defaultColor);
+.title {
+  @add-mixin truncate;
+
+  max-width: 320px;
 }
 
 .books {
-  padding: 0 4px;
-  background-color: var(--episodesBackgroundColor);
-  color: var(--defaultColor);
+  padding: 0 8px;
+  background-color: var(--paperWarm);
+  color: var(--inkMuted);
+  font-variant-numeric: tabular-nums;
 }
 
 .allBooks {
   background-color: var(--successColor);
+  color: var(--white);
 }
 
 .missingWanted {
   background-color: var(--dangerColor);
+  color: var(--white);
 }

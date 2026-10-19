@@ -1162,6 +1162,7 @@
   "RootFolder": "Root Folder",
   "RootFolderCheckMultipleMessage": "Multiple root folders are missing: {0}",
   "RootFolderCheckSingleMessage": "Missing root folder: {0}",
+  "RootFolderPath": "Root Folder Path",
   "RootFolderPathHelpText": "Root Folder list items will be added to",
   "RootFolders": "Root Folders",
   "RssSyncIntervalHelpText": "Interval in minutes. Set to zero to disable (this will stop all automatic release grabbing)",

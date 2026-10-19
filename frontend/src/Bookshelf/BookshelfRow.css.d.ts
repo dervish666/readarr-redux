@@ -8,6 +8,7 @@ interface CssExports {
   'status': string;
   'statusIcon': string;
   'title': string;
+  'titleLink': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

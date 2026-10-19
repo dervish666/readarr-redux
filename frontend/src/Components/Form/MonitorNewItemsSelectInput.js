@@ -38,6 +38,9 @@ function MonitorNewItemsSelectInput(props) {
 }
 
 MonitorNewItemsSelectInput.propTypes = {
+  name: PropTypes.string,
+  value: PropTypes.string,
+  isDisabled: PropTypes.bool,
   includeNoChange: PropTypes.bool.isRequired,
   includeMixed: PropTypes.bool.isRequired,
   onChange: PropTypes.func.isRequired

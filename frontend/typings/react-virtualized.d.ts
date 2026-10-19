@@ -1,5 +1,6 @@
 // The parts of react-virtualized 9 the TypeScript index pages use (no @types package
-// is installed). Grid and WindowScroller as the author and book indexes drive them.
+// is installed). Grid and WindowScroller as the author and book indexes drive them;
+// CellMeasurer for the bookshelf's variable row heights.
 /* eslint-disable react/no-multi-comp */
 declare module 'react-virtualized' {
   import { Component, CSSProperties, ReactNode } from 'react';
@@ -10,6 +11,7 @@ declare module 'react-virtualized' {
     columnIndex: number;
     isScrolling: boolean;
     isVisible: boolean;
+    parent: unknown;
     style: CSSProperties;
   }
 
@@ -55,4 +57,25 @@ declare module 'react-virtualized' {
   }
 
   export class WindowScroller extends Component<WindowScrollerProps> {}
+
+  export class CellMeasurerCache {
+    constructor(params: { defaultHeight?: number; fixedWidth?: boolean });
+    rowHeight: (params: { index: number }) => number;
+    clearAll(): void;
+  }
+
+  export interface CellMeasurerChildProps {
+    registerChild: (element: Element | null) => void;
+    measure: () => void;
+  }
+
+  export interface CellMeasurerProps {
+    cache: CellMeasurerCache;
+    parent: unknown;
+    columnIndex: number;
+    rowIndex: number;
+    children: (props: CellMeasurerChildProps) => ReactNode;
+  }
+
+  export class CellMeasurer extends Component<CellMeasurerProps> {}
 }

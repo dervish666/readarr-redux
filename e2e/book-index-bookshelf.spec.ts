@@ -1,14 +1,20 @@
 import { Page, Request } from '@playwright/test';
 import { api, expect, openRoute, test, waitForPage } from './fixtures';
 
-// The book index: views, sort, select mode and the editor's monitor save. Every
-// write is stubbed with page.route, so nothing reaches the server (safe on staging);
-// the stubbed answers only change page caches.
+// The book index (views, sort, select mode and the editor's monitor save) and the
+// bookshelf's Update Selected. Every write is stubbed with page.route, so nothing
+// reaches the server (safe on staging); the stubbed answers only change page caches.
 
 interface Book {
   id: number;
   title: string;
   authorId: number;
+  monitored: boolean;
+}
+
+interface Author {
+  id: number;
+  authorName: string;
   monitored: boolean;
 }
 
@@ -126,4 +132,65 @@ test('book index: views, title sort and the editor monitor save', async ({ page 
 
   expect((await put).postDataJSON()).toStrictEqual({ bookIds: [lastBook.id], monitored });
   expect(writes.map((w) => `${w.method} ${w.path}`)).toEqual(['PUT /book/editor']);
+});
+
+function shelfRow(page: Page, author: Author) {
+  return page.locator('[class*="VirtualTableRow-row"]').filter({
+    has: page.getByRole('link', { name: author.authorName, exact: true })
+  });
+}
+
+test('bookshelf: Update Selected posts the BookshelfResource fields', async ({ page }) => {
+  const authors = await api<Author[]>(page, '/author');
+  expect(authors.length, 'the library needs an author').toBeGreaterThan(0);
+
+  const author = authors[0];
+
+  // POST /bookshelf answers Accepted with the request.
+  const writes = await stubWrites(page, ({ method, path, body }) => {
+    return method === 'POST' && path === '/bookshelf' ? body : undefined;
+  });
+
+  await openRoute(page, '/shelf');
+
+  const footer = page.locator('[class*="PageContentFooter"]');
+  const select = async () => {
+    await shelfRow(page, author).locator('input[type="checkbox"]').locator('..').click();
+    await expect(footer.getByText('1 author(s) selected')).toBeVisible();
+  };
+
+  const post = () => page.waitForRequest((r) => r.method() === 'POST' && apiPath(r) === '/bookshelf');
+
+  // Author monitoring only: no monitoringOptions, which the server would read as
+  // "monitor all books".
+  await select();
+  await footer.locator('select[name="monitored"]').selectOption('unmonitored');
+
+  let request = post();
+  await footer.getByRole('button', { name: 'Update Selected' }).click();
+
+  expect((await request).postDataJSON()).toStrictEqual({
+    authors: [{ id: author.id, monitored: false }]
+  });
+
+  // A save clears the selection and the footer.
+  await expect(footer.getByText('0 author(s) selected')).toBeVisible();
+  await expect(footer.locator('select[name="monitored"]')).toHaveValue('noChange');
+
+  // Existing and new book monitoring, author monitoring untouched.
+  await select();
+  await footer.locator('select[name="monitor"]').selectOption('none');
+  await footer.locator('select[name="monitorNewItems"]').selectOption('none');
+
+  request = post();
+  await footer.getByRole('button', { name: 'Update Selected' }).click();
+
+  expect((await request).postDataJSON()).toStrictEqual({
+    authors: [{ id: author.id }],
+    monitoringOptions: { monitor: 'none' },
+    monitorNewItems: 'none'
+  });
+
+  await expect(footer.getByText('0 author(s) selected')).toBeVisible();
+  expect(writes.map((w) => `${w.method} ${w.path}`)).toEqual(['POST /bookshelf', 'POST /bookshelf']);
 });
