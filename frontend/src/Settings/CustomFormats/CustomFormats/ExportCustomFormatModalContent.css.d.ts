@@ -2,6 +2,8 @@
 // Please do not change this file!
 interface CssExports {
   'button': string;
+  'error': string;
+  'json': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

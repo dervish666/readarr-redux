@@ -1,8 +1,6 @@
 import { createAction } from 'redux-actions';
 import { handleThunks } from 'Store/thunks';
 import createHandleActions from './Creators/createHandleActions';
-import customFormats from './Settings/customFormats';
-import customFormatSpecifications from './Settings/customFormatSpecifications';
 import development from './Settings/development';
 import general from './Settings/general';
 import languages from './Settings/languages';
@@ -14,8 +12,6 @@ import qualityProfiles from './Settings/qualityProfiles';
 import rootFolders from './Settings/rootFolders';
 import ui from './Settings/ui';
 
-export * from './Settings/customFormatSpecifications.js';
-export * from './Settings/customFormats';
 export * from './Settings/general';
 export * from './Settings/languages';
 export * from './Settings/metadataProfiles';
@@ -38,8 +34,6 @@ export const section = 'settings';
 export const defaultState = {
   advancedSettings: false,
 
-  customFormatSpecifications: customFormatSpecifications.defaultState,
-  customFormats: customFormats.defaultState,
   general: general.defaultState,
   languages: languages.defaultState,
   metadataProfiles: metadataProfiles.defaultState,
@@ -70,8 +64,6 @@ export const toggleAdvancedSettings = createAction(TOGGLE_ADVANCED_SETTINGS);
 // Action Handlers
 
 export const actionHandlers = handleThunks({
-  ...customFormatSpecifications.actionHandlers,
-  ...customFormats.actionHandlers,
   ...general.actionHandlers,
   ...languages.actionHandlers,
   ...metadataProfiles.actionHandlers,
@@ -93,8 +85,6 @@ export const reducers = createHandleActions({
     return Object.assign({}, state, { advancedSettings: !state.advancedSettings });
   },
 
-  ...customFormatSpecifications.reducers,
-  ...customFormats.reducers,
   ...general.reducers,
   ...languages.reducers,
   ...metadataProfiles.reducers,
