@@ -71,7 +71,7 @@ interface HistoryEventTypeCellProps {
   data?: HistoryData;
 }
 
-// Shared with the author and book history tables, which still pass redux rows.
+// Shared with the author and book history tables.
 function HistoryEventTypeCell({
   eventType,
   data = {},

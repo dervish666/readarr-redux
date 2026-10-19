@@ -1,8 +1,8 @@
 import { Page } from '@playwright/test';
 
-// Test-only access to the app's QueryClient and redux store, found by walking React's
-// fiber tree from #root to the QueryClientProvider (prop `client`) or the redux
-// Provider (prop `store`). The app ships no debug global.
+// Test-only access to the app's QueryClient, found by walking React's fiber tree from
+// #root to the QueryClientProvider (prop `client`). The app ships no debug global.
+// The `store` lookup is kept so redux-state.spec can show no redux Provider is left.
 async function withProviderProp<T>(page: Page, prop: 'client' | 'store', script: string): Promise<T> {
   return page.evaluate(([propName, body]) => {
     const root = document.getElementById('root') as unknown as Record<string, unknown>;
@@ -54,7 +54,7 @@ export function withReduxStore<T>(page: Page, script: string): Promise<T> {
   return withProviderProp<T>(page, 'store', script);
 }
 
-// Holds every later GET /command (react-query refetch and redux fetchCommands alike)
+// Holds every later GET /command (react-query refetches)
 // until release(), so a check on command state can only pass through what SignalR
 // command messages and the POST response wrote. Call release() before the test ends.
 export async function holdCommandRefetches(page: Page) {

@@ -35,7 +35,7 @@ interface SignalRMessage {
 }
 
 // SignalR messages (v1 hub) and what each one does. Every domain message updates
-// react-query only; redux gets nothing but app state (connection flags, version).
+// react-query; the zustand app store gets the connection flags and version.
 //
 // message          action                 effect
 // author           updated                merge into ['/author'] (a new author joins)
@@ -67,7 +67,7 @@ interface SignalRMessage {
 // rootfolder       any                    invalidate ['/rootFolder']
 // system/task      any                    invalidate ['/system/task'] and ['/command']
 // tag              any                    invalidate ['/tag'] and ['/tag/detail']
-// version          any                    redux app version (reload prompt)
+// version          any                    app store version (reload prompt)
 // wanted/cutoff,   updated                merge into shown ['/wanted/cutoff'] /
 // wanted/missing                          ['/wanted/missing'] page rows
 //
