@@ -310,7 +310,7 @@ function SignalRListener() {
         return;
 
       case 'rootfolder':
-        // Redux feed for add-new, the author editor, import lists and remote path mappings.
+        // Redux feed for the author editor, import lists and remote path mappings.
         dispatch(fetchRootFolders());
         return;
 

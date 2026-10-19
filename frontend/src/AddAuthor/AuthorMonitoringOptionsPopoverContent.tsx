@@ -7,9 +7,7 @@ import translate from 'Utilities/String/translate';
 function AuthorMonitoringOptionsPopoverContent() {
   return (
     <>
-      <Alert>
-        {translate('MonitoringOptionsHelpText')}
-      </Alert>
+      <Alert>{translate('MonitoringOptionsHelpText')}</Alert>
       <DescriptionList>
         <DescriptionListItem
           title={translate('AllBooks')}

@@ -14,6 +14,7 @@ import dateFilterPredicate from 'Utilities/Date/dateFilterPredicate';
 import apiRequest from 'Utilities/Fetch/apiRequest';
 import { ApiError } from 'Utilities/Fetch/fetchJson';
 import {
+  CachedListFilter,
   removeCachedItems,
   updateCachedItems,
 } from 'Utilities/Fetch/queryCache';
@@ -347,13 +348,17 @@ export const useMultipleAuthors = (authorIds: number[] = DEFAULT_IDS) => {
 // Writes authors into the react-query list and the redux authors feed that the
 // unconverted author, book, calendar and wanted pages still read. SignalR sends the
 // same change, but the feed must not wait on it (or miss it while disconnected).
+// Pass belongsTo to add an author a list lacks (add new); otherwise only merges.
 export const useUpdateAuthorCaches = () => {
   const queryClient = useQueryClient();
   const dispatch = useDispatch();
 
   const updateAuthors = useCallback(
-    (authors: ReadonlyArray<Partial<Author> & { id: number }>) => {
-      updateCachedItems<Author>(queryClient, '/author', authors);
+    (
+      authors: ReadonlyArray<Partial<Author> & { id: number }>,
+      belongsTo?: CachedListFilter<Author>
+    ) => {
+      updateCachedItems<Author>(queryClient, '/author', authors, belongsTo);
 
       authors.forEach((author) => {
         dispatch(updateItem({ section: 'authors', ...author }));

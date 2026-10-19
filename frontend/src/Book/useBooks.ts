@@ -8,6 +8,7 @@ import apiRequest from 'Utilities/Fetch/apiRequest';
 import { ApiError } from 'Utilities/Fetch/fetchJson';
 import { QueryParams } from 'Utilities/Fetch/getQueryString';
 import {
+  CachedListFilter,
   paramMatches,
   removeCachedItems,
   updateCachedItems,
@@ -95,14 +96,17 @@ export const bookBelongsTo = (params: QueryParams | undefined, book: Book) => {
 };
 
 // Writes books into every react-query book list and the redux books feed the
-// unconverted pages read.
+// unconverted pages read. Pass belongsTo (bookBelongsTo) to add a new book.
 export const useUpdateBookCaches = () => {
   const queryClient = useQueryClient();
   const dispatch = useDispatch();
 
   const updateBooks = useCallback(
-    (books: ReadonlyArray<Partial<Book> & { id: number }>) => {
-      updateCachedItems<Book>(queryClient, '/book', books);
+    (
+      books: ReadonlyArray<Partial<Book> & { id: number }>,
+      belongsTo?: CachedListFilter<Book>
+    ) => {
+      updateCachedItems<Book>(queryClient, '/book', books, belongsTo);
 
       books.forEach((book) => {
         dispatch(updateItem({ section: 'books', ...book }));

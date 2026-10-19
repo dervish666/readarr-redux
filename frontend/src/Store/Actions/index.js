@@ -16,7 +16,6 @@ import * as organizePreview from './organizePreviewActions';
 import * as queue from './queueActions';
 import * as releases from './releaseActions';
 import * as retagPreview from './retagPreviewActions';
-import * as search from './searchActions';
 import * as settings from './settingsActions';
 import * as system from './systemActions';
 import * as tags from './tagActions';
@@ -41,7 +40,6 @@ export default [
   queue,
   releases,
   retagPreview,
-  search,
   settings,
   system,
   tags,

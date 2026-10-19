@@ -5,7 +5,7 @@ import IconButton from 'Components/Link/IconButton';
 import Link from 'Components/Link/Link';
 import { icons } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
-import AuthorSearchInputConnector from './AuthorSearchInputConnector';
+import AuthorSearch from './AuthorSearch';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import PageHeaderActionsMenuConnector from './PageHeaderActionsMenuConnector';
 import styles from './PageHeader.css';
@@ -76,7 +76,7 @@ class PageHeader extends Component {
           />
         </div>
 
-        <AuthorSearchInputConnector />
+        <AuthorSearch />
 
         <div className={styles.right}>
           <PageHeaderActionsMenuConnector

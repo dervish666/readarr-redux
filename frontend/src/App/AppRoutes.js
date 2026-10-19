@@ -12,7 +12,7 @@ import Bookshelf from 'Bookshelf/Bookshelf';
 import CalendarPageConnector from 'Calendar/CalendarPageConnector';
 import NotFound from 'Components/NotFound';
 import Switch from 'Components/Router/Switch';
-import AddNewItemConnector from 'Search/AddNewItemConnector';
+import AddNewItem from 'Search/AddNewItem';
 import CustomFormatSettingsPage from 'Settings/CustomFormats/CustomFormatSettingsPage';
 import DevelopmentSettings from 'Settings/Development/DevelopmentSettings';
 import DownloadClientSettings from 'Settings/DownloadClients/DownloadClientSettings';
@@ -80,7 +80,7 @@ function AppRoutes(props) {
 
       <Route
         path="/add/search"
-        component={AddNewItemConnector}
+        component={AddNewItem}
       />
 
       <Route

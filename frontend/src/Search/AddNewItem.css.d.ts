@@ -2,13 +2,19 @@
 // Please do not change this file!
 interface CssExports {
   'clearLookupButton': string;
-  'helpText': string;
-  'message': string;
-  'noResults': string;
-  'searchContainer': string;
-  'searchIconContainer': string;
+  'emptyBody': string;
+  'emptyDivider': string;
+  'emptyLink': string;
+  'emptyNoLibrary': string;
+  'emptyState': string;
+  'emptyTitle': string;
+  'error': string;
+  'resultsLabel': string;
+  'searchIcon': string;
   'searchInput': string;
   'searchResults': string;
+  'searchSticky': string;
+  'searchWrap': string;
 }
 export const cssExports: CssExports;
 export default cssExports;
