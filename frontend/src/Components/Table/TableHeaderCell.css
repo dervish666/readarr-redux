@@ -1,12 +1,35 @@
 .headerCell {
-  padding: 8px;
-  border: none !important;
+  padding: 12px 10px;
+  color: var(--inkMuted);
   text-align: left;
-  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  font-size: 11px;
+  font-family: var(--defaultFontFamily);
+  line-height: 18px;
+}
+
+.content {
+  display: inline-flex;
+  align-items: center;
+}
+
+.sortable {
+  cursor: pointer;
+}
+
+.headerCell.sortable:hover {
+  color: var(--ink);
+}
+
+.headerCell.sorted {
+  color: var(--ink);
 }
 
 .sortIcon {
-  margin-left: 10px;
+  margin-left: 8px;
+  color: var(--accentDeep);
 }
 
 @media only screen and (max-width: $breakpointMedium) {

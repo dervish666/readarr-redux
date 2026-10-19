@@ -7,10 +7,12 @@ interface CssExports {
   'containerOpen': string;
   'highlighted': string;
   'input': string;
+  'inputWrapper': string;
   'list': string;
   'listItem': string;
   'loading': string;
   'ripple': string;
+  'searchIcon': string;
   'sectionTitle': string;
   'wrapper': string;
 }

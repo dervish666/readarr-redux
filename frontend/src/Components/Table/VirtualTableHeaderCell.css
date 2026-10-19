@@ -1,16 +1,19 @@
 .headerCell {
-  padding: 8px;
-  border: none !important;
-  text-align: left;
-  font-weight: bold;
+  composes: headerCell from '~Components/Table/TableHeaderCell.css';
+}
+
+.content {
+  composes: content from '~Components/Table/TableHeaderCell.css';
+}
+
+.sortable {
+  composes: sortable from '~Components/Table/TableHeaderCell.css';
+}
+
+.sorted {
+  composes: sorted from '~Components/Table/TableHeaderCell.css';
 }
 
 .sortIcon {
-  margin-left: 10px;
-}
-
-@media only screen and (max-width: $breakpointMedium) {
-  .headerCell {
-    white-space: nowrap;
-  }
+  composes: sortIcon from '~Components/Table/TableHeaderCell.css';
 }

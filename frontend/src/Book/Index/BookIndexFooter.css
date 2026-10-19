@@ -21,7 +21,7 @@
 .continuing {
   composes: legendItemColor;
 
-  background-color: var(--primaryColor);
+  background-color: var(--accent);
 }
 
 .ended {

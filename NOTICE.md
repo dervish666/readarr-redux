@@ -8,13 +8,13 @@ This version was modified by Sam Castillo and contributors, starting on 2026-10-
 
 Several fixes are ports of changes from Sonarr (https://github.com/Sonarr/Sonarr, GPL-3.0). Their commit messages name the Sonarr commit they came from.
 
-From 2026-10-18 the frontend is being moved onto Sonarr's v5 frontend (copyright Team Sonarr, GPL-3.0), starting with its data-fetching hooks, option stores and SignalR listener. Files ported from Sonarr are named, with the Sonarr commit they came from, in the commit that brought them in.
+From 2026-10-18 the frontend is being moved onto Sonarr's v5 frontend (copyright Team Sonarr, GPL-3.0), starting with its data-fetching hooks, option stores and SignalR listener, then its v5 look: theme tokens, fonts, icons and component styles. Files ported from Sonarr are named, with the Sonarr commit they came from, in the commit that brought them in.
 
 Readarr Redux is not affiliated with, endorsed by or supported by the Readarr or Servarr teams. The app keeps the Readarr name, logo and internal identifiers so existing installs can move over; those belong to their owners.
 
 ## Third-party packages
 
-Packages restored from nuget.org and npm keep their own licences. The packages that only ever existed on Servarr's package feeds are kept in `src/Libraries/nuget/`, and [its README](src/Libraries/nuget/README.md) lists each one with its source and licence.
+Packages restored from nuget.org and npm keep their own licences. The Inter, Fraunces and JetBrains Mono font files in `frontend/src/Content/Fonts/` came with Sonarr's v5 frontend and are under the SIL Open Font License 1.1. The packages that only ever existed on Servarr's package feeds are kept in `src/Libraries/nuget/`, and [its README](src/Libraries/nuget/README.md) lists each one with its source and licence.
 
 One of them is modified. `ReadarrRedux.FluentMigrator.Runner` 3.3.2.9 repackages `FluentMigrator.Runner.dll` from Servarr's `Servarr.FluentMigrator.Runner` 3.3.2.9 (Apache-2.0, a fork of https://github.com/fluentmigrator/fluentmigrator). The DLL is unchanged. On 2026-10-12 the package metadata was changed to drop the dependencies on database runners Readarr doesn't use, which also stopped Microsoft SQL Server Compact and the Visual C++ 2008 runtime from being shipped.
 

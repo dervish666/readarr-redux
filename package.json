@@ -50,6 +50,7 @@
     "jdu": "1.0.0",
     "jquery": "3.7.1",
     "lodash": "4.17.21",
+    "lucide-react": "1.48.0",
     "mobile-detect": "1.4.5",
     "moment": "2.31.0",
     "mousetrap": "1.6.5",

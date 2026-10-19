@@ -1,7 +1,7 @@
 import classNames from 'classnames';
 import _ from 'lodash';
 import PropTypes from 'prop-types';
-import React, { Component } from 'react';
+import React, { Component, Fragment } from 'react';
 import ReactDOM from 'react-dom';
 import QueueStatusConnector from 'Activity/Queue/Status/QueueStatusConnector';
 import OverlayScroller from 'Components/Scroller/OverlayScroller';
@@ -18,57 +18,79 @@ import styles from './PageSidebar.css';
 const HEADER_HEIGHT = parseInt(dimensions.headerHeight);
 const SIDEBAR_WIDTH = parseInt(dimensions.sidebarWidth);
 
-const links = [
+const groups = [
   {
-    iconName: icons.AUTHOR_CONTINUING,
-    title: () => translate('Library'),
-    to: '/',
-    alias: '/authors',
-    children: [
+    label: () => translate('Media'),
+    items: [
       {
+        iconName: icons.AUTHORS,
         title: () => translate('Authors'),
-        to: '/authors'
+        to: '/',
+        alias: '/authors',
+        children: [
+          {
+            title: () => translate('AddNew'),
+            to: '/add/search'
+          },
+          {
+            title: () => translate('Bookshelf'),
+            to: '/shelf'
+          },
+          {
+            title: () => translate('UnmappedFiles'),
+            to: '/unmapped'
+          }
+        ]
       },
+
       {
+        iconName: icons.BOOK,
         title: () => translate('Books'),
         to: '/books'
       },
+
       {
-        title: () => translate('AddNew'),
-        to: '/add/search'
+        iconName: icons.CALENDAR,
+        title: () => translate('Calendar'),
+        to: '/calendar'
       },
+
       {
-        title: () => translate('Bookshelf'),
-        to: '/shelf'
-      },
-      {
-        title: () => translate('UnmappedFiles'),
-        to: '/unmapped'
+        iconName: icons.WARNING,
+        title: () => translate('Wanted'),
+        to: '/wanted/missing',
+        children: [
+          {
+            title: () => translate('Missing'),
+            to: '/wanted/missing'
+          },
+          {
+            title: () => translate('CutoffUnmet'),
+            to: '/wanted/cutoffunmet'
+          }
+        ]
       }
     ]
   },
 
   {
-    iconName: icons.CALENDAR,
-    title: () => translate('Calendar'),
-    to: '/calendar'
-  },
-
-  {
-    iconName: icons.ACTIVITY,
-    title: () => translate('Activity'),
-    to: '/activity/queue',
-    children: [
+    label: () => translate('Activity'),
+    items: [
       {
+        iconName: icons.DOWNLOAD,
         title: () => translate('Queue'),
         to: '/activity/queue',
         statusComponent: QueueStatusConnector
       },
+
       {
+        iconName: icons.HISTORY,
         title: () => translate('History'),
         to: '/activity/history'
       },
+
       {
+        iconName: icons.BAN,
         title: () => translate('Blocklist'),
         to: '/activity/blocklist'
       }
@@ -76,114 +98,104 @@ const links = [
   },
 
   {
-    iconName: icons.WARNING,
-    title: () => translate('Wanted'),
-    to: '/wanted/missing',
-    children: [
+    items: [
       {
-        title: () => translate('Missing'),
-        to: '/wanted/missing'
+        iconName: icons.SETTINGS,
+        title: () => translate('Settings'),
+        to: '/settings',
+        children: [
+          {
+            title: () => translate('MediaManagement'),
+            to: '/settings/mediamanagement'
+          },
+          {
+            title: () => translate('Profiles'),
+            to: '/settings/profiles'
+          },
+          {
+            title: () => translate('Quality'),
+            to: '/settings/quality'
+          },
+          {
+            title: () => translate('CustomFormats'),
+            to: '/settings/customformats'
+          },
+          {
+            title: () => translate('Indexers'),
+            to: '/settings/indexers'
+          },
+          {
+            title: () => translate('DownloadClients'),
+            to: '/settings/downloadclients'
+          },
+          {
+            title: () => translate('ImportLists'),
+            to: '/settings/importlists'
+          },
+          {
+            title: () => translate('Connect'),
+            to: '/settings/connect'
+          },
+          {
+            title: () => translate('Metadata'),
+            to: '/settings/metadata'
+          },
+          {
+            title: () => translate('MetadataSource'),
+            to: '/settings/metadatasource'
+          },
+          {
+            title: () => translate('Tags'),
+            to: '/settings/tags'
+          },
+          {
+            title: () => translate('General'),
+            to: '/settings/general'
+          },
+          {
+            title: () => translate('Ui'),
+            to: '/settings/ui'
+          }
+        ]
       },
-      {
-        title: () => translate('CutoffUnmet'),
-        to: '/wanted/cutoffunmet'
-      }
-    ]
-  },
 
-  {
-    iconName: icons.SETTINGS,
-    title: () => translate('Settings'),
-    to: '/settings',
-    children: [
       {
-        title: () => translate('MediaManagement'),
-        to: '/settings/mediamanagement'
-      },
-      {
-        title: () => translate('Profiles'),
-        to: '/settings/profiles'
-      },
-      {
-        title: () => translate('Quality'),
-        to: '/settings/quality'
-      },
-      {
-        title: () => translate('CustomFormats'),
-        to: '/settings/customformats'
-      },
-      {
-        title: () => translate('Indexers'),
-        to: '/settings/indexers'
-      },
-      {
-        title: () => translate('DownloadClients'),
-        to: '/settings/downloadclients'
-      },
-      {
-        title: () => translate('ImportLists'),
-        to: '/settings/importlists'
-      },
-      {
-        title: () => translate('Connect'),
-        to: '/settings/connect'
-      },
-      {
-        title: () => translate('Metadata'),
-        to: '/settings/metadata'
-      },
-      {
-        title: () => translate('MetadataSource'),
-        to: '/settings/metadatasource'
-      },
-      {
-        title: () => translate('Tags'),
-        to: '/settings/tags'
-      },
-      {
-        title: () => translate('General'),
-        to: '/settings/general'
-      },
-      {
-        title: () => translate('Ui'),
-        to: '/settings/ui'
-      }
-    ]
-  },
-
-  {
-    iconName: icons.SYSTEM,
-    title: () => translate('System'),
-    to: '/system/status',
-    children: [
-      {
-        title: () => translate('Status'),
+        iconName: icons.SYSTEM,
+        title: () => translate('System'),
         to: '/system/status',
-        statusComponent: HealthStatusConnector
-      },
-      {
-        title: () => translate('Tasks'),
-        to: '/system/tasks'
-      },
-      {
-        title: () => translate('Backup'),
-        to: '/system/backup'
-      },
-      {
-        title: () => translate('Updates'),
-        to: '/system/updates'
-      },
-      {
-        title: () => translate('Events'),
-        to: '/system/events'
-      },
-      {
-        title: () => translate('LogFiles'),
-        to: '/system/logs/files'
+        children: [
+          {
+            title: () => translate('Status'),
+            to: '/system/status',
+            statusComponent: HealthStatusConnector
+          },
+          {
+            title: () => translate('Tasks'),
+            to: '/system/tasks'
+          },
+          {
+            title: () => translate('Backup'),
+            to: '/system/backup'
+          },
+          {
+            title: () => translate('Updates'),
+            to: '/system/updates'
+          },
+          {
+            title: () => translate('Events'),
+            to: '/system/events'
+          },
+          {
+            title: () => translate('LogFiles'),
+            to: '/system/logs/files'
+          }
+        ]
       }
     ]
   }
 ];
+
+const links = _.flatMap(groups, (group) => group.items);
 
 function getActiveParent(pathname) {
   let activeParent = links[0].to;
@@ -351,7 +363,7 @@ class PageSidebar extends Component {
       return;
     }
 
-    if (isSidebarVisible && (touchStartX > 210 || touchStartX < 180)) {
+    if (isSidebarVisible && (touchStartX > SIDEBAR_WIDTH || touchStartX < SIDEBAR_WIDTH - 30)) {
       return;
     } else if (!isSidebarVisible && touchStartX > 40) {
       return;
@@ -478,48 +490,70 @@ class PageSidebar extends Component {
         >
           <div>
             {
-              links.map((link) => {
-                const childWithStatusComponent = _.find(link.children, (child) => {
-                  return !!child.statusComponent;
-                });
-
-                const childStatusComponent = childWithStatusComponent ?
-                  childWithStatusComponent.statusComponent :
-                  null;
-
-                const isActiveParent = activeParent === link.to;
-                const hasActiveChild = hasActiveChildLink(link, pathname);
+              groups.map((group, groupIndex) => {
+                const showSeparatorBefore = !group.label && groupIndex > 0;
 
                 return (
-                  <PageSidebarItem
-                    key={link.to}
-                    iconName={link.iconName}
-                    title={link.title}
-                    to={link.to}
-                    statusComponent={isActiveParent || !childStatusComponent ? link.statusComponent : childStatusComponent}
-                    isActive={pathname === link.to && !hasActiveChild}
-                    isActiveParent={isActiveParent}
-                    isParentItem={!!link.children}
-                    onPress={this.onItemPress}
-                  >
+                  <Fragment key={`group-${groupIndex}`}>
                     {
-                      link.children && link.to === activeParent &&
-                        link.children.map((child) => {
-                          return (
-                            <PageSidebarItem
-                              key={child.to}
-                              title={child.title}
-                              to={child.to}
-                              isActive={pathname === child.to || pathname.startsWith(`${child.to}/`)}
-                              isParentItem={false}
-                              isChildItem={true}
-                              statusComponent={child.statusComponent}
-                              onPress={this.onItemPress}
-                            />
-                          );
-                        })
+                      showSeparatorBefore ?
+                        <div className={styles.divider} aria-hidden="true" /> :
+                        null
                     }
-                  </PageSidebarItem>
+
+                    {
+                      group.label ?
+                        <span className={styles.groupLabel}>{group.label()}</span> :
+                        null
+                    }
+
+                    {
+                      group.items.map((link) => {
+                        const childWithStatusComponent = _.find(link.children, (child) => {
+                          return !!child.statusComponent;
+                        });
+
+                        const childStatusComponent = childWithStatusComponent ?
+                          childWithStatusComponent.statusComponent :
+                          null;
+
+                        const isActiveParent = activeParent === link.to;
+                        const hasActiveChild = hasActiveChildLink(link, pathname);
+
+                        return (
+                          <PageSidebarItem
+                            key={link.to}
+                            iconName={link.iconName}
+                            title={link.title}
+                            to={link.to}
+                            statusComponent={isActiveParent || !childStatusComponent ? link.statusComponent : childStatusComponent}
+                            isActive={pathname === link.to && !hasActiveChild}
+                            isActiveParent={isActiveParent}
+                            isParentItem={!!link.children}
+                            onPress={this.onItemPress}
+                          >
+                            {
+                              link.children && link.to === activeParent &&
+                              link.children.map((child) => {
+                                return (
+                                  <PageSidebarItem
+                                    key={child.to}
+                                    title={child.title}
+                                    to={child.to}
+                                    isActive={pathname === child.to || pathname.startsWith(`${child.to}/`)}
+                                    isParentItem={false}
+                                    isChildItem={true}
+                                    statusComponent={child.statusComponent}
+                                    onPress={this.onItemPress}
+                                  />
+                                );
+                              })
+                            }
+                          </PageSidebarItem>
+                        );
+                      })
+                    }
+                  </Fragment>
                 );
               })
             }

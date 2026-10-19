@@ -3,7 +3,6 @@
 interface CssExports {
   'isDisabled': string;
   'label': string;
-  'labelContainer': string;
   'toolbarButton': string;
 }
 export const cssExports: CssExports;

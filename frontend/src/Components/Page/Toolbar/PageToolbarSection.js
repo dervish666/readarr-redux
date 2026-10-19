@@ -15,10 +15,30 @@ import styles from './PageToolbarSection.css';
 const BUTTON_WIDTH = parseInt(dimensions.toolbarButtonWidth);
 const SEPARATOR_MARGIN = parseInt(dimensions.toolbarSeparatorMargin);
 const SEPARATOR_WIDTH = 2 * SEPARATOR_MARGIN + 1;
+const SMALL_SCREEN = parseInt(dimensions.breakpointSmall);
+const MORE_BUTTON_WIDTH = 90;
+
+// v5 toolbar buttons are pills sized by their label (icon beside the label, or above
+// it on a phone), so estimate each one from its label instead of a fixed width.
+function getButtonWidth(child) {
+  const label = child.props.label || child.props.text;
+
+  if (typeof label !== 'string') {
+    return BUTTON_WIDTH;
+  }
+
+  if (window.innerWidth <= SMALL_SCREEN) {
+    return Math.max(56, Math.ceil(label.length * 6.6) + 20);
+  }
+
+  // 14px padding each side, 16px icon, 7px gap, about 7.4px a character at 13px
+  return Math.ceil(label.length * 7.4) + 51;
+}
 
 function calculateOverflowItems(children, isMeasured, width, collapseButtons) {
   let buttonCount = 0;
   let separatorCount = 0;
+  let buttonsWidth = 0;
   const validChildren = [];
 
   forEach(children, (child) => {
@@ -26,13 +46,13 @@ function calculateOverflowItems(children, isMeasured, width, collapseButtons) {
       separatorCount++;
     } else {
       buttonCount++;
+      buttonsWidth += getButtonWidth(child);
     }
 
     validChildren.push(child);
   });
 
-  const buttonsWidth = buttonCount * BUTTON_WIDTH;
-  const separatorsWidth = separatorCount + SEPARATOR_WIDTH;
+  const separatorsWidth = separatorCount * SEPARATOR_WIDTH;
   const totalWidth = buttonsWidth + separatorsWidth;
 
   // If the width of buttons and separators is less than
@@ -46,33 +66,30 @@ function calculateOverflowItems(children, isMeasured, width, collapseButtons) {
     return {
       buttons: validChildren,
       buttonCount,
+      totalWidth,
       overflowItems: []
     };
   }
 
-  const maxButtons = Math.max(Math.floor((width - separatorsWidth) / BUTTON_WIDTH), 1);
   const buttons = [];
   const overflowItems = [];
-  let actualButtons = 0;
-
-  // Return all buttons if only one is being pushed to the overflow menu.
-  if (buttonCount - 1 === maxButtons) {
-    return {
-      buttons: validChildren,
-      buttonCount,
-      overflowItems: []
-    };
-  }
+  let usedWidth = MORE_BUTTON_WIDTH;
+  let isOverflowing = false;
 
   validChildren.forEach((child, index) => {
     const isSeparator = Object.keys(child.props).length === 0;
 
-    if (actualButtons < maxButtons) {
-      if (!isSeparator) {
-        buttons.push(child);
-        actualButtons++;
-      }
-    } else if (!isSeparator) {
+    if (isSeparator) {
+      return;
+    }
+
+    const buttonWidth = getButtonWidth(child);
+
+    if (!isOverflowing && (buttons.length === 0 || usedWidth + buttonWidth <= width)) {
+      buttons.push(child);
+      usedWidth += buttonWidth;
+    } else {
+      isOverflowing = true;
       overflowItems.push(child.props);
     }
   });
@@ -80,6 +97,7 @@ function calculateOverflowItems(children, isMeasured, width, collapseButtons) {
   return {
     buttons,
     buttonCount,
+    totalWidth,
     overflowItems
   };
 }
@@ -127,7 +145,7 @@ class PageToolbarSection extends Component {
 
     const {
       buttons,
-      buttonCount,
+      totalWidth,
       overflowItems
     } = calculateOverflowItems(children, isMeasured, width, collapseButtons);
 
@@ -136,7 +154,7 @@ class PageToolbarSection extends Component {
         onMeasure={this.onMeasure}
         className={styles.sectionContainer}
         style={{
-          flexGrow: buttonCount
+          flexGrow: totalWidth
         }}
       >
         {

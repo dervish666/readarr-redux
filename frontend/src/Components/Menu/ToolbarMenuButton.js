@@ -1,4 +1,3 @@
-import classNames from 'classnames';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Icon from 'Components/Icon';
@@ -19,32 +18,29 @@ function ToolbarMenuButton(props) {
       className={styles.menuButton}
       {...otherProps}
     >
-      <div>
-        <Icon
-          name={iconName}
-          size={21}
-        />
+      <div className={styles.inner}>
+        <div className={styles.iconWrapper}>
+          <Icon
+            name={iconName}
+            size={16}
+          />
+
+          {
+            indicator &&
+              <span className={styles.indicatorContainer}>
+                <Icon
+                  name={icons.CIRCLE}
+                  size={7}
+                />
+              </span>
+          }
+        </div>
 
         {
-          indicator &&
-            <span
-              className={classNames(
-                styles.indicatorContainer,
-                'fa-layers fa-fw'
-              )}
-            >
-              <Icon
-                name={icons.CIRCLE}
-                size={9}
-              />
-            </span>
+          text ?
+            <span className={styles.label}>{text}</span> :
+            null
         }
-
-        <div className={styles.labelContainer}>
-          <div className={styles.label}>
-            {text}
-          </div>
-        </div>
       </div>
     </MenuButton>
   );

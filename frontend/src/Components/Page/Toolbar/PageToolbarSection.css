@@ -6,8 +6,9 @@
 
 .section {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   flex-grow: 1;
+  gap: 2px;
 }
 
 .left {

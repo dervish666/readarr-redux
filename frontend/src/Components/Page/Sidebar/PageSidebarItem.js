@@ -39,12 +39,7 @@ class PageSidebarItem extends Component {
     } = this.props;
 
     return (
-      <div
-        className={classNames(
-          styles.item,
-          isActiveParent && styles.isActiveItem
-        )}
-      >
+      <div className={styles.item}>
         <Link
           className={classNames(
             isChildItem ? styles.childLink : styles.link,
@@ -52,6 +47,7 @@ class PageSidebarItem extends Component {
             isActive && styles.isActiveLink
           )}
           to={to}
+          aria-current={isActive ? 'page' : undefined}
           onPress={this.onPress}
         >
           {
@@ -59,6 +55,7 @@ class PageSidebarItem extends Component {
               <span className={styles.iconContainer}>
                 <Icon
                   name={iconName}
+                  aria-hidden={true}
                 />
               </span>
           }

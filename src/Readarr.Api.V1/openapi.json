@@ -13864,6 +13864,10 @@
           "enableColorImpairedMode": {
             "type": "boolean"
           },
+          "headerColor": {
+            "type": "string",
+            "nullable": true
+          },
           "uiLanguage": {
             "type": "integer",
             "format": "int32"

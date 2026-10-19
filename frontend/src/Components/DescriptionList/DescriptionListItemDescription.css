@@ -1,10 +1,10 @@
 .description {
   margin-left: 0;
-  line-height: $lineHeight;
+  line-height: var(--lineHeight);
   overflow-wrap: break-word;
 }
 
-@media (min-width: 768px) {
+@media only screen and (min-width: $breakpointSmall) {
   .description {
     margin-left: 180px;
   }

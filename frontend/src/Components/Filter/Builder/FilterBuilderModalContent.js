@@ -171,7 +171,7 @@ class FilterBuilderModalContent extends Component {
             {translate('Filters')}
           </div>
 
-          <div className={styles.rows}>
+          <div className={styles.bordered}>
             {
               filters.map((filter, index) => {
                 return (

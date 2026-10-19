@@ -5,16 +5,24 @@
 
 .tooltip {
   position: relative;
+  border: 1px solid var(--hairlineStrong);
+  border-radius: 12px;
 
   &.default {
-    background-color: var(--popoverBodyBackgroundColor);
-    box-shadow: 0 5px 10px var(--popoverShadowColor);
+    background-color: var(--paperCard);
+    box-shadow:
+      0 16px 40px -12px rgba(0, 0, 0, 0.45),
+      0 2px 8px -2px rgba(0, 0, 0, 0.18);
+    color: var(--ink);
   }
 
   &.inverse {
-    background-color: var(--themeDarkColor);
-    box-shadow: 0 5px 10px var(--popoverShadowInverseColor);
-    color: var(--white);
+    border-color: var(--ink);
+    background-color: var(--ink);
+    box-shadow:
+      0 12px 32px -12px rgba(0, 0, 0, 0.45),
+      0 2px 8px -2px rgba(0, 0, 0, 0.18);
+    color: var(--paper);
   }
 }
 
@@ -50,20 +58,20 @@
     content: ' ';
 
     &.default {
-      border-top-color: var(--popoverArrowBorderColor);
+      border-top-color: var(--paperCard);
     }
 
     &.inverse {
-      border-top-color: var(--popoverArrowBorderInverseColor);
+      border-top-color: var(--ink);
     }
   }
 
   &.default {
-    border-top-color: var(--popoverArrowBorderColor);
+    border-top-color: var(--hairlineStrong);
   }
 
   &.inverse {
-    border-top-color: var(--popoverArrowBorderInverseColor);
+    border-top-color: var(--ink);
   }
 }
 
@@ -79,20 +87,20 @@
     content: ' ';
 
     &.default {
-      border-right-color: var(--popoverArrowBorderColor);
+      border-right-color: var(--paperCard);
     }
 
     &.inverse {
-      border-right-color: var(--popoverArrowBorderInverseColor);
+      border-right-color: var(--ink);
     }
   }
 
   &.default {
-    border-right-color: var(--popoverArrowBorderColor);
+    border-right-color: var(--hairlineStrong);
   }
 
   &.inverse {
-    border-right-color: var(--popoverArrowBorderInverseColor);
+    border-right-color: var(--ink);
   }
 }
 
@@ -108,20 +116,20 @@
     content: ' ';
 
     &.default {
-      border-bottom-color: var(--popoverArrowBorderColor);
+      border-bottom-color: var(--paperCard);
     }
 
     &.inverse {
-      border-bottom-color: var(--popoverArrowBorderInverseColor);
+      border-bottom-color: var(--ink);
     }
   }
 
   &.default {
-    border-bottom-color: var(--popoverArrowBorderColor);
+    border-bottom-color: var(--hairlineStrong);
   }
 
   &.inverse {
-    border-bottom-color: var(--popoverArrowBorderInverseColor);
+    border-bottom-color: var(--ink);
   }
 }
 
@@ -137,25 +145,28 @@
     content: ' ';
 
     &.default {
-      border-left-color: var(--popoverArrowBorderColor);
+      border-left-color: var(--paperCard);
     }
 
     &.inverse {
-      border-left-color: var(--popoverArrowBorderInverseColor);
+      border-left-color: var(--ink);
     }
   }
 
   &.default {
-    border-left-color: var(--popoverArrowBorderColor);
+    border-left-color: var(--hairlineStrong);
   }
 
   &.inverse {
-    border-left-color: var(--popoverArrowBorderInverseColor);
+    border-left-color: var(--ink);
   }
 }
 
 .body {
-  padding: 5px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-family: var(--defaultFontFamily);
+  line-height: 1.5;
 }
 
 .verticalContainer {

@@ -1,12 +1,12 @@
 .title {
-  line-height: $lineHeight;
+  line-height: var(--lineHeight);
 }
 
 .title {
-  font-weight: bold;
+  font-weight: 600;
 }
 
-@media (min-width: 768px) {
+@media only screen and (min-width: $breakpointSmall) {
   .title {
     @add-mixin truncate;
 

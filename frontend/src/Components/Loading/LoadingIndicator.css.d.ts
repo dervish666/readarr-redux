@@ -4,6 +4,7 @@ interface CssExports {
   'loading': string;
   'ripple': string;
   'rippleContainer': string;
+  'ripplePulse': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

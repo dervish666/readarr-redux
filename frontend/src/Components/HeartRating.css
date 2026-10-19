@@ -4,5 +4,6 @@
 }
 
 .rating {
-  margin-right: 15px;
+  display: inline-flex;
+  align-items: center;
 }
