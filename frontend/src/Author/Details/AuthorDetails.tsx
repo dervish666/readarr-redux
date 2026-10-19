@@ -249,8 +249,9 @@ function AuthorDetails({ authorId }: AuthorDetailsProps) {
   const wasRefreshing = usePrevious(isRefreshing);
   const wasRenaming = usePrevious(isRenaming);
 
-  // The Files and Search tabs are still JS tables on the redux bookFiles and releases
-  // feeds, so the page keeps fetching and clearing those for them.
+  // The book editor's JS delete modal (Book/Editor/Delete) lists the selected books'
+  // files from the redux bookFiles feed, and the Search tab is still the JS table on
+  // the redux releases feed, so the page keeps fetching and clearing those for them.
   const populate = useCallback(() => {
     refetchBooks();
     refetchBookFiles();

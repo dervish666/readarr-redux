@@ -94,7 +94,6 @@ export const persistState = [
 export const FETCH_BOOK_FILES = 'bookFiles/fetchBookFiles';
 export const DELETE_BOOK_FILE = 'bookFiles/deleteBookFile';
 export const DELETE_BOOK_FILES = 'bookFiles/deleteBookFiles';
-export const UPDATE_BOOK_FILES = 'bookFiles/updateBookFiles';
 export const SET_BOOK_FILES_SORT = 'bookFiles/setBookFilesSort';
 export const SET_BOOK_FILES_TABLE_OPTION = 'bookFiles/setBookFilesTableOption';
 export const CLEAR_BOOK_FILES = 'bookFiles/clearBookFiles';
@@ -105,7 +104,6 @@ export const CLEAR_BOOK_FILES = 'bookFiles/clearBookFiles';
 export const fetchBookFiles = createThunk(FETCH_BOOK_FILES);
 export const deleteBookFile = createThunk(DELETE_BOOK_FILE);
 export const deleteBookFiles = createThunk(DELETE_BOOK_FILES);
-export const updateBookFiles = createThunk(UPDATE_BOOK_FILES);
 export const setBookFilesSort = createAction(SET_BOOK_FILES_SORT);
 export const setBookFilesTableOption = createAction(SET_BOOK_FILES_TABLE_OPTION);
 export const clearBookFiles = createAction(CLEAR_BOOK_FILES);
@@ -196,62 +194,6 @@ export const actionHandlers = handleThunks({
         section,
         isDeleting: false,
         deleteError: xhr
-      }));
-    });
-  },
-
-  [UPDATE_BOOK_FILES]: function(getState, payload, dispatch) {
-    const {
-      bookFileIds,
-      quality
-    } = payload;
-
-    dispatch(set({ section, isSaving: true }));
-
-    const requestData = {
-      bookFileIds
-    };
-
-    if (quality) {
-      requestData.quality = quality;
-    }
-
-    const promise = createAjaxRequest({
-      url: '/bookFile/editor',
-      method: 'PUT',
-      dataType: 'json',
-      data: JSON.stringify(requestData)
-    }).request;
-
-    promise.done((data) => {
-      dispatch(batchActions([
-        ...bookFileIds.map((id) => {
-          const props = {};
-
-          const bookFile = data.find((file) => file.id === id);
-
-          props.qualityCutoffNotMet = bookFile.qualityCutoffNotMet;
-
-          if (quality) {
-            props.quality = quality;
-          }
-
-          return updateItem({ section, id, ...props });
-        }),
-
-        set({
-          section,
-          isSaving: false,
-          saveError: null
-        })
-      ]));
-    });
-
-    promise.fail((xhr) => {
-      dispatch(set({
-        section,
-        isSaving: false,
-        saveError: xhr
       }));
     });
   }

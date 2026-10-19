@@ -1,9 +1,27 @@
 .container {
+  overflow: hidden;
   border: 1px solid var(--borderColor);
-  border-radius: 4px;
-  background-color: var(--inputBackgroundColor);
+  border-radius: 8px;
+  background-color: var(--cardBackgroundColor);
+}
 
-  &:last-of-type {
-    margin-bottom: 0;
-  }
+.filesTable {
+  padding-top: 5px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-top: 1px solid var(--borderColor);
+  gap: 10px;
+}
+
+.selectInput {
+  min-width: 200px;
+}
+
+.blankpad {
+  padding: 16px 24px;
+  color: var(--helpTextColor);
 }
