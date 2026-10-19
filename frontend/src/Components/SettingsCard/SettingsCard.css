@@ -56,6 +56,15 @@
   }
 }
 
+.actionButton {
+  composes: button from '~Components/Link/IconButton.css';
+
+  flex-shrink: 0;
+  margin: 0;
+  width: 28px;
+  height: 28px;
+}
+
 .statusLine {
   display: flex;
   align-items: center;

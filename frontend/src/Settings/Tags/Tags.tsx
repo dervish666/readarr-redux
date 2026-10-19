@@ -6,12 +6,10 @@ import PageSectionContent from 'Components/Page/PageSectionContent';
 import settingsCardStyles from 'Components/SettingsCard/SettingsCard.css';
 import { kinds } from 'Helpers/Props';
 import {
-  fetchDelayProfiles,
   fetchDownloadClients,
   fetchImportLists,
   fetchIndexers,
   fetchNotifications,
-  fetchReleaseProfiles,
 } from 'Store/Actions/settingsActions';
 import useTagDetails from 'Tags/useTagDetails';
 import useTags, { useSortedTagList } from 'Tags/useTags';
@@ -27,12 +25,11 @@ function Tags() {
 
   const { isFetched: isDetailsFetched, error: detailsError } = useTagDetails();
 
-  // The details modal names what a tag is linked to. Those settings are still redux.
+  // The details modal names what a tag is linked to. These settings are still redux;
+  // delay and release profiles come from react-query in the modal itself.
   useEffect(() => {
-    dispatch(fetchDelayProfiles());
     dispatch(fetchImportLists());
     dispatch(fetchNotifications());
-    dispatch(fetchReleaseProfiles());
     dispatch(fetchIndexers());
     dispatch(fetchDownloadClients());
   }, [dispatch]);

@@ -16,3 +16,7 @@
   margin-bottom: 30px;
   color: var(--helpTextColor);
 }
+
+.pageSection {
+  margin-bottom: 48px;
+}

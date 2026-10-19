@@ -1,12 +1,12 @@
-import { createAction } from 'redux-actions';
 import createFetchHandler from 'Store/Actions/Creators/createFetchHandler';
 import createFetchSchemaHandler from 'Store/Actions/Creators/createFetchSchemaHandler';
-import createRemoveItemHandler from 'Store/Actions/Creators/createRemoveItemHandler';
-import createSaveProviderHandler from 'Store/Actions/Creators/createSaveProviderHandler';
-import createSetSettingValueReducer from 'Store/Actions/Creators/Reducers/createSetSettingValueReducer';
 import { createThunk } from 'Store/thunks';
-import getSectionState from 'Utilities/State/getSectionState';
-import updateSectionState from 'Utilities/State/updateSectionState';
+
+// Read-only feed. Settings > Profiles edits quality profiles through react-query
+// (Settings/Profiles/Quality/useQualityProfiles.ts) and dispatches fetchQualityProfiles
+// after every change, because author, book, add-new and import list pages and the
+// profile select inputs still read state.settings.qualityProfiles. The schema is read
+// by the quality filter builder, interactive import and the book file editor.
 
 //
 // Variables
@@ -18,27 +18,12 @@ const section = 'settings.qualityProfiles';
 
 export const FETCH_QUALITY_PROFILES = 'settings/qualityProfiles/fetchQualityProfiles';
 export const FETCH_QUALITY_PROFILE_SCHEMA = 'settings/qualityProfiles/fetchQualityProfileSchema';
-export const SAVE_QUALITY_PROFILE = 'settings/qualityProfiles/saveQualityProfile';
-export const DELETE_QUALITY_PROFILE = 'settings/qualityProfiles/deleteQualityProfile';
-export const SET_QUALITY_PROFILE_VALUE = 'settings/qualityProfiles/setQualityProfileValue';
-export const CLONE_QUALITY_PROFILE = 'settings/qualityProfiles/cloneQualityProfile';
 
 //
 // Action Creators
 
 export const fetchQualityProfiles = createThunk(FETCH_QUALITY_PROFILES);
 export const fetchQualityProfileSchema = createThunk(FETCH_QUALITY_PROFILE_SCHEMA);
-export const saveQualityProfile = createThunk(SAVE_QUALITY_PROFILE);
-export const deleteQualityProfile = createThunk(DELETE_QUALITY_PROFILE);
-
-export const setQualityProfileValue = createAction(SET_QUALITY_PROFILE_VALUE, (payload) => {
-  return {
-    section,
-    ...payload
-  };
-});
-
-export const cloneQualityProfile = createAction(CLONE_QUALITY_PROFILE);
 
 //
 // Details
@@ -52,16 +37,11 @@ export default {
     isFetching: false,
     isPopulated: false,
     error: null,
-    isDeleting: false,
-    deleteError: null,
     isSchemaFetching: false,
     isSchemaPopulated: false,
     schemaError: null,
     schema: {},
-    isSaving: false,
-    saveError: null,
-    items: [],
-    pendingChanges: {}
+    items: []
   },
 
   //
@@ -69,29 +49,12 @@ export default {
 
   actionHandlers: {
     [FETCH_QUALITY_PROFILES]: createFetchHandler(section, '/qualityprofile'),
-    [FETCH_QUALITY_PROFILE_SCHEMA]: createFetchSchemaHandler(section, '/qualityprofile/schema'),
-    [SAVE_QUALITY_PROFILE]: createSaveProviderHandler(section, '/qualityprofile'),
-    [DELETE_QUALITY_PROFILE]: createRemoveItemHandler(section, '/qualityprofile')
+    [FETCH_QUALITY_PROFILE_SCHEMA]: createFetchSchemaHandler(section, '/qualityprofile/schema')
   },
 
   //
   // Reducers
 
-  reducers: {
-    [SET_QUALITY_PROFILE_VALUE]: createSetSettingValueReducer(section),
-
-    [CLONE_QUALITY_PROFILE]: function(state, { payload }) {
-      const id = payload.id;
-      const newState = getSectionState(state, section);
-      const item = newState.items.find((i) => i.id === id);
-      const pendingChanges = { ...item, id: 0 };
-      delete pendingChanges.id;
-
-      pendingChanges.name = `${pendingChanges.name} - Copy`;
-      newState.pendingChanges = pendingChanges;
-
-      return updateSectionState(state, section, newState);
-    }
-  }
+  reducers: {}
 
 };

@@ -6,6 +6,7 @@ interface CssExports {
   'formGroupsContainer': string;
   'formatItemLarge': string;
   'formatItemSmall': string;
+  'qualitiesColumn': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

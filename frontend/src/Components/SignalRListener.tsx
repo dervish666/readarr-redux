@@ -19,10 +19,7 @@ import {
   updateCommand,
 } from 'Store/Actions/commandActions';
 import { fetchQueueDetails } from 'Store/Actions/queueActions';
-import {
-  fetchQualityDefinitions,
-  fetchRootFolders,
-} from 'Store/Actions/settingsActions';
+import { fetchRootFolders } from 'Store/Actions/settingsActions';
 import { fetchTags } from 'Store/Actions/tagActions';
 import { repopulatePage } from 'Utilities/pagePopulator';
 import SignalRLogger from 'Utilities/SignalRLogger';
@@ -211,7 +208,7 @@ function SignalRListener() {
         return;
 
       case 'qualitydefinition':
-        dispatch(fetchQualityDefinitions());
+        // Settings > Quality is on react-query; invalidateQueries above refetches it.
         return;
 
       case 'queue':

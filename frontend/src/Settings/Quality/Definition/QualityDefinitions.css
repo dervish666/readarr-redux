@@ -1,37 +1,42 @@
 .header {
   display: flex;
-  font-weight: bold;
+  margin-top: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--inkMuted);
+  font-weight: 600;
+  font-size: 13px;
+  gap: 24px;
 }
 
-.quality,
+.quality {
+  flex: 0 0 200px;
+}
+
 .title {
-  flex: 0 1 250px;
+  flex: 1 1 250px;
+  max-width: 400px;
 }
 
 .sizeLimit {
-  flex: 0 1 500px;
+  flex: 1 1 300px;
 }
 
-.sizeLimitHelpTextContainer {
+.definitions {
   display: flex;
-  justify-content: flex-end;
-  margin-top: 20px;
-  max-width: 1000px;
+  flex-direction: column;
 }
 
 .sizeLimitHelpText {
-  max-width: 500px;
-  color: var(--helpTextColor);
+  margin-top: 16px;
+  max-width: 65ch;
+  color: var(--inkMuted);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 @media only screen and (max-width: $breakpointSmall) {
   .header {
     display: none;
-  }
-
-  .definitions {
-    &:first-child {
-      border-top: none;
-    }
   }
 }

@@ -6,6 +6,7 @@ interface CssExports {
   'headerContainer': string;
   'headerScore': string;
   'headerTitle': string;
+  'heading': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

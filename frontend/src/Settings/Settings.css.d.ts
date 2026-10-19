@@ -2,6 +2,7 @@
 // Please do not change this file!
 interface CssExports {
   'link': string;
+  'pageSection': string;
   'summary': string;
 }
 export const cssExports: CssExports;

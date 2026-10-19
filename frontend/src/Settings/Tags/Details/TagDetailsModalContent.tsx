@@ -10,6 +10,8 @@ import ModalContent from 'Components/Modal/ModalContent';
 import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
 import { kinds } from 'Helpers/Props';
+import { useDelayProfiles } from 'Settings/Profiles/Delay/useDelayProfiles';
+import { useReleaseProfiles } from 'Settings/Profiles/Release/useReleaseProfiles';
 import translate from 'Utilities/String/translate';
 import TagDetailsDelayProfile from './TagDetailsDelayProfile';
 import styles from './TagDetailsModalContent.css';
@@ -18,27 +20,13 @@ interface NamedItem extends ModelBase {
   name: string;
 }
 
-interface DelayProfile extends ModelBase {
-  preferredProtocol: string;
-  enableUsenet: boolean;
-  enableTorrent: boolean;
-  usenetDelay: number;
-  torrentDelay: number;
-}
-
-interface ReleaseProfile extends ModelBase {
-  required: string[];
-  ignored: string[];
-}
-
 // Authors and these settings are still redux feeds; only the parts read here.
+// Delay and release profiles are on react-query.
 interface TagLinksState {
   authors: { items: Author[] };
   settings: {
-    delayProfiles: { items: DelayProfile[] };
     importLists: { items: NamedItem[] };
     notifications: { items: NamedItem[] };
-    releaseProfiles: { items: ReleaseProfile[] };
     indexers: { items: NamedItem[] };
     downloadClients: { items: NamedItem[] };
   };
@@ -94,9 +82,10 @@ function TagDetailsModalContent({
     [matchingAuthors]
   );
 
-  const delayProfiles = useMatchingItems(
-    delayProfileIds,
-    (state) => state.settings.delayProfiles.items
+  const { data: allDelayProfiles } = useDelayProfiles();
+  const delayProfiles = useMemo(
+    () => allDelayProfiles.filter((item) => delayProfileIds.includes(item.id)),
+    [allDelayProfiles, delayProfileIds]
   );
   const importLists = useMatchingItems(
     importListIds,
@@ -106,9 +95,11 @@ function TagDetailsModalContent({
     notificationIds,
     (state) => state.settings.notifications.items
   );
-  const releaseProfiles = useMatchingItems(
-    releaseProfileIds,
-    (state) => state.settings.releaseProfiles.items
+  const { data: allReleaseProfiles } = useReleaseProfiles();
+  const releaseProfiles = useMemo(
+    () =>
+      allReleaseProfiles.filter((item) => releaseProfileIds.includes(item.id)),
+    [allReleaseProfiles, releaseProfileIds]
   );
   const indexers = useMatchingItems(
     indexerIds,

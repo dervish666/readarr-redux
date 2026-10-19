@@ -3,7 +3,6 @@ import { handleThunks } from 'Store/thunks';
 import createHandleActions from './Creators/createHandleActions';
 import customFormats from './Settings/customFormats';
 import customFormatSpecifications from './Settings/customFormatSpecifications';
-import delayProfiles from './Settings/delayProfiles';
 import development from './Settings/development';
 import downloadClientOptions from './Settings/downloadClientOptions';
 import downloadClients from './Settings/downloadClients';
@@ -22,16 +21,13 @@ import metadataSource from './Settings/metadataSource';
 import naming from './Settings/naming';
 import namingExamples from './Settings/namingExamples';
 import notifications from './Settings/notifications';
-import qualityDefinitions from './Settings/qualityDefinitions';
 import qualityProfiles from './Settings/qualityProfiles';
-import releaseProfiles from './Settings/releaseProfiles';
 import remotePathMappings from './Settings/remotePathMappings';
 import rootFolders from './Settings/rootFolders';
 import ui from './Settings/ui';
 
 export * from './Settings/customFormatSpecifications.js';
 export * from './Settings/customFormats';
-export * from './Settings/delayProfiles';
 export * from './Settings/downloadClients';
 export * from './Settings/downloadClientOptions';
 export * from './Settings/general';
@@ -49,9 +45,7 @@ export * from './Settings/metadataSource';
 export * from './Settings/naming';
 export * from './Settings/namingExamples';
 export * from './Settings/notifications';
-export * from './Settings/qualityDefinitions';
 export * from './Settings/qualityProfiles';
-export * from './Settings/releaseProfiles';
 export * from './Settings/remotePathMappings';
 export * from './Settings/rootFolders';
 export * from './Settings/development';
@@ -70,7 +64,6 @@ export const defaultState = {
 
   customFormatSpecifications: customFormatSpecifications.defaultState,
   customFormats: customFormats.defaultState,
-  delayProfiles: delayProfiles.defaultState,
   downloadClients: downloadClients.defaultState,
   downloadClientOptions: downloadClientOptions.defaultState,
   general: general.defaultState,
@@ -88,9 +81,7 @@ export const defaultState = {
   naming: naming.defaultState,
   namingExamples: namingExamples.defaultState,
   notifications: notifications.defaultState,
-  qualityDefinitions: qualityDefinitions.defaultState,
   qualityProfiles: qualityProfiles.defaultState,
-  releaseProfiles: releaseProfiles.defaultState,
   remotePathMappings: remotePathMappings.defaultState,
   rootFolders: rootFolders.defaultState,
   development: development.defaultState,
@@ -117,7 +108,6 @@ export const toggleAdvancedSettings = createAction(TOGGLE_ADVANCED_SETTINGS);
 export const actionHandlers = handleThunks({
   ...customFormatSpecifications.actionHandlers,
   ...customFormats.actionHandlers,
-  ...delayProfiles.actionHandlers,
   ...downloadClients.actionHandlers,
   ...downloadClientOptions.actionHandlers,
   ...general.actionHandlers,
@@ -135,9 +125,7 @@ export const actionHandlers = handleThunks({
   ...naming.actionHandlers,
   ...namingExamples.actionHandlers,
   ...notifications.actionHandlers,
-  ...qualityDefinitions.actionHandlers,
   ...qualityProfiles.actionHandlers,
-  ...releaseProfiles.actionHandlers,
   ...remotePathMappings.actionHandlers,
   ...rootFolders.actionHandlers,
   ...development.actionHandlers,
@@ -155,7 +143,6 @@ export const reducers = createHandleActions({
 
   ...customFormatSpecifications.reducers,
   ...customFormats.reducers,
-  ...delayProfiles.reducers,
   ...downloadClients.reducers,
   ...downloadClientOptions.reducers,
   ...general.reducers,
@@ -173,9 +160,7 @@ export const reducers = createHandleActions({
   ...naming.reducers,
   ...namingExamples.reducers,
   ...notifications.reducers,
-  ...qualityDefinitions.reducers,
   ...qualityProfiles.reducers,
-  ...releaseProfiles.reducers,
   ...remotePathMappings.reducers,
   ...rootFolders.reducers,
   ...development.reducers,

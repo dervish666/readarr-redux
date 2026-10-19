@@ -2,7 +2,10 @@ import AppSectionState, {
   AppSectionDeleteState,
   AppSectionItemState,
   AppSectionSaveState,
+  AppSectionSchemaState,
 } from 'App/State/AppSectionState';
+import { MetadataProfileModel } from 'Settings/Profiles/Metadata/useMetadataProfiles';
+import { QualityProfileModel } from 'Settings/Profiles/Quality/useQualityProfiles';
 import DownloadClient from 'typings/DownloadClient';
 import ImportList from 'typings/ImportList';
 import Indexer from 'typings/Indexer';
@@ -37,6 +40,14 @@ export interface NotificationAppState
   extends AppSectionState<Notification>,
     AppSectionDeleteState {}
 
+// Read-only redux feeds. Settings > Profiles edits these through react-query and
+// dispatches the fetch after every change; other pages still read them here.
+export interface QualityProfilesAppState
+  extends AppSectionState<QualityProfileModel>,
+    AppSectionSchemaState<QualityProfileModel['items'][number]> {}
+
+export type MetadataProfilesAppState = AppSectionState<MetadataProfileModel>;
+
 export type IndexerFlagSettingsAppState = AppSectionState<IndexerFlag>;
 export type UiSettingsAppState = AppSectionState<UiSettings>;
 
@@ -46,7 +57,9 @@ interface SettingsAppState {
   importLists: ImportListAppState;
   indexerFlags: IndexerFlagSettingsAppState;
   indexers: IndexerAppState;
+  metadataProfiles: MetadataProfilesAppState;
   notifications: NotificationAppState;
+  qualityProfiles: QualityProfilesAppState;
   rootFolders: AppSectionState<RootFolder>;
   ui: UiSettingsAppState;
 }
