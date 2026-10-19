@@ -7,7 +7,7 @@ import Queue from 'Activity/Queue/Queue';
 import AuthorDetailsPage from 'Author/Details/AuthorDetailsPage';
 import AuthorIndex from 'Author/Index/AuthorIndex';
 import BookDetailsPageConnector from 'Book/Details/BookDetailsPageConnector';
-import BookIndexConnector from 'Book/Index/BookIndexConnector';
+import BookIndex from 'Book/Index/BookIndex';
 import BookshelfConnector from 'Bookshelf/BookshelfConnector';
 import CalendarPageConnector from 'Calendar/CalendarPageConnector';
 import NotFound from 'Components/NotFound';
@@ -92,7 +92,7 @@ function AppRoutes(props) {
       <Route
         exact={true}
         path="/books"
-        component={BookIndexConnector}
+        component={BookIndex}
       />
 
       <Route

@@ -1,13 +1,10 @@
 import _ from 'lodash';
-import moment from 'moment';
 import { createAction } from 'redux-actions';
 import { batchActions } from 'redux-batched-actions';
 import bookEntities from 'Book/bookEntities';
-import { filterTypePredicates, filterTypes, sortDirections } from 'Helpers/Props';
+import { sortDirections } from 'Helpers/Props';
 import { createThunk, handleThunks } from 'Store/thunks';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
-import dateFilterPredicate from 'Utilities/Date/dateFilterPredicate';
-import translate from 'Utilities/String/translate';
 import { removeItem, set, update, updateItem } from './baseActions';
 import createHandleActions from './Creators/createHandleActions';
 import createRemoveItemHandler from './Creators/createRemoveItemHandler';
@@ -19,164 +16,6 @@ import createSetSettingValueReducer from './Creators/Reducers/createSetSettingVa
 // Variables
 
 export const section = 'books';
-
-export const filters = [
-  {
-    key: 'all',
-    label: () => translate('All'),
-    filters: []
-  },
-  {
-    key: 'monitored',
-    label: () => translate('Monitored'),
-    filters: [
-      {
-        key: 'monitored',
-        value: true,
-        type: filterTypes.EQUAL
-      }
-    ]
-  },
-  {
-    key: 'unmonitored',
-    label: () => translate('Unmonitored'),
-    filters: [
-      {
-        key: 'monitored',
-        value: false,
-        type: filterTypes.EQUAL
-      }
-    ]
-  },
-  {
-    key: 'missing',
-    label: () => translate('Missing'),
-    filters: [
-      {
-        key: 'monitored',
-        value: true,
-        type: filterTypes.EQUAL
-      },
-      {
-        key: 'missing',
-        value: true,
-        type: filterTypes.EQUAL
-      }
-    ]
-  },
-  {
-    key: 'wanted',
-    label: () => translate('Wanted'),
-    filters: [
-      {
-        key: 'monitored',
-        value: true,
-        type: filterTypes.EQUAL
-      },
-      {
-        key: 'missing',
-        value: true,
-        type: filterTypes.EQUAL
-      },
-      {
-        key: 'releaseDate',
-        value: moment(),
-        type: filterTypes.LESS_THAN
-      }
-    ]
-  }
-];
-
-export const filterPredicates = {
-  missing: function(item) {
-    const { statistics = {} } = item;
-
-    return !statistics.hasOwnProperty('bookFileCount') || statistics.bookFileCount === 0;
-  },
-
-  releaseDate: function(item, filterValue, type) {
-    return dateFilterPredicate(item.releaseDate, filterValue, type);
-  },
-
-  added: function(item, filterValue, type) {
-    return dateFilterPredicate(item.added, filterValue, type);
-  },
-
-  qualityProfileId: function(item, filterValue, type) {
-    const predicate = filterTypePredicates[type];
-
-    return predicate(item.author.qualityProfileId, filterValue);
-  },
-
-  ratings: function(item, filterValue, type) {
-    const predicate = filterTypePredicates[type];
-
-    return predicate(item.ratings.value * 10, filterValue);
-  },
-
-  path: function(item, filterValue, type) {
-    const predicate = filterTypePredicates[type];
-
-    return predicate(item.author.path, filterValue);
-  },
-
-  bookFileCount: function(item, filterValue, type) {
-    const predicate = filterTypePredicates[type];
-    const bookCount = item.statistics ? item.statistics.bookFileCount : 0;
-
-    return predicate(bookCount, filterValue);
-  },
-
-  sizeOnDisk: function(item, filterValue, type) {
-    const predicate = filterTypePredicates[type];
-    const sizeOnDisk = item.statistics && item.statistics.sizeOnDisk ?
-      item.statistics.sizeOnDisk :
-      0;
-
-    return predicate(sizeOnDisk, filterValue);
-  }
-};
-
-export const sortPredicates = {
-  sizeOnDisk: function(item) {
-    const { statistics = {} } = item;
-
-    return statistics.sizeOnDisk || 0;
-  },
-
-  path: function(item) {
-    return item.author.path;
-  },
-
-  series: function(item) {
-    return item.seriesTitle;
-  },
-
-  rating: function(item) {
-    return item.ratings.value;
-  },
-
-  status: function(item) {
-    let result = 0;
-
-    const hasBookFile = !!item.statistics?.bookFileCount;
-    const isAvailable = Date.parse(item.releaseDate) < new Date();
-
-    if (isAvailable) {
-      result++;
-    }
-
-    if (item.monitored) {
-      result += 2;
-    }
-
-    if (hasBookFile) {
-      result += 4;
-    }
-
-    return result;
-  }
-};
 
 //
 // State

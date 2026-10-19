@@ -1,13 +1,11 @@
-import { createAction } from 'redux-actions';
 import { createThunk, handleThunks } from 'Store/thunks';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
 import { set } from './baseActions';
 import createHandleActions from './Creators/createHandleActions';
 
 // The author index runs on react-query and Author/Index/authorIndexOptionsStore.ts.
-// What is left here still has redux users: the book index reads overviewOptions and
-// tableOptions (and sets overview options), and the author editor's bulk delete
-// (Author/Editor/Delete) runs through bulkDeleteAuthor.
+// What is left here is the author editor's bulk delete (Author/Editor/Delete), which
+// still runs through bulkDeleteAuthor.
 
 //
 // Variables
@@ -19,44 +17,17 @@ export const section = 'authorIndex';
 
 export const defaultState = {
   isDeleting: false,
-  deleteError: null,
-
-  overviewOptions: {
-    showTitle: 'lastFirst',
-    detailedProgressBar: false,
-    size: 'medium',
-    showMonitored: true,
-    showQualityProfile: true,
-    showLastBook: false,
-    showAdded: false,
-    showBookCount: true,
-    showPath: false,
-    showSizeOnDisk: false,
-    showSearchAction: false
-  },
-
-  tableOptions: {
-    showTitle: 'lastFirst',
-    showBanners: false,
-    showSearchAction: false
-  }
+  deleteError: null
 };
-
-export const persistState = [
-  'authorIndex.overviewOptions',
-  'authorIndex.tableOptions'
-];
 
 //
 // Actions Types
 
-export const SET_AUTHOR_OVERVIEW_OPTION = 'authorIndex/setAuthorOverviewOption';
 export const BULK_DELETE_AUTHOR = 'authorIndex/bulkDeleteAuthor';
 
 //
 // Action Creators
 
-export const setAuthorOverviewOption = createAction(SET_AUTHOR_OVERVIEW_OPTION);
 export const bulkDeleteAuthor = createThunk(BULK_DELETE_AUTHOR);
 
 //
@@ -99,18 +70,4 @@ export const actionHandlers = handleThunks({
 //
 // Reducers
 
-export const reducers = createHandleActions({
-
-  [SET_AUTHOR_OVERVIEW_OPTION]: function(state, { payload }) {
-    const overviewOptions = state.overviewOptions;
-
-    return {
-      ...state,
-      overviewOptions: {
-        ...overviewOptions,
-        ...payload
-      }
-    };
-  }
-
-}, defaultState, section);
+export const reducers = createHandleActions({}, defaultState, section);

@@ -17,6 +17,7 @@ AuthorPoster.propTypes = {
   className: PropTypes.string,
   style: PropTypes.object,
   images: PropTypes.arrayOf(PropTypes.object).isRequired,
+  coverType: PropTypes.string,
   size: PropTypes.number.isRequired,
   lazy: PropTypes.bool,
   overflow: PropTypes.bool,

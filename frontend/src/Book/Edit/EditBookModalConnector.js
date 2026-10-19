@@ -32,6 +32,9 @@ class EditBookModalConnector extends Component {
 }
 
 EditBookModalConnector.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  bookId: PropTypes.number.isRequired,
+  authorId: PropTypes.number,
   onModalClose: PropTypes.func.isRequired,
   clearPendingChanges: PropTypes.func.isRequired
 };
