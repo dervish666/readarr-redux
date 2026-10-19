@@ -44,6 +44,10 @@ export const useSaveBookMetadataOverride = (bookId: number) => {
         // The author page lists the book's series. The book itself arrives in a
         // SignalR book message (BookUpdatedEvent).
         queryClient.invalidateQueries({ queryKey: ['/series'] });
+        // The book index shows the overview, which an override can change.
+        queryClient.invalidateQueries({
+          queryKey: [`/book/${bookId}/overview`],
+        });
       },
     },
   });

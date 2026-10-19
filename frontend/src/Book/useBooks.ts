@@ -145,6 +145,9 @@ export const useSaveBook = (onSaved?: (book: Book) => void) => {
       // The response is the saved book; fall back to what was sent if it is empty.
       updateBooks([savedBook?.id ? savedBook : book]);
       queryClient.invalidateQueries({ queryKey: ['/edition'] });
+      queryClient.invalidateQueries({
+        queryKey: [`/book/${book.id}/overview`],
+      });
       onSaved?.(savedBook);
     },
   });
@@ -174,18 +177,48 @@ export const useToggleBooksMonitored = () => {
     path: '/book/monitor',
     method: 'PUT',
     mutationOptions: {
-      onMutate: ({ bookIds, monitored }) => {
+      onMutate: async ({ bookIds, monitored }) => {
+        // A refetch landing after this would overwrite the optimistic value.
+        await queryClient.cancelQueries({ queryKey: ['/book'] });
+
+        // Remember each book's own value: a series or shift-click toggle sends books
+        // that were already in the target state, so "flip back" would be wrong.
+        const previous = new Map<number, boolean>();
+
+        queryClient
+          .getQueriesData<Book[]>({ queryKey: ['/book'] })
+          .forEach(([, books]) => {
+            if (!Array.isArray(books)) {
+              return;
+            }
+
+            books.forEach((book) => {
+              if (bookIds.includes(book.id) && !previous.has(book.id)) {
+                previous.set(book.id, book.monitored);
+              }
+            });
+          });
+
         updateCachedItems<Book>(
           queryClient,
           '/book',
           bookIds.map((id) => ({ id, monitored }))
         );
+
+        return previous;
       },
-      onError: (_error, { bookIds, monitored }) => {
+      onError: (_error, _payload, context) => {
+        const previous = context as Map<number, boolean> | undefined;
+
+        if (!previous?.size) {
+          queryClient.invalidateQueries({ queryKey: ['/book'] });
+          return;
+        }
+
         updateCachedItems<Book>(
           queryClient,
           '/book',
-          bookIds.map((id) => ({ id, monitored: !monitored }))
+          [...previous].map(([id, monitored]) => ({ id, monitored }))
         );
       },
       onSuccess: (books, { bookIds, monitored }) => {

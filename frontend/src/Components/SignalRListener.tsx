@@ -161,6 +161,12 @@ function SignalRListener() {
 
     invalidateQueries(queryClient, name);
 
+    // A model delete arrives twice: first with no resource, then with { id }
+    // (RestControllerWithSignalR). The second does the removal.
+    if (body.action === 'deleted' && !body.resource) {
+      return;
+    }
+
     switch (name) {
       case 'calendar':
         // The calendar's controller broadcasts as 'book' (its resource name), so this
@@ -189,6 +195,13 @@ function SignalRListener() {
 
         // v1 has no edition message; a book change may have moved its editions.
         queryClient.invalidateQueries({ queryKey: ['/edition'] });
+
+        if (book?.id) {
+          // The index overview is the monitored edition's, cached per book.
+          queryClient.invalidateQueries({
+            queryKey: [`/book/${book.id}/overview`],
+          });
+        }
 
         if (body.action === 'updated') {
           // Some book messages (track imported) carry no statistics; the merge keeps

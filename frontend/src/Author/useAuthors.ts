@@ -597,15 +597,27 @@ export const useUpdateAuthorMonitor = (onSaved?: () => void) => {
     path: '/bookshelf',
     method: 'POST',
     mutationOptions: {
-      onSuccess: (_data, { authors, monitorNewItems }) => {
+      onSuccess: (_data, { authors, monitorNewItems, monitoringOptions }) => {
+        // The server also unmonitors the author when the books option is None.
+        const unmonitorAuthor = monitoringOptions?.monitor === 'none';
+
         updateAuthors(
           authors
-            .filter((a) => a.monitored != null || monitorNewItems != null)
-            .map(({ id, monitored }) => ({
-              id,
-              ...(monitored == null ? {} : { monitored }),
-              ...(monitorNewItems == null ? {} : { monitorNewItems }),
-            }))
+            .filter(
+              (a) =>
+                a.monitored != null ||
+                monitorNewItems != null ||
+                unmonitorAuthor
+            )
+            .map(({ id, monitored }) => {
+              const newMonitored = unmonitorAuthor ? false : monitored;
+
+              return {
+                id,
+                ...(newMonitored == null ? {} : { monitored: newMonitored }),
+                ...(monitorNewItems == null ? {} : { monitorNewItems }),
+              };
+            })
         );
 
         // Which books changed is decided on the server, so refetch them.
