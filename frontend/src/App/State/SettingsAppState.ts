@@ -8,6 +8,7 @@ import ImportList from 'typings/ImportList';
 import Indexer from 'typings/Indexer';
 import IndexerFlag from 'typings/IndexerFlag';
 import Notification from 'typings/Notification';
+import RootFolder from 'typings/RootFolder';
 import General from 'typings/Settings/General';
 import UiSettings from 'typings/Settings/UiSettings';
 
@@ -46,6 +47,7 @@ interface SettingsAppState {
   indexerFlags: IndexerFlagSettingsAppState;
   indexers: IndexerAppState;
   notifications: NotificationAppState;
+  rootFolders: AppSectionState<RootFolder>;
   ui: UiSettingsAppState;
 }
 

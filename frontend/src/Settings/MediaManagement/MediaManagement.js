@@ -14,7 +14,7 @@ import RemotePathMappingsConnector from 'Settings/DownloadClients/RemotePathMapp
 import SettingsToolbarConnector from 'Settings/SettingsToolbarConnector';
 import translate from 'Utilities/String/translate';
 import NamingConnector from './Naming/NamingConnector';
-import RootFoldersConnector from './RootFolder/RootFoldersConnector';
+import RootFolders from './RootFolder/RootFolders';
 
 const rescanAfterRefreshOptions = [
   { key: 'always', value: 'Always' },
@@ -66,7 +66,7 @@ class MediaManagement extends Component {
         />
 
         <PageContentBody>
-          <RootFoldersConnector />
+          <RootFolders />
           <RemotePathMappingsConnector />
           <NamingConnector />
 

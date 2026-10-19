@@ -1,9 +1,10 @@
 import { createThunk, handleThunks } from 'Store/thunks';
-import createAjaxRequest from 'Utilities/createAjaxRequest';
-import { update } from './baseActions';
 import createFetchHandler from './Creators/createFetchHandler';
 import createHandleActions from './Creators/createHandleActions';
-import createRemoveItemHandler from './Creators/createRemoveItemHandler';
+
+// Read-only feed until Stage 3: author, book, calendar and settings pages still read
+// state.tags. Settings > Tags, the tag input and SignalR use react-query (Tags/useTags)
+// and dispatch fetchTags after every change so this copy stays current.
 
 //
 // Variables
@@ -17,58 +18,24 @@ export const defaultState = {
   isFetching: false,
   isPopulated: false,
   error: null,
-  items: [],
-
-  details: {
-    isFetching: false,
-    isPopulated: false,
-    error: null,
-    items: []
-  }
+  items: []
 };
 
 //
 // Actions Types
 
 export const FETCH_TAGS = 'tags/fetchTags';
-export const ADD_TAG = 'tags/addTag';
-export const DELETE_TAG = 'tags/deleteTag';
-export const FETCH_TAG_DETAILS = 'tags/fetchTagDetails';
 
 //
 // Action Creators
 
 export const fetchTags = createThunk(FETCH_TAGS);
-export const addTag = createThunk(ADD_TAG);
-export const deleteTag = createThunk(DELETE_TAG);
-export const fetchTagDetails = createThunk(FETCH_TAG_DETAILS);
 
 //
 // Action Handlers
 
 export const actionHandlers = handleThunks({
-  [FETCH_TAGS]: createFetchHandler(section, '/tag'),
-
-  [ADD_TAG]: function(getState, payload, dispatch) {
-    const promise = createAjaxRequest({
-      url: '/tag',
-      method: 'POST',
-      data: JSON.stringify(payload.tag),
-      dataType: 'json'
-    }).request;
-
-    promise.done((data) => {
-      const tags = getState().tags.items.slice();
-      tags.push(data);
-
-      dispatch(update({ section, data: tags }));
-      payload.onTagCreated(data);
-    });
-  },
-
-  [DELETE_TAG]: createRemoveItemHandler(section, '/tag'),
-  [FETCH_TAG_DETAILS]: createFetchHandler('tags.details', '/tag/detail')
-
+  [FETCH_TAGS]: createFetchHandler(section, '/tag')
 });
 
 //

@@ -19,8 +19,11 @@ import {
   updateCommand,
 } from 'Store/Actions/commandActions';
 import { fetchQueueDetails } from 'Store/Actions/queueActions';
-import { fetchQualityDefinitions } from 'Store/Actions/settingsActions';
-import { fetchTagDetails, fetchTags } from 'Store/Actions/tagActions';
+import {
+  fetchQualityDefinitions,
+  fetchRootFolders,
+} from 'Store/Actions/settingsActions';
+import { fetchTags } from 'Store/Actions/tagActions';
 import { repopulatePage } from 'Utilities/pagePopulator';
 import SignalRLogger from 'Utilities/SignalRLogger';
 
@@ -49,9 +52,9 @@ const QUERY_KEYS_BY_MESSAGE: Record<string, string[]> = {
   qualitydefinition: ['/qualitydefinition'],
   queue: ['/queue'],
   'queue/details': ['/queue/details'],
-  rootfolder: ['/rootfolder'],
+  rootfolder: ['/rootFolder'],
   'system/task': ['/system/task'],
-  tag: ['/tag'],
+  tag: ['/tag', '/tag/detail'],
   'wanted/cutoff': ['/wanted/cutoff'],
   'wanted/missing': ['/wanted/missing'],
 };
@@ -260,21 +263,14 @@ function SignalRListener() {
         return;
 
       case 'rootfolder':
-        if (body.action === 'updated') {
-          dispatch(
-            updateItem({
-              section: 'settings.rootFolders',
-              updateOnly: true,
-              ...body.resource,
-            })
-          );
-        }
+        // Redux feed for add-new, the author editor, import lists and remote path mappings.
+        dispatch(fetchRootFolders());
         return;
 
       case 'tag':
+        // Redux feed for the author, book, calendar and settings pages.
         if (body.action === 'sync') {
           dispatch(fetchTags());
-          dispatch(fetchTagDetails());
         }
         return;
 

@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
-import PathInputConnector from 'Components/Form/PathInputConnector';
+import PathInput from 'Components/Form/PathInput';
 import Icon from 'Components/Icon';
 import Button from 'Components/Link/Button';
 import ModalBody from 'Components/Modal/ModalBody';
@@ -79,7 +79,7 @@ class InteractiveImportSelectFolderModalContent extends Component {
         </ModalHeader>
 
         <ModalBody>
-          <PathInputConnector
+          <PathInput
             name="folder"
             value={folder}
             onChange={this.onPathChange}

@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { PropertyFilter } from 'App/State/AppState';
+import { PropertyFilter } from 'Filters/Filter';
 import useApiMutation from 'Helpers/Hooks/useApiMutation';
 import usePage from 'Helpers/Hooks/usePage';
 import usePagedApiQuery from 'Helpers/Hooks/usePagedApiQuery';

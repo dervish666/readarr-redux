@@ -3,6 +3,7 @@ import React from 'react';
 import Link from 'Components/Link/Link';
 import { inputTypes, kinds } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
+import AuthorTagInput from './AuthorTagInput';
 // import translate from 'Utilities/String/translate';
 import AutoCompleteInput from './AutoCompleteInput';
 import BookEditionSelectInputConnector from './BookEditionSelectInputConnector';
@@ -23,10 +24,9 @@ import MonitorNewItemsSelectInput from './MonitorNewItemsSelectInput';
 import NumberInput from './NumberInput';
 import OAuthInputConnector from './OAuthInputConnector';
 import PasswordInput from './PasswordInput';
-import PathInputConnector from './PathInputConnector';
+import PathInput from './PathInput';
 import QualityProfileSelectInputConnector from './QualityProfileSelectInputConnector';
-import RootFolderSelectInputConnector from './RootFolderSelectInputConnector';
-import TagInputConnector from './TagInputConnector';
+import RootFolderSelectInput from './RootFolderSelectInput';
 import TagSelectInputConnector from './TagSelectInputConnector';
 import TextArea from './TextArea';
 import TextInput from './TextInput';
@@ -70,7 +70,7 @@ function getComponent(type) {
       return PasswordInput;
 
     case inputTypes.PATH:
-      return PathInputConnector;
+      return PathInput;
 
     case inputTypes.QUALITY_PROFILE_SELECT:
       return QualityProfileSelectInputConnector;
@@ -91,7 +91,7 @@ function getComponent(type) {
       return DownloadClientSelectInputConnector;
 
     case inputTypes.ROOT_FOLDER_SELECT:
-      return RootFolderSelectInputConnector;
+      return RootFolderSelectInput;
 
     case inputTypes.SELECT:
       return EnhancedSelectInput;
@@ -100,7 +100,7 @@ function getComponent(type) {
       return EnhancedSelectInputConnector;
 
     case inputTypes.TAG:
-      return TagInputConnector;
+      return AuthorTagInput;
 
     case inputTypes.TEXT_AREA:
       return TextArea;

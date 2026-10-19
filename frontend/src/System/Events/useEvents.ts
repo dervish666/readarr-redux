@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { PropertyFilter } from 'App/State/AppState';
+import { PropertyFilter } from 'Filters/Filter';
 import usePage from 'Helpers/Hooks/usePage';
 import usePagedApiQuery from 'Helpers/Hooks/usePagedApiQuery';
 import { filterTypes } from 'Helpers/Props';
