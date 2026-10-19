@@ -3,7 +3,7 @@ import Icon from 'Components/Icon';
 import VirtualTableRowCell from 'Components/Table/Cells/VirtualTableRowCell';
 import { icons } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
-import styles from './BookStatusCell.css';
+import styles from './BookStatusCell.module.css';
 
 interface BookStatusCellProps {
   className: string;

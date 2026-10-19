@@ -1,0 +1,31 @@
+.path {
+  composes: cell from 'Components/Table/Cells/TableRowCell.module.css';
+
+  word-break: break-all;
+  cursor: pointer;
+}
+
+.quality {
+  composes: cell from 'Components/Table/Cells/TableRowCell.module.css';
+
+  text-align: center;
+}
+
+.label {
+  composes: label from 'Components/Label.module.css';
+
+  cursor: pointer;
+}
+
+.reprocessing {
+  composes: loading from 'Components/Loading/LoadingIndicator.module.css';
+
+  margin-top: 0;
+  text-align: start;
+}
+
+.additionalFile {
+  composes: row from 'Components/Table/TableRow.module.css';
+
+  color: var(--disabledColor);
+}

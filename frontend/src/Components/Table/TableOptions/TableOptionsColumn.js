@@ -4,7 +4,7 @@ import React from 'react';
 import CheckInput from 'Components/Form/CheckInput';
 import Icon from 'Components/Icon';
 import { icons } from 'Helpers/Props';
-import styles from './TableOptionsColumn.css';
+import styles from './TableOptionsColumn.module.css';
 
 function TableOptionsColumn(props) {
   const {

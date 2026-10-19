@@ -2,7 +2,7 @@ import classNames from 'classnames';
 import PropTypes from 'prop-types';
 import React from 'react';
 import EnhancedSelectInputOption from './EnhancedSelectInputOption';
-import styles from './HintedSelectInputOption.css';
+import styles from './HintedSelectInputOption.module.css';
 
 function HintedSelectInputOption(props) {
   const {

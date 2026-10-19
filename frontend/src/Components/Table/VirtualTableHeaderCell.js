@@ -3,7 +3,7 @@ import React, { Component } from 'react';
 import Icon from 'Components/Icon';
 import Link from 'Components/Link/Link';
 import { icons, sortDirections } from 'Helpers/Props';
-import styles from './VirtualTableHeaderCell.css';
+import styles from './VirtualTableHeaderCell.module.css';
 
 export function headerRenderer(headerProps) {
   const {

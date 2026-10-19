@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
-import styles from './DescriptionList.css';
+import styles from './DescriptionList.module.css';
 
 class DescriptionList extends Component {
 

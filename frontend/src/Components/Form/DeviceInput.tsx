@@ -6,7 +6,7 @@ import useProviderOptions, {
 } from 'Settings/useProviderOptions';
 import FormInputButton from './FormInputButton';
 import TagInput from './TagInput';
-import styles from './DeviceInput.css';
+import styles from './DeviceInput.module.css';
 
 interface Device {
   id: string | number;

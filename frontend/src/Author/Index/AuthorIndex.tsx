@@ -46,7 +46,7 @@ import AuthorIndexTableOptions from './Table/AuthorIndexTableOptions';
 import useAuthorIndex, {
   AUTHOR_INDEX_CUSTOM_FILTER_TYPE,
 } from './useAuthorIndex';
-import styles from './AuthorIndex.css';
+import styles from './AuthorIndex.module.css';
 
 interface JumpBarItems {
   characters: Record<string, number>;

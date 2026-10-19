@@ -5,7 +5,7 @@ import { useCalendarOption } from 'Calendar/calendarOptionsStore';
 import * as calendarViews from 'Calendar/calendarViews';
 import CalendarEvent from 'Calendar/Events/CalendarEvent';
 import useCalendar, { useCalendarTime } from 'Calendar/useCalendar';
-import styles from './CalendarDay.css';
+import styles from './CalendarDay.module.css';
 
 const useCalendarEvents = (date: string) => {
   const { data } = useCalendar();

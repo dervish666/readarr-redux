@@ -1,0 +1,92 @@
+.qualityProfileItem {
+  display: flex;
+  align-items: center;
+  padding: 7px 12px;
+  width: 100%;
+  border-top: 1px solid var(--borderColor);
+  background: transparent;
+  gap: 10px;
+
+  &:hover {
+    background-color: var(--paperCard);
+  }
+}
+
+.checkInputContainer {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.checkInput {
+  composes: input from 'Components/Form/CheckInput.module.css';
+}
+
+.qualityNameContainer {
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+  margin: 0;
+  min-width: 0;
+  font-weight: normal;
+  cursor: pointer;
+  gap: 10px;
+}
+
+.qualityName {
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.3;
+
+  &.isInGroup {
+    margin-left: 14px;
+    color: var(--inkMuted);
+  }
+
+  &.notAllowed {
+    color: var(--inkFaint);
+  }
+}
+
+.createGroupButton {
+  composes: button from 'Components/Link/IconButton.module.css';
+
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.qualityProfileItem:hover .createGroupButton {
+  opacity: 1;
+}
+
+.dragHandle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: auto;
+  width: 28px;
+  color: var(--inkFaint);
+  cursor: grab;
+}
+
+.dragIcon {
+  top: 0;
+}
+
+.isDragging {
+  opacity: 0.4;
+}
+
+.isPreview {
+  .qualityName {
+    margin-left: 14px;
+
+    &.isInGroup {
+      margin-left: 28px;
+    }
+  }
+}

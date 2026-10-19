@@ -2,7 +2,7 @@ import classNames from 'classnames';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { kinds, sizes } from 'Helpers/Props';
-import styles from './Label.css';
+import styles from './Label.module.css';
 
 function Label(props) {
   const {

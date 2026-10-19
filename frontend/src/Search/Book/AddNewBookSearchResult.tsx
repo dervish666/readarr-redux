@@ -11,7 +11,7 @@ import { useExistingAuthor, useExistingBook } from 'Search/useAddNew';
 import stripHtml from 'Utilities/String/stripHtml';
 import translate from 'Utilities/String/translate';
 import AddNewBookModal from './AddNewBookModal';
-import styles from './AddNewBookSearchResult.css';
+import styles from './AddNewBookSearchResult.module.css';
 
 interface AddNewBookSearchResultProps {
   book: Book;

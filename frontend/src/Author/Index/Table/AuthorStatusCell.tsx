@@ -5,7 +5,7 @@ import Icon from 'Components/Icon';
 import VirtualTableRowCell from 'Components/Table/Cells/VirtualTableRowCell';
 import { icons } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
-import styles from './AuthorStatusCell.css';
+import styles from './AuthorStatusCell.module.css';
 
 interface AuthorStatusCellProps {
   className: string;

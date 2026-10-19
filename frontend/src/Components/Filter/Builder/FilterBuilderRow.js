@@ -13,7 +13,7 @@ import ProtocolFilterBuilderRowValue from './ProtocolFilterBuilderRowValue';
 import QualityFilterBuilderRowValue from './QualityFilterBuilderRowValue';
 import QualityProfileFilterBuilderRowValue from './QualityProfileFilterBuilderRowValue';
 import TagFilterBuilderRowValue from './TagFilterBuilderRowValue';
-import styles from './FilterBuilderRow.css';
+import styles from './FilterBuilderRow.module.css';
 
 function getselectedFilterBuilderProp(filterBuilderProps, name) {
   return filterBuilderProps.find((a) => {

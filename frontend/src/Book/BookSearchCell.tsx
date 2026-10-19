@@ -7,7 +7,7 @@ import TableRowCell from 'Components/Table/Cells/TableRowCell';
 import { icons } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
 import BookInteractiveSearchModal from './Search/BookInteractiveSearchModal';
-import styles from './BookSearchCell.css';
+import styles from './BookSearchCell.module.css';
 
 interface BookSearchCellProps {
   bookId: number;
@@ -45,7 +45,7 @@ function BookSearchCell({
   }, []);
 
   return (
-    <TableRowCell className={styles.BookSearchCell}>
+    <TableRowCell className={styles.bookSearchCell}>
       <SpinnerIconButton
         name={icons.SEARCH}
         aria-label={translate('AutomaticSearch')}

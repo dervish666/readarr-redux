@@ -4,7 +4,7 @@ import { Manager, Popper, Reference } from 'react-popper';
 import Portal from 'Components/Portal';
 import { align } from 'Helpers/Props';
 import getUniqueElememtId from 'Utilities/getUniqueElementId';
-import styles from './Menu.css';
+import styles from './Menu.module.css';
 
 const sharedPopperOptions = {
   modifiers: {

@@ -33,7 +33,7 @@ import {
 import useAuthorIndexItem from '../useAuthorIndexItem';
 import AuthorStatusCell from './AuthorStatusCell';
 import hasGrowableColumns from './hasGrowableColumns';
-import styles from './AuthorIndexRow.css';
+import styles from './AuthorIndexRow.module.css';
 
 interface AuthorIndexRowProps {
   authorId: number;

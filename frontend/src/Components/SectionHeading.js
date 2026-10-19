@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import React from 'react';
-import styles from './SectionHeading.css';
+import styles from './SectionHeading.module.css';
 
 function SectionHeading({ title, description }) {
   return (

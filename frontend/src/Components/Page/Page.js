@@ -8,7 +8,7 @@ import AuthenticationRequiredModal from 'FirstRun/AuthenticationRequiredModal';
 import locationShape from 'Helpers/Props/Shapes/locationShape';
 import PageHeader from './Header/PageHeader';
 import PageSidebar from './Sidebar/PageSidebar';
-import styles from './Page.css';
+import styles from './Page.module.css';
 
 class Page extends Component {
 

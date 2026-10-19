@@ -1,7 +1,7 @@
 import classNames from 'classnames';
 import PropTypes from 'prop-types';
 import React from 'react';
-import styles from './LoadingIndicator.css';
+import styles from './LoadingIndicator.module.css';
 
 function LoadingIndicator({ className, rippleClassName, size }) {
   const sizeInPx = `${size}px`;

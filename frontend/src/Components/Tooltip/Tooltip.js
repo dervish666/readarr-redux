@@ -6,7 +6,7 @@ import Portal from 'Components/Portal';
 import { kinds, tooltipPositions } from 'Helpers/Props';
 import dimensions from 'Styles/Variables/dimensions';
 import { isMobile as isMobileUtil } from 'Utilities/browser';
-import styles from './Tooltip.css';
+import styles from './Tooltip.module.css';
 
 let maxWidth = null;
 

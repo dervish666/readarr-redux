@@ -12,7 +12,7 @@ import formatDateTime from 'Utilities/Date/formatDateTime';
 import formatAge from 'Utilities/Number/formatAge';
 import formatCustomFormatScore from 'Utilities/Number/formatCustomFormatScore';
 import translate from 'Utilities/String/translate';
-import styles from './HistoryDetails.css';
+import styles from './HistoryDetails.module.css';
 
 interface StatusMessage {
   title: string;

@@ -10,7 +10,7 @@ import SortDirection from 'Helpers/Props/SortDirection';
 import translate from 'Utilities/String/translate';
 import { setBookIndexOption, setBookIndexSort } from '../bookIndexOptionsStore';
 import BookIndexTableOptions from './BookIndexTableOptions';
-import styles from './BookIndexHeader.css';
+import styles from './BookIndexHeader.module.css';
 
 interface BookIndexHeaderProps {
   columns: Column[];

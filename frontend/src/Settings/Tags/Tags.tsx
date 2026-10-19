@@ -2,7 +2,7 @@ import React from 'react';
 import Alert from 'Components/Alert';
 import InlineMarkdown from 'Components/Markdown/InlineMarkdown';
 import PageSectionContent from 'Components/Page/PageSectionContent';
-import settingsCardStyles from 'Components/SettingsCard/SettingsCard.css';
+import settingsCardStyles from 'Components/SettingsCard/SettingsCard.module.css';
 import { kinds } from 'Helpers/Props';
 import { useDownloadClients } from 'Settings/DownloadClients/DownloadClients/useDownloadClients';
 import { useImportLists } from 'Settings/ImportLists/ImportLists/useImportLists';

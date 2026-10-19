@@ -7,7 +7,7 @@ import translate from 'Utilities/String/translate';
 import EditImportListExclusionModal from './EditImportListExclusionModal';
 import ImportListExclusion from './ImportListExclusion';
 import { useImportListExclusions } from './useImportListExclusions';
-import styles from './ImportListExclusions.css';
+import styles from './ImportListExclusions.module.css';
 
 function ImportListExclusions() {
   const { isFetched, error, data } = useImportListExclusions();

@@ -1,9 +1,0 @@
-.descriptionList {
-  composes: descriptionList from '~Components/DescriptionList/DescriptionList.css';
-
-  margin-bottom: 10px;
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-}

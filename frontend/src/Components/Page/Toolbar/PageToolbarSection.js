@@ -10,7 +10,7 @@ import SpinnerIcon from 'Components/SpinnerIcon';
 import { forEach } from 'Helpers/elementChildren';
 import { align, icons } from 'Helpers/Props';
 import dimensions from 'Styles/Variables/dimensions';
-import styles from './PageToolbarSection.css';
+import styles from './PageToolbarSection.module.css';
 
 const BUTTON_WIDTH = parseInt(dimensions.toolbarButtonWidth);
 const SEPARATOR_MARGIN = parseInt(dimensions.toolbarSeparatorMargin);

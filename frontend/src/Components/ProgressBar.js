@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { ColorImpairedConsumer } from 'App/ColorImpairedContext';
 import { kinds, sizes } from 'Helpers/Props';
-import styles from './ProgressBar.css';
+import styles from './ProgressBar.module.css';
 
 function ProgressBar(props) {
   const {

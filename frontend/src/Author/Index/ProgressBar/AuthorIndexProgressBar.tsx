@@ -4,7 +4,7 @@ import ProgressBar from 'Components/ProgressBar';
 import { sizes } from 'Helpers/Props';
 import getProgressBarKind from 'Utilities/Author/getProgressBarKind';
 import translate from 'Utilities/String/translate';
-import styles from './AuthorIndexProgressBar.css';
+import styles from './AuthorIndexProgressBar.module.css';
 
 interface AuthorIndexProgressBarProps {
   monitored: boolean;

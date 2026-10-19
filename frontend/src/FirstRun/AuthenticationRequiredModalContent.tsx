@@ -22,7 +22,7 @@ import {
 } from 'Settings/General/useGeneralSettings';
 import { InputChanged } from 'typings/inputs';
 import translate from 'Utilities/String/translate';
-import styles from './AuthenticationRequiredModalContent.css';
+import styles from './AuthenticationRequiredModalContent.module.css';
 
 function onModalClose() {
   // No-op

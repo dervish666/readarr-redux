@@ -11,7 +11,7 @@ import { useExistingAuthor } from 'Search/useAddNew';
 import stripHtml from 'Utilities/String/stripHtml';
 import translate from 'Utilities/String/translate';
 import AddNewAuthorModal from './AddNewAuthorModal';
-import styles from './AddNewAuthorSearchResult.css';
+import styles from './AddNewAuthorSearchResult.module.css';
 
 interface AddNewAuthorSearchResultProps {
   author: Author;

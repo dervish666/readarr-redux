@@ -11,7 +11,7 @@ import {
   isQualityItem,
   QualityProfileItems as Items,
 } from './useQualityProfiles';
-import styles from './QualityProfileItems.css';
+import styles from './QualityProfileItems.module.css';
 
 interface QualityProfileItemsProps
   extends QualityProfileItemDragSourceActionProps {

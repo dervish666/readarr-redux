@@ -17,7 +17,7 @@ import BookIndexPosterSelect from '../Select/BookIndexPosterSelect';
 import { useBookIndexSelect } from '../Select/BookIndexSelectContext';
 import useBookIndexItem from '../useBookIndexItem';
 import BookIndexPosterInfo from './BookIndexPosterInfo';
-import styles from './BookIndexPoster.css';
+import styles from './BookIndexPoster.module.css';
 
 interface BookIndexPosterProps {
   book: Book;

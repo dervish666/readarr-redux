@@ -9,7 +9,7 @@ import { SelectedSchema } from 'Settings/useProviderSchema';
 import Provider from 'typings/Provider';
 import translate from 'Utilities/String/translate';
 import AddIndexerPresetMenuItem from './AddIndexerPresetMenuItem';
-import styles from './AddIndexerItem.css';
+import styles from './AddIndexerItem.module.css';
 
 interface AddIndexerItemProps {
   implementation: string;

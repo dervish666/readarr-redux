@@ -19,7 +19,7 @@ import translate from 'Utilities/String/translate';
 import TableOptionsColumn from './TableOptionsColumn';
 import TableOptionsColumnDragPreview from './TableOptionsColumnDragPreview';
 import TableOptionsColumnDragSource from './TableOptionsColumnDragSource';
-import styles from './TableOptionsModal.css';
+import styles from './TableOptionsModal.module.css';
 
 class TableOptionsModal extends Component {
 

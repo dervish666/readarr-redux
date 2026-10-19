@@ -12,7 +12,7 @@ import { icons } from 'Helpers/Props';
 import { useUiSettingsValues } from 'Settings/UI/useUiSettings';
 import formatTime from 'Utilities/Date/formatTime';
 import translate from 'Utilities/String/translate';
-import styles from './AgendaEvent.css';
+import styles from './AgendaEvent.module.css';
 
 interface AgendaEventProps {
   book: Book;

@@ -8,7 +8,7 @@ import { InputChanged } from 'typings/inputs';
 import translate from 'Utilities/String/translate';
 import BookEditorFooterLabel from './BookEditorFooterLabel';
 import DeleteBookModal from './Delete/DeleteBookModal';
-import styles from './BookEditorFooter.css';
+import styles from './BookEditorFooter.module.css';
 
 const NO_CHANGE = 'noChange';
 

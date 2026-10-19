@@ -7,7 +7,7 @@ import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
 import SectionHeading from 'Components/SectionHeading';
 import { icons } from 'Helpers/Props';
 import { useShowAdvancedSettings } from 'Settings/advancedSettingsStore';
-import settingsStyles from 'Settings/Settings.css';
+import settingsStyles from 'Settings/Settings.module.css';
 import SettingsToolbar from 'Settings/SettingsToolbar';
 import translate from 'Utilities/String/translate';
 import DownloadClients from './DownloadClients/DownloadClients';

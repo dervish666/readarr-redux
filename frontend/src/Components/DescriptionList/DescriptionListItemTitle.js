@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import React from 'react';
-import styles from './DescriptionListItemTitle.css';
+import styles from './DescriptionListItemTitle.module.css';
 
 function DescriptionListItemTitle(props) {
   const {

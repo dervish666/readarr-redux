@@ -5,7 +5,7 @@ import { QUALITY_PROFILE_ITEM } from 'Helpers/dragTypes';
 import dimensions from 'Styles/Variables/dimensions';
 import QualityProfileItem from './QualityProfileItem';
 import { QualityProfileDragItem } from './QualityProfileItemDragSource';
-import styles from './QualityProfileItemDragSource.css';
+import styles from './QualityProfileItemDragSource.module.css';
 
 const formGroupExtraSmallWidth = parseInt(dimensions.formGroupExtraSmallWidth);
 const formLabelSmallWidth = parseInt(dimensions.formLabelSmallWidth);

@@ -7,7 +7,7 @@ import { inputTypes } from 'Helpers/Props';
 import { PendingProviderSection } from 'typings/pending';
 import translate from 'Utilities/String/translate';
 import { NotificationModel } from '../useConnections';
-import styles from './NotificationEventItems.css';
+import styles from './NotificationEventItems.module.css';
 
 interface NotificationEventItemsProps {
   item: PendingProviderSection<NotificationModel>;

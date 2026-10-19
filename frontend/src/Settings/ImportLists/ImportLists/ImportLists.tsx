@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import PageSectionContent from 'Components/Page/PageSectionContent';
 import AddCard from 'Components/SettingsCard/AddCard';
-import settingsCardStyles from 'Components/SettingsCard/SettingsCard.css';
+import settingsCardStyles from 'Components/SettingsCard/SettingsCard.module.css';
 import {
   getProviderTestStatus,
   ProviderTestAllResult,

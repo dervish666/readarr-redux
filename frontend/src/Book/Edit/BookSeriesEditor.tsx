@@ -7,7 +7,7 @@ import IconButton from 'Components/Link/IconButton';
 import { icons, kinds, sizes } from 'Helpers/Props';
 import { InputChanged } from 'typings/inputs';
 import translate from 'Utilities/String/translate';
-import styles from './BookSeriesEditor.css';
+import styles from './BookSeriesEditor.module.css';
 
 export const NEW_SERIES = 'new';
 

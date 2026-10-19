@@ -3,7 +3,7 @@ import React from 'react';
 import Button from 'Components/Link/Button';
 import { kinds } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
-import styles from './NoAuthor.css';
+import styles from './NoAuthor.module.css';
 
 function NoAuthor(props) {
   const {

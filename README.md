@@ -75,7 +75,7 @@ To run with no login on purpose, set `<AuthenticationNoneConfirmed>True</Authent
 
 ## Building from source
 
-You need the .NET 10 SDK, Node 20 and Yarn 1.
+You need the .NET 10 SDK, Node 20.19 or later and Yarn 1.
 
 ```
 yarn install --frozen-lockfile

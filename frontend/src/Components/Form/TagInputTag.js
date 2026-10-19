@@ -5,7 +5,7 @@ import IconButton from 'Components/Link/IconButton';
 import Link from 'Components/Link/Link';
 import { icons, kinds } from 'Helpers/Props';
 import tagShape from 'Helpers/Props/Shapes/tagShape';
-import styles from './TagInputTag.css';
+import styles from './TagInputTag.module.css';
 
 class TagInputTag extends Component {
 

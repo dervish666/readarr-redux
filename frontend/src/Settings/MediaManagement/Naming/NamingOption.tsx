@@ -5,7 +5,7 @@ import Link from 'Components/Link/Link';
 import { icons } from 'Helpers/Props';
 import TokenCase from './TokenCase';
 import TokenSeparator from './TokenSeparator';
-import styles from './NamingOption.css';
+import styles from './NamingOption.module.css';
 
 export interface NamingOptionPress {
   isFullFilename: boolean;

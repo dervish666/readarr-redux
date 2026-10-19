@@ -1,0 +1,24 @@
+.torrent,
+.usenet,
+.unknown {
+  composes: label from 'Components/Label.module.css';
+}
+
+/* v5: a tinted pill whose dot carries the protocol colour */
+.torrent {
+  background-color: color-mix(in oklch, var(--torrentColor) 18%, transparent);
+}
+
+.torrent::before {
+  background-color: var(--torrentColor);
+  opacity: 1;
+}
+
+.usenet {
+  background-color: color-mix(in oklch, var(--usenetColor) 22%, transparent);
+}
+
+.usenet::before {
+  background-color: var(--usenetColor);
+  opacity: 1;
+}

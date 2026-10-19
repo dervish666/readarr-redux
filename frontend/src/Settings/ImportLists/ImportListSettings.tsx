@@ -6,7 +6,7 @@ import PageToolbarButton from 'Components/Page/Toolbar/PageToolbarButton';
 import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
 import SectionHeading from 'Components/SectionHeading';
 import { icons } from 'Helpers/Props';
-import settingsStyles from 'Settings/Settings.css';
+import settingsStyles from 'Settings/Settings.module.css';
 import SettingsToolbar from 'Settings/SettingsToolbar';
 import translate from 'Utilities/String/translate';
 import ImportListExclusions from './ImportListExclusions/ImportListExclusions';

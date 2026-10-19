@@ -12,7 +12,7 @@ import ModalHeader from 'Components/Modal/ModalHeader';
 import { inputTypes, kinds } from 'Helpers/Props';
 import { InputChanged } from 'typings/inputs';
 import translate from 'Utilities/String/translate';
-import styles from './DeleteBookModalContent.css';
+import styles from './DeleteBookModalContent.module.css';
 
 interface DeleteBookModalContentProps {
   bookIds: number[];

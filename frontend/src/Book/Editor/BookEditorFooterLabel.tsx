@@ -1,7 +1,7 @@
 import React from 'react';
 import SpinnerIcon from 'Components/SpinnerIcon';
 import { icons } from 'Helpers/Props';
-import styles from './BookEditorFooterLabel.css';
+import styles from './BookEditorFooterLabel.module.css';
 
 interface BookEditorFooterLabelProps {
   className?: string;

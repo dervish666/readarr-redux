@@ -7,7 +7,7 @@ import {
   useAuthorIndexSelect,
   useIsAuthorSelected,
 } from './AuthorIndexSelectContext';
-import styles from './AuthorIndexPosterSelect.css';
+import styles from './AuthorIndexPosterSelect.module.css';
 
 interface AuthorIndexPosterSelectProps {
   authorId: number;

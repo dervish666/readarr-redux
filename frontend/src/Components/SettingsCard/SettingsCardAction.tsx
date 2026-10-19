@@ -1,6 +1,6 @@
 import React from 'react';
 import IconButton from 'Components/Link/IconButton';
-import styles from './SettingsCard.css';
+import styles from './SettingsCard.module.css';
 
 interface SettingsCardActionProps {
   name: object;

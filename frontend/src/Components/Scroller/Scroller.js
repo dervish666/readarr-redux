@@ -2,7 +2,7 @@ import classNames from 'classnames';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import { scrollDirections } from 'Helpers/Props';
-import styles from './Scroller.css';
+import styles from './Scroller.module.css';
 
 class Scroller extends Component {
 

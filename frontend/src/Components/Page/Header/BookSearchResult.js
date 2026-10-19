@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import React from 'react';
 import AuthorPoster from 'Author/AuthorPoster';
-import styles from './BookSearchResult.css';
+import styles from './BookSearchResult.module.css';
 
 function BookSearchResult(props) {
   const {

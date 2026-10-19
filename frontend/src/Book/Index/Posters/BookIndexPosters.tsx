@@ -16,7 +16,7 @@ import {
   useBookIndexPosterOptions,
 } from '../bookIndexOptionsStore';
 import BookIndexPoster from './BookIndexPoster';
-import styles from './BookIndexPosters.css';
+import styles from './BookIndexPosters.module.css';
 
 const columnPadding = parseInt(dimensions.authorIndexColumnPadding);
 const columnPaddingSmallScreen = parseInt(

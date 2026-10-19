@@ -4,7 +4,7 @@ import React, { Component } from 'react';
 import Icon from 'Components/Icon';
 import { icons, kinds } from 'Helpers/Props';
 import FormInputHelpText from './FormInputHelpText';
-import styles from './CheckInput.css';
+import styles from './CheckInput.module.css';
 
 class CheckInput extends Component {
 

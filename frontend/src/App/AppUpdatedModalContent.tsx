@@ -13,7 +13,7 @@ import UpdateChanges from 'System/Updates/UpdateChanges';
 import useUpdates from 'System/Updates/useUpdates';
 import Update from 'typings/Update';
 import translate from 'Utilities/String/translate';
-import styles from './AppUpdatedModalContent.css';
+import styles from './AppUpdatedModalContent.module.css';
 
 function mergeUpdates(
   items: ReadonlyArray<Update>,

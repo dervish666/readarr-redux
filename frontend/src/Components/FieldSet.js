@@ -2,7 +2,7 @@ import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import SectionHeading from 'Components/SectionHeading';
 import { sizes } from 'Helpers/Props';
-import styles from './FieldSet.css';
+import styles from './FieldSet.module.css';
 
 class FieldSet extends Component {
 

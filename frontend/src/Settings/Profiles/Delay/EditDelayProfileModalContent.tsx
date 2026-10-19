@@ -18,7 +18,7 @@ import {
   DelayProfileModel,
   useManageDelayProfile,
 } from './useDelayProfiles';
-import styles from './EditDelayProfileModalContent.css';
+import styles from './EditDelayProfileModalContent.module.css';
 
 type Protocol = 'preferUsenet' | 'preferTorrent' | 'onlyUsenet' | 'onlyTorrent';
 

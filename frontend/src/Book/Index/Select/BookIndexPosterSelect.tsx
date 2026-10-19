@@ -7,7 +7,7 @@ import {
   useBookIndexSelect,
   useIsBookSelected,
 } from './BookIndexSelectContext';
-import styles from './BookIndexPosterSelect.css';
+import styles from './BookIndexPosterSelect.module.css';
 
 interface BookIndexPosterSelectProps {
   bookId: number;

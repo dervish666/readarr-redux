@@ -18,7 +18,7 @@ import { useAuthorIndexOverviewOptions } from '../authorIndexOptionsStore';
 import useAuthorIndexItem from '../useAuthorIndexItem';
 import AuthorIndexOverviewInfo from './AuthorIndexOverviewInfo';
 import { ROW_BORDER, ROW_VERTICAL_PADDING } from './overviewLayout';
-import styles from './AuthorIndexOverview.css';
+import styles from './AuthorIndexOverview.module.css';
 
 // Mirrors .synopsis font-size/line-height in AuthorIndexOverview.css.
 const SYNOPSIS_FONT_SIZE = 13.5;

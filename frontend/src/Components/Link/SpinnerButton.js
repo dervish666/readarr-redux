@@ -4,7 +4,7 @@ import React from 'react';
 import Icon from 'Components/Icon';
 import { icons } from 'Helpers/Props';
 import Button from './Button';
-import styles from './SpinnerButton.css';
+import styles from './SpinnerButton.module.css';
 
 function SpinnerButton(props) {
   const {

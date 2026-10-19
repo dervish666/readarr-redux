@@ -13,8 +13,9 @@ FROM --platform=$BUILDPLATFORM node:20-bookworm-slim AS frontend
 WORKDIR /src
 COPY package.json yarn.lock .yarnrc tsconfig.json ./
 RUN yarn install --frozen-lockfile --network-timeout 120000
+COPY vite.config.mts index.html ./
 COPY frontend ./frontend
-RUN yarn build --env production
+RUN yarn build
 
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0.401-noble AS backend
 ARG TARGETARCH

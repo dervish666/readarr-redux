@@ -19,7 +19,7 @@ import {
   useManageMetadataProfile,
   useMetadataProfileInUse,
 } from './useMetadataProfiles';
-import styles from './EditMetadataProfileModalContent.css';
+import styles from './EditMetadataProfileModalContent.module.css';
 
 const ignoredDelimiters = ['Tab', 'Enter', ','];
 

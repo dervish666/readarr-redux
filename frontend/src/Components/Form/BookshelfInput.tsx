@@ -11,7 +11,7 @@ import useProviderOptions, {
 import getSelectedIds from 'Utilities/Table/getSelectedIds';
 import selectAll from 'Utilities/Table/selectAll';
 import toggleSelected from 'Utilities/Table/toggleSelected';
-import styles from './BookshelfInput.css';
+import styles from './BookshelfInput.module.css';
 
 interface Bookshelf {
   id: string;

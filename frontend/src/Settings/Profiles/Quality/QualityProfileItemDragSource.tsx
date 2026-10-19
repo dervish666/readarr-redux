@@ -4,7 +4,7 @@ import { QUALITY_PROFILE_ITEM } from 'Helpers/dragTypes';
 import QualityProfileItem from './QualityProfileItem';
 import QualityProfileItemGroup from './QualityProfileItemGroup';
 import { QualityProfileQualityItem } from './useQualityProfiles';
-import styles from './QualityProfileItemDragSource.css';
+import styles from './QualityProfileItemDragSource.module.css';
 
 export type EditQualityProfileMode = 'default' | 'editGroups';
 

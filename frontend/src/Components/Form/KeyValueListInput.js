@@ -2,7 +2,7 @@ import classNames from 'classnames';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import KeyValueListInputItem from './KeyValueListInputItem';
-import styles from './KeyValueListInput.css';
+import styles from './KeyValueListInput.module.css';
 
 class KeyValueListInput extends Component {
 

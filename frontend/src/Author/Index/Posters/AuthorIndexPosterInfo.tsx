@@ -6,7 +6,7 @@ import { useUiSettingsValues } from 'Settings/UI/useUiSettings';
 import getRelativeDate from 'Utilities/Date/getRelativeDate';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
-import styles from './AuthorIndexPosterInfo.css';
+import styles from './AuthorIndexPosterInfo.module.css';
 
 interface AuthorIndexPosterInfoProps {
   author: Author;

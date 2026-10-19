@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import Link from 'Components/Link/Link';
-import styles from './PageJumpBarItem.css';
+import styles from './PageJumpBarItem.module.css';
 
 class PageJumpBarItem extends Component {
 

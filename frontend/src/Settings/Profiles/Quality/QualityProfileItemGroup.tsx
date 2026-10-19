@@ -13,7 +13,7 @@ import QualityProfileItemDragSource, {
   QualityProfileItemDragSourceActionProps,
 } from './QualityProfileItemDragSource';
 import { QualityProfileQualityItem } from './useQualityProfiles';
-import styles from './QualityProfileItemGroup.css';
+import styles from './QualityProfileItemGroup.module.css';
 
 interface QualityProfileItemGroupProps
   extends QualityProfileItemDragSourceActionProps {

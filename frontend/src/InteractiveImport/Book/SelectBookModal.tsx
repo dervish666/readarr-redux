@@ -22,7 +22,7 @@ import SortDirection from 'Helpers/Props/SortDirection';
 import { InputChanged } from 'typings/inputs';
 import { sortItems } from 'Utilities/Filter/clientSideFilterAndSort';
 import translate from 'Utilities/String/translate';
-import styles from './SelectBookModal.css';
+import styles from './SelectBookModal.module.css';
 
 const COLUMNS: Column[] = [
   {

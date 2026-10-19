@@ -24,7 +24,7 @@ import useCalendar, {
   setCalendarDayCount,
   useCalendarPage,
 } from './useCalendar';
-import styles from './CalendarPage.css';
+import styles from './CalendarPage.module.css';
 
 const MINIMUM_DAY_WIDTH = 120;
 const NO_CUSTOM_FILTERS: never[] = [];

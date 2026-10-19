@@ -2,7 +2,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import formatBytes from 'Utilities/Number/formatBytes';
 import EnhancedSelectInputSelectedValue from './EnhancedSelectInputSelectedValue';
-import styles from './RootFolderSelectInputSelectedValue.css';
+import styles from './RootFolderSelectInputSelectedValue.module.css';
 
 function RootFolderSelectInputSelectedValue(props) {
   const {

@@ -11,7 +11,7 @@ import * as keyCodes from 'Utilities/Constants/keyCodes';
 import getUniqueElememtId from 'Utilities/getUniqueElementId';
 import { setScrollLock } from 'Utilities/scrollLock';
 import ModalError from './ModalError';
-import styles from './Modal.css';
+import styles from './Modal.module.css';
 
 const openModals = [];
 

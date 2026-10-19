@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
-import styles from './ModalFooter.css';
+import styles from './ModalFooter.module.css';
 
 class ModalFooter extends Component {
 

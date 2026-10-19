@@ -5,7 +5,7 @@ import DragPreviewLayer from 'Components/DragPreviewLayer';
 import { TABLE_COLUMN } from 'Helpers/dragTypes';
 import dimensions from 'Styles/Variables/dimensions.js';
 import TableOptionsColumn from './TableOptionsColumn';
-import styles from './TableOptionsColumnDragPreview.css';
+import styles from './TableOptionsColumnDragPreview.module.css';
 
 const formGroupSmallWidth = parseInt(dimensions.formGroupSmallWidth);
 const formLabelLargeWidth = parseInt(dimensions.formLabelLargeWidth);

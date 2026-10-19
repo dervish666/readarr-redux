@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import Icon from 'Components/Icon';
 import Link from './Link';
-import styles from './IconButton.css';
+import styles from './IconButton.module.css';
 
 function IconButton(props) {
   const {

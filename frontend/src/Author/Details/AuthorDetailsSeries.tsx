@@ -17,7 +17,7 @@ import {
   AuthorDetailsTableOptions,
 } from './authorDetailsOptionsStore';
 import BookRow from './BookRow';
-import styles from './AuthorDetailsSeries.css';
+import styles from './AuthorDetailsSeries.module.css';
 
 interface AuthorDetailsSeriesProps {
   authorId: number;

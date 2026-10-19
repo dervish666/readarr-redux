@@ -1,0 +1,11 @@
+.name,
+.tags,
+.enableAutomaticAdd,
+.qualityProfileId,
+.metadataProfileId,
+.rootFolderPath,
+.implementation {
+  composes: cell from 'Components/Table/Cells/TableRowCell.module.css';
+
+  word-break: break-all;
+}

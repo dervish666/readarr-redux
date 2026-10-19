@@ -6,7 +6,7 @@ import Icon from 'Components/Icon';
 import { icons } from 'Helpers/Props';
 import FormInputButton from './FormInputButton';
 import TextInput from './TextInput';
-import styles from './CaptchaInput.css';
+import styles from './CaptchaInput.module.css';
 
 function CaptchaInput(props) {
   const {

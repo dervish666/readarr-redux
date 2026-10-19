@@ -33,7 +33,7 @@ import { ValidationFailure } from 'typings/pending';
 import RootFolder from 'typings/RootFolder';
 import { ApiError } from 'Utilities/Fetch/fetchJson';
 import translate from 'Utilities/String/translate';
-import styles from './EditRootFolderModalContent.css';
+import styles from './EditRootFolderModalContent.module.css';
 
 type EditableRootFolder = Omit<
   RootFolder,

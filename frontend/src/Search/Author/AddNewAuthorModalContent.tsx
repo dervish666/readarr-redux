@@ -20,7 +20,7 @@ import { InputChanged } from 'typings/inputs';
 import selectSettings from 'Utilities/selectSettings';
 import stripHtml from 'Utilities/String/stripHtml';
 import translate from 'Utilities/String/translate';
-import styles from './AddNewAuthorModalContent.css';
+import styles from './AddNewAuthorModalContent.module.css';
 
 export interface AddNewAuthorModalContentProps {
   author: Author;

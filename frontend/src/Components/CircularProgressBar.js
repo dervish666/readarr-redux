@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
-import styles from './CircularProgressBar.css';
+import styles from './CircularProgressBar.module.css';
 
 class CircularProgressBar extends Component {
 

@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import Label from 'Components/Label';
 import EnhancedSelectInputSelectedValue from './EnhancedSelectInputSelectedValue';
-import styles from './HintedSelectInputSelectedValue.css';
+import styles from './HintedSelectInputSelectedValue.module.css';
 
 function HintedSelectInputSelectedValue(props) {
   const {

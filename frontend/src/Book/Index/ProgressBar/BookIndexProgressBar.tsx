@@ -3,7 +3,7 @@ import ProgressBar from 'Components/ProgressBar';
 import { sizes } from 'Helpers/Props';
 import getProgressBarKind from 'Utilities/Author/getProgressBarKind';
 import translate from 'Utilities/String/translate';
-import styles from './BookIndexProgressBar.css';
+import styles from './BookIndexProgressBar.module.css';
 
 interface BookIndexProgressBarProps {
   monitored: boolean;

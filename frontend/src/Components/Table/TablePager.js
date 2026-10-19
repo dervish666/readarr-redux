@@ -6,7 +6,7 @@ import Icon from 'Components/Icon';
 import Link from 'Components/Link/Link';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import { icons } from 'Helpers/Props';
-import styles from './TablePager.css';
+import styles from './TablePager.module.css';
 
 class TablePager extends Component {
 

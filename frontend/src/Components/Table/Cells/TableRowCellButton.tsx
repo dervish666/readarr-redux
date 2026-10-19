@@ -1,7 +1,7 @@
 import React, { ComponentClass, ReactNode } from 'react';
 import Link, { LinkProps } from 'Components/Link/Link';
 import TableRowCell from './TableRowCell';
-import styles from './TableRowCellButton.css';
+import styles from './TableRowCellButton.module.css';
 
 interface TableRowCellButtonProps extends LinkProps {
   className?: string;

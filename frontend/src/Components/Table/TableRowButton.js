@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'Components/Link/Link';
 import TableRow from './TableRow';
-import styles from './TableRowButton.css';
+import styles from './TableRowButton.module.css';
 
 function TableRowButton(props) {
   return (

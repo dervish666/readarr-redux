@@ -18,7 +18,7 @@ import {
 } from 'InteractiveImport/interactiveImportFoldersStore';
 import translate from 'Utilities/String/translate';
 import RecentFolderRow from './RecentFolderRow';
-import styles from './InteractiveImportSelectFolderModalContent.css';
+import styles from './InteractiveImportSelectFolderModalContent.module.css';
 
 const recentFoldersColumns: Column[] = [
   {

@@ -16,7 +16,7 @@ import { inputTypes } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
 import { SetFilter } from '../FilterModal';
 import FilterBuilderRow from './FilterBuilderRow';
-import styles from './FilterBuilderModalContent.css';
+import styles from './FilterBuilderModalContent.module.css';
 
 // FilterBuilderRow fills in key, type and value for an empty row.
 type BuilderFilter = Partial<PropertyFilter>;

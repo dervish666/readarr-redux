@@ -19,7 +19,7 @@ import { useBookIndexSelect } from '../Select/BookIndexSelectContext';
 import useBookIndexItem from '../useBookIndexItem';
 import BookIndexOverviewInfo from './BookIndexOverviewInfo';
 import { ROW_BORDER, ROW_VERTICAL_PADDING } from './overviewLayout';
-import styles from './BookIndexOverview.css';
+import styles from './BookIndexOverview.module.css';
 
 // Mirrors .synopsis font-size/line-height in BookIndexOverview.css.
 const SYNOPSIS_FONT_SIZE = 13.5;

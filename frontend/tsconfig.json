@@ -6,7 +6,7 @@
       "baseUrl": "src",
       "jsx": "react",
       "module": "esnext",
-      "moduleResolution": "node",
+      "moduleResolution": "bundler",
       "noEmit": true,
       "esModuleInterop": true,
       "typeRoots": ["node_modules/@types", "typings"],
@@ -19,8 +19,8 @@
   },
   "include": [
       "./src/**/*",
-      "./.eslintrc.js",
-      "./build/webpack.config.js",
+      "./.eslintrc.cjs",
+      "../vite.config.mts",
       "./typings/*.ts",
   ],
   "exclude": [

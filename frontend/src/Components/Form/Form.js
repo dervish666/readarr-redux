@@ -2,7 +2,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import Alert from 'Components/Alert';
 import { kinds } from 'Helpers/Props';
-import styles from './Form.css';
+import styles from './Form.module.css';
 
 function Form(props) {
   const {

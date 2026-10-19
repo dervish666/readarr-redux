@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import React from 'react';
 import MessageConnector from './MessageConnector';
-import styles from './Messages.css';
+import styles from './Messages.module.css';
 
 function Messages({ messages }) {
   return (

@@ -1,0 +1,36 @@
+.previews {
+  margin-top: 10px;
+}
+
+.selectAllInputContainer {
+  margin-right: auto;
+  line-height: 30px;
+}
+
+.selectAllInput {
+  composes: input from 'Components/Form/CheckInput.module.css';
+
+  margin: 0;
+}
+
+.optionLabelContainer {
+  display: flex;
+  margin-top: 2px;
+}
+
+.optionLabel {
+  margin-right: 8px;
+  font-weight: normal;
+}
+
+.optionContainer {
+  composes: container from 'Components/Form/CheckInput.module.css';
+
+  flex: 0 1 0;
+}
+
+.optionInput {
+  composes: input from 'Components/Form/CheckInput.module.css';
+
+  margin-top: 0;
+}

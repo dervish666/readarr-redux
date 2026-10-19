@@ -19,7 +19,7 @@ import combinePath from 'Utilities/String/combinePath';
 import translate from 'Utilities/String/translate';
 import LogFilesTableRow from './LogFilesTableRow';
 import LogsNavMenu from './LogsNavMenu';
-import styles from './LogFiles.css';
+import styles from './LogFiles.module.css';
 
 const columns: Column[] = [
   {

@@ -14,7 +14,7 @@ import InteractiveImportModal from 'InteractiveImport/InteractiveImportModal';
 import { SelectStateInputProps } from 'typings/props';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
-import styles from './UnmappedFilesRow.css';
+import styles from './UnmappedFilesRow.module.css';
 
 type ModalType = 'details' | 'interactiveImport' | 'delete';
 

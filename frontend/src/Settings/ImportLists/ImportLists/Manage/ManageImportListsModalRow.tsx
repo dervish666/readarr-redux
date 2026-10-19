@@ -9,7 +9,7 @@ import { useQualityProfile } from 'Settings/Profiles/Quality/useQualityProfiles'
 import { useTagList } from 'Tags/useTags';
 import { SelectStateInputProps } from 'typings/props';
 import translate from 'Utilities/String/translate';
-import styles from './ManageImportListsModalRow.css';
+import styles from './ManageImportListsModalRow.module.css';
 
 interface ManageImportListsModalRowProps {
   id: number;

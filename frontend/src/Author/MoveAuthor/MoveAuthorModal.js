@@ -7,7 +7,7 @@ import ModalContent from 'Components/Modal/ModalContent';
 import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
 import { kinds, sizes } from 'Helpers/Props';
-import styles from './MoveAuthorModal.css';
+import styles from './MoveAuthorModal.module.css';
 
 function MoveAuthorModal(props) {
   const {

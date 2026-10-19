@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import SpinnerIconButton from 'Components/Link/SpinnerIconButton';
 import { icons } from 'Helpers/Props';
-import styles from './MonitorToggleButton.css';
+import styles from './MonitorToggleButton.module.css';
 
 function getTooltip(monitored, isDisabled) {
   if (isDisabled) {

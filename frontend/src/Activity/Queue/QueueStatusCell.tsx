@@ -11,7 +11,7 @@ import {
 } from 'typings/Queue';
 import translate from 'Utilities/String/translate';
 import { QueueStatusChip } from './getQueueStatusChips';
-import styles from './QueueStatusCell.css';
+import styles from './QueueStatusCell.module.css';
 
 function getDetailedPopoverBody(statusMessages: StatusMessage[] = []) {
   return (

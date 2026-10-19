@@ -7,7 +7,7 @@ import MenuContent from 'Components/Menu/MenuContent';
 import MenuItem from 'Components/Menu/MenuItem';
 import MenuItemSeparator from 'Components/Menu/MenuItemSeparator';
 import { align, icons, kinds } from 'Helpers/Props';
-import styles from './PageHeaderActionsMenu.css';
+import styles from './PageHeaderActionsMenu.module.css';
 
 function PageHeaderActionsMenu(props) {
   const {

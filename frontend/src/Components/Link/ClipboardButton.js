@@ -5,7 +5,7 @@ import FormInputButton from 'Components/Form/FormInputButton';
 import Icon from 'Components/Icon';
 import { icons, kinds } from 'Helpers/Props';
 import getUniqueElememtId from 'Utilities/getUniqueElementId';
-import styles from './ClipboardButton.css';
+import styles from './ClipboardButton.module.css';
 
 class ClipboardButton extends Component {
 

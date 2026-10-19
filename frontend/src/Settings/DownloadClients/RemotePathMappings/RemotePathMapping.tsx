@@ -8,7 +8,7 @@ import {
   RemotePathMappingModel,
   useDeleteRemotePathMapping,
 } from './useRemotePathMappings';
-import styles from './RemotePathMapping.css';
+import styles from './RemotePathMapping.module.css';
 
 function RemotePathMapping({
   id,

@@ -9,8 +9,7 @@ import { icons } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
 import AuthorSearchResult from './AuthorSearchResult';
 import BookSearchResult from './BookSearchResult';
-import FuseWorker from './fuse.worker';
-import styles from './AuthorSearchInput.css';
+import styles from './AuthorSearchInput.module.css';
 
 const ADD_NEW_TYPE = 'addNew';
 
@@ -45,7 +44,9 @@ class AuthorSearchInput extends Component {
 
   getWorker() {
     if (!this._worker) {
-      this._worker = new FuseWorker();
+      this._worker = new Worker(new URL('./fuse.worker.js', import.meta.url), {
+        type: 'module'
+      });
       this._worker.addEventListener('message', this.onSuggestionsReceived, false);
     }
 

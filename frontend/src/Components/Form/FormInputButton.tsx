@@ -3,7 +3,7 @@ import React, { ReactNode } from 'react';
 import Button from 'Components/Link/Button';
 import SpinnerButton from 'Components/Link/SpinnerButton';
 import { kinds } from 'Helpers/Props';
-import styles from './FormInputButton.css';
+import styles from './FormInputButton.module.css';
 
 interface FormInputButtonProps {
   className?: string;

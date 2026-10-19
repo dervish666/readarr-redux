@@ -5,7 +5,7 @@ import { useDeleteCustomFilter } from 'Filters/useCustomFilters';
 import { icons } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
 import { SetFilter } from '../FilterModal';
-import styles from './CustomFilter.css';
+import styles from './CustomFilter.module.css';
 
 interface CustomFilterProps {
   id: number;

@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import { align, kinds, sizes } from 'Helpers/Props';
 import Link from './Link';
-import styles from './Button.css';
+import styles from './Button.module.css';
 
 class Button extends Component {
 

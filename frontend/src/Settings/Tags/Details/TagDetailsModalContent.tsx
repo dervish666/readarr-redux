@@ -16,7 +16,7 @@ import { useDelayProfiles } from 'Settings/Profiles/Delay/useDelayProfiles';
 import { useReleaseProfiles } from 'Settings/Profiles/Release/useReleaseProfiles';
 import translate from 'Utilities/String/translate';
 import TagDetailsDelayProfile from './TagDetailsDelayProfile';
-import styles from './TagDetailsModalContent.css';
+import styles from './TagDetailsModalContent.module.css';
 
 export interface TagDetailsModalContentProps {
   label: string;

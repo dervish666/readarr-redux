@@ -23,7 +23,7 @@ import translate from 'Utilities/String/translate';
 import getSelectedIds from 'Utilities/Table/getSelectedIds';
 import RetagPreviewRow from './RetagPreviewRow';
 import useRetagPreview from './useRetagPreview';
-import styles from './RetagPreviewModalContent.css';
+import styles from './RetagPreviewModalContent.module.css';
 
 function getValue(allSelected: boolean, allUnselected: boolean) {
   if (allSelected) {

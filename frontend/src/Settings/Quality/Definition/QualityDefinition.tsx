@@ -4,7 +4,7 @@ import TextInput from 'Components/Form/TextInput';
 import QualityDefinitionModel from 'typings/QualityDefinition';
 import translate from 'Utilities/String/translate';
 import { useManageQualityDefinitions } from './useQualityDefinitions';
-import styles from './QualityDefinition.css';
+import styles from './QualityDefinition.module.css';
 
 // Sizes are stored in kilobits (128 bytes), so one MiB is 8192 of them
 const KILOBITS_PER_MEGABYTE = 8192;

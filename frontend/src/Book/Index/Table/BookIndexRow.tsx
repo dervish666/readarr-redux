@@ -25,7 +25,7 @@ import {
 } from '../Select/BookIndexSelectContext';
 import useBookIndexItem from '../useBookIndexItem';
 import BookStatusCell from './BookStatusCell';
-import styles from './BookIndexRow.css';
+import styles from './BookIndexRow.module.css';
 
 interface BookIndexRowProps {
   book: Book;

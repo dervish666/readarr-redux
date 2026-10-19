@@ -2,7 +2,7 @@ import classNames from 'classnames';
 import PropTypes from 'prop-types';
 import React, { PureComponent } from 'react';
 import { kinds } from 'Helpers/Props';
-import styles from './Icon.css';
+import styles from './Icon.module.css';
 
 // Icons are lucide-react components (Helpers/Props/icons.js), as in Sonarr's v5 Icon (d9e7ea050).
 
