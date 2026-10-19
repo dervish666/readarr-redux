@@ -13,7 +13,7 @@ FROM --platform=$BUILDPLATFORM node:20-bookworm-slim AS frontend
 WORKDIR /src
 COPY package.json yarn.lock .yarnrc tsconfig.json ./
 RUN yarn install --frozen-lockfile --network-timeout 120000
-COPY vite.config.ts index.html ./
+COPY vite.config.mts index.html ./
 COPY frontend ./frontend
 RUN yarn build
 

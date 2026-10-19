@@ -12,7 +12,7 @@ From 2026-10-18 the frontend is being moved onto Sonarr's v5 frontend (copyright
 
 Stage 4 of that move removes redux. Its app state and sidebar message stores come from Sonarr commit `878f879c4` (#8223), its captcha and OAuth input hooks from `8a68c860a` and `3c77c4b98`, its move to React Router 7 from `b4b415731` (#8614), and the removal of the redux store from `0460281f5` (#8692).
 
-Stage 5 moves the frontend build onto Vite. The rename of CSS modules to `.module.css` follows Sonarr commit `dc984cf17`. `vite.config.ts`, the move of `index.ejs` to `index.html`, and the backend's Vite dev server support (`ViteDevServer`, `ViteDevMiddleware` and the index page mapper changes) come from Sonarr commits `3731e9dc4` and `1c94b6600`.
+Stage 5 moves the frontend build onto Vite. The rename of CSS modules to `.module.css` follows Sonarr commit `dc984cf17`. `vite.config.mts` (Sonarr's `vite.config.ts`), the move of `index.ejs` to `index.html`, and the backend's Vite dev server support (`ViteDevServer`, `ViteDevMiddleware` and the index page mapper changes) come from Sonarr commits `3731e9dc4` and `1c94b6600`.
 
 Readarr Redux is not affiliated with, endorsed by or supported by the Readarr or Servarr teams. The app keeps the Readarr name, logo and internal identifiers so existing installs can move over; those belong to their owners.
 

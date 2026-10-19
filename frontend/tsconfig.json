@@ -20,7 +20,7 @@
   "include": [
       "./src/**/*",
       "./.eslintrc.cjs",
-      "../vite.config.ts",
+      "../vite.config.mts",
       "./typings/*.ts",
   ],
   "exclude": [

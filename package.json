@@ -2,7 +2,6 @@
   "name": "readarr",
   "version": "1.0.0",
   "description": "Readarr Redux, an unofficial fork of Readarr",
-  "type": "module",
   "scripts": {
     "build": "vite build",
     "prebuild": "yarn clean",
