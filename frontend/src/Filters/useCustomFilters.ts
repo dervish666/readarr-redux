@@ -43,6 +43,23 @@ const useSyncCustomFilters = () => {
 
   return useCallback(
     (change: { saved: CustomFilter } | { deletedId: number }) => {
+      // Write the change into the list first: the author index reads its filters from
+      // react-query and selects a new filter straight after the save, so waiting for the
+      // refetch renders once with a selected filter that isn't in the list yet.
+      queryClient.setQueryData<CustomFilter[]>(['/customFilter'], (old) => {
+        if (!old) {
+          return old;
+        }
+
+        if ('saved' in change) {
+          const others = old.filter((f) => f.id !== change.saved.id);
+
+          return [...others, change.saved];
+        }
+
+        return old.filter((f) => f.id !== change.deletedId);
+      });
+
       queryClient.invalidateQueries({ queryKey: ['/customFilter'] });
 
       if ('saved' in change) {
