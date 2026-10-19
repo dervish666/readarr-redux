@@ -203,7 +203,10 @@ module.exports = (env) => {
               options: {
                 importLoaders: 1,
                 modules: {
-                  localIdentName: isProduction ? '[name]/[local]/[hash:base64:5]' : '[name]/[local]'
+                  // [1] is the file name without .module.css, so class names stay
+                  // File-class (the e2e suite selects on them).
+                  localIdentName: isProduction ? '[1]/[local]/[hash:base64:5]' : '[1]/[local]',
+                  localIdentRegExp: /([^/\\]+?)(?:\.module)?\.css$/
                 }
               }
             },
