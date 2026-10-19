@@ -1,6 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
 import React, { useCallback, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
 import Alert from 'Components/Alert';
 import FormGroup from 'Components/Form/FormGroup';
 import FormInputGroup from 'Components/Form/FormInputGroup';
@@ -21,7 +20,6 @@ import {
   GeneralSettingsModel,
   useManageGeneralSettings,
 } from 'Settings/General/useGeneralSettings';
-import { fetchStatus } from 'Store/Actions/systemActions';
 import { InputChanged } from 'typings/inputs';
 import translate from 'Utilities/String/translate';
 import styles from './AuthenticationRequiredModalContent.css';
@@ -31,7 +29,6 @@ function onModalClose() {
 }
 
 function AuthenticationRequiredModalContent() {
-  const dispatch = useDispatch();
   const queryClient = useQueryClient();
 
   const { settings, isFetched, error, isSaving, updateSetting, saveSettings } =
@@ -64,10 +61,9 @@ function AuthenticationRequiredModalContent() {
   // modal when it says authentication is set up (or AuthenticationNoneConfirmed).
   useEffect(() => {
     if (!isSaving && wasSaving) {
-      dispatch(fetchStatus());
       queryClient.invalidateQueries({ queryKey: ['/system/status'] });
     }
-  }, [isSaving, wasSaving, dispatch, queryClient]);
+  }, [isSaving, wasSaving, queryClient]);
 
   return (
     <ModalContent showCloseButton={false} onModalClose={onModalClose}>

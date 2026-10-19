@@ -1,17 +1,21 @@
-import { connect } from 'react-redux';
-import { createSelector } from 'reselect';
-import createSystemStatusSelector from 'Store/Selectors/createSystemStatusSelector';
+import PropTypes from 'prop-types';
+import React from 'react';
+import { useSystemStatusData } from 'System/Status/useSystemStatus';
 import KeyboardShortcutsModalContent from './KeyboardShortcutsModalContent';
 
-function createMapStateToProps() {
-  return createSelector(
-    createSystemStatusSelector(),
-    (systemStatus) => {
-      return {
-        isOsx: systemStatus.isOsx
-      };
-    }
+function KeyboardShortcutsModalContentConnector({ onModalClose }) {
+  const { isOsx } = useSystemStatusData();
+
+  return (
+    <KeyboardShortcutsModalContent
+      isOsx={!!isOsx}
+      onModalClose={onModalClose}
+    />
   );
 }
 
-export default connect(createMapStateToProps)(KeyboardShortcutsModalContent);
+KeyboardShortcutsModalContentConnector.propTypes = {
+  onModalClose: PropTypes.func.isRequired
+};
+
+export default KeyboardShortcutsModalContentConnector;

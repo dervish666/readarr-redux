@@ -1,60 +1,68 @@
 import _ from 'lodash';
-import { connect } from 'react-redux';
-import { createSelector } from 'reselect';
+import PropTypes from 'prop-types';
+import React, { useMemo } from 'react';
 import { filterBuilderTypes } from 'Helpers/Props';
 import * as filterTypes from 'Helpers/Props/filterTypes';
 import sortByName from 'Utilities/Array/sortByName';
 import FilterBuilderRowValue from './FilterBuilderRowValue';
 
-function createTagListSelector() {
-  return createSelector(
-    (state, { filterType }) => filterType,
-    (state, { sectionItems }) => sectionItems,
-    (state, { selectedFilterBuilderProp }) => selectedFilterBuilderProp,
-    (filterType, sectionItems, selectedFilterBuilderProp) => {
-      if (
-        (selectedFilterBuilderProp.type === filterBuilderTypes.NUMBER ||
-        selectedFilterBuilderProp.type === filterBuilderTypes.STRING) &&
-        filterType !== filterTypes.EQUAL &&
-        filterType !== filterTypes.NOT_EQUAL ||
-        !selectedFilterBuilderProp.optionsSelector
-      ) {
-        return [];
+function getTagList(filterType, sectionItems, selectedFilterBuilderProp) {
+  if (
+    (selectedFilterBuilderProp.type === filterBuilderTypes.NUMBER ||
+    selectedFilterBuilderProp.type === filterBuilderTypes.STRING) &&
+    filterType !== filterTypes.EQUAL &&
+    filterType !== filterTypes.NOT_EQUAL ||
+    !selectedFilterBuilderProp.optionsSelector
+  ) {
+    return [];
+  }
+
+  let items = [];
+
+  if (selectedFilterBuilderProp.optionsSelector) {
+    items = selectedFilterBuilderProp.optionsSelector(sectionItems);
+  } else {
+    items = sectionItems.reduce((acc, item) => {
+      const name = item[selectedFilterBuilderProp.name];
+
+      if (name) {
+        acc.push({
+          id: name,
+          name
+        });
       }
 
-      let items = [];
+      return acc;
+    }, []).sort(sortByName);
+  }
 
-      if (selectedFilterBuilderProp.optionsSelector) {
-        items = selectedFilterBuilderProp.optionsSelector(sectionItems);
-      } else {
-        items = sectionItems.reduce((acc, item) => {
-          const name = item[selectedFilterBuilderProp.name];
+  return _.uniqBy(items, 'id');
+}
 
-          if (name) {
-            acc.push({
-              id: name,
-              name
-            });
-          }
+// The tag list was a reselect selector over the props alone; useMemo does the same.
+function FilterBuilderRowValueConnector(props) {
+  const {
+    filterType,
+    sectionItems,
+    selectedFilterBuilderProp
+  } = props;
 
-          return acc;
-        }, []).sort(sortByName);
-      }
+  const tagList = useMemo(() => {
+    return getTagList(filterType, sectionItems, selectedFilterBuilderProp);
+  }, [filterType, sectionItems, selectedFilterBuilderProp]);
 
-      return _.uniqBy(items, 'id');
-    }
+  return (
+    <FilterBuilderRowValue
+      {...props}
+      tagList={tagList}
+    />
   );
 }
 
-function createMapStateToProps() {
-  return createSelector(
-    createTagListSelector(),
-    (tagList) => {
-      return {
-        tagList
-      };
-    }
-  );
-}
+FilterBuilderRowValueConnector.propTypes = {
+  filterType: PropTypes.string,
+  sectionItems: PropTypes.arrayOf(PropTypes.object).isRequired,
+  selectedFilterBuilderProp: PropTypes.object.isRequired
+};
 
-export default connect(createMapStateToProps)(FilterBuilderRowValue);
+export default FilterBuilderRowValueConnector;

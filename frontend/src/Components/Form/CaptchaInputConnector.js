@@ -1,98 +1,65 @@
 import PropTypes from 'prop-types';
-import React, { Component } from 'react';
-import { connect } from 'react-redux';
-import { createSelector } from 'reselect';
-import { getCaptchaCookie, refreshCaptcha, resetCaptcha } from 'Store/Actions/captchaActions';
+import React, { useCallback, useEffect } from 'react';
+import usePrevious from 'Helpers/Hooks/usePrevious';
 import CaptchaInput from './CaptchaInput';
+import useCaptcha from './useCaptcha';
 
-function createMapStateToProps() {
-  return createSelector(
-    (state) => state.captcha,
-    (captcha) => {
-      return captcha;
-    }
-  );
-}
+function CaptchaInputConnector(props) {
+  const {
+    name,
+    provider,
+    providerData,
+    onChange
+  } = props;
 
-const mapDispatchToProps = {
-  refreshCaptcha,
-  getCaptchaCookie,
-  resetCaptcha
-};
+  const {
+    token,
+    refreshing,
+    siteKey,
+    secretToken,
+    refresh,
+    getCaptchaCookie
+  } = useCaptcha();
 
-class CaptchaInputConnector extends Component {
+  const previousToken = usePrevious(token);
 
-  //
-  // Lifecycle
-
-  componentDidUpdate(prevProps) {
-    const {
-      name,
-      token,
-      onChange
-    } = this.props;
-
-    if (token && token !== prevProps.token) {
+  useEffect(() => {
+    if (token && token !== previousToken) {
       onChange({ name, value: token });
     }
-  }
+  }, [name, token, previousToken, onChange]);
 
-  componentWillUnmount = () => {
-    this.props.resetCaptcha();
-  };
+  const handleRefreshPress = useCallback(() => {
+    refresh({ provider, providerData });
+  }, [provider, providerData, refresh]);
 
-  //
-  // Listeners
-
-  onRefreshPress = () => {
-    const {
-      provider,
-      providerData
-    } = this.props;
-
-    this.props.refreshCaptcha({ provider, providerData });
-  };
-
-  onCaptchaChange = (captchaResponse) => {
+  const handleCaptchaChange = useCallback((captchaResponse) => {
     // If the captcha has expired `captchaResponse` will be null.
     // In the event it's null don't try to get the captchaCookie.
-    // TODO: Should we clear the cookie? or reset the captcha?
-
     if (!captchaResponse) {
       return;
     }
 
-    const {
-      provider,
-      providerData
-    } = this.props;
+    getCaptchaCookie({ provider, providerData, captchaResponse });
+  }, [provider, providerData, getCaptchaCookie]);
 
-    this.props.getCaptchaCookie({ provider, providerData, captchaResponse });
-  };
-
-  //
-  // Render
-
-  render() {
-    return (
-      <CaptchaInput
-        {...this.props}
-        onRefreshPress={this.onRefreshPress}
-        onCaptchaChange={this.onCaptchaChange}
-      />
-    );
-  }
+  return (
+    <CaptchaInput
+      {...props}
+      refreshing={refreshing}
+      siteKey={siteKey}
+      secretToken={secretToken}
+      onRefreshPress={handleRefreshPress}
+      onCaptchaChange={handleCaptchaChange}
+    />
+  );
 }
 
 CaptchaInputConnector.propTypes = {
   provider: PropTypes.string.isRequired,
   providerData: PropTypes.object.isRequired,
   name: PropTypes.string.isRequired,
-  token: PropTypes.string,
-  onChange: PropTypes.func.isRequired,
-  refreshCaptcha: PropTypes.func.isRequired,
-  getCaptchaCookie: PropTypes.func.isRequired,
-  resetCaptcha: PropTypes.func.isRequired
+  onChange: PropTypes.func.isRequired
 };
 
-export default connect(createMapStateToProps, mapDispatchToProps)(CaptchaInputConnector);
+export default CaptchaInputConnector;

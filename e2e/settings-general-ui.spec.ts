@@ -1,12 +1,12 @@
 import { Locator, Page } from '@playwright/test';
 import { api, expect, openRoute, test } from './fixtures';
 import { apiKey, baseUrl } from './env';
-import { withReduxStore } from './reactTree';
+import { withQueryClient } from './reactTree';
 
 // Settings > UI, Media Management (with naming), General and the advanced settings
-// toggle moved to react-query and zustand. The author, book and calendar pages still
-// read the redux state.settings.ui feed, so a UI save must reach it without a reload,
-// and the theme must switch the moment the save lands. Every value changed here is
+// toggle moved to react-query and zustand. The date cells on the author, book and
+// calendar pages read the same UI settings query, so a UI save must reach them without
+// a reload, and the theme must switch the moment the save lands. Every value changed here is
 // put back, through the page where the check needs it and through the API at the end.
 
 interface UiSettings {
@@ -49,7 +49,7 @@ const LONG_DATE_FORMATS = {
   'dddd, D MMMM YYYY': /^[A-Z][a-z]+day, \d{1,2} [A-Z][a-z]+ \d{4}/
 };
 
-// Moves within the app without a reload, so redux and react-query keep their state.
+// Moves within the app without a reload, so react-query and zustand keep their state.
 async function clientNavigate(page: Page, route: string) {
   await page.evaluate((path) => {
     const urlBase = (window as unknown as { Readarr: { urlBase: string } }).Readarr.urlBase;
@@ -162,7 +162,7 @@ test.describe('settings on react-query', () => {
     }
   });
 
-  test('UI: a new long date format reaches a redux page without a reload', async ({ page }) => {
+  test('UI: a new long date format reaches the date cells without a reload', async ({ page }) => {
     const original = await api<UiSettings>(page, '/config/ui');
     const [author] = await api<Author[]>(page, '/author');
     const formats = Object.keys(LONG_DATE_FORMATS) as (keyof typeof LONG_DATE_FORMATS)[];
@@ -173,8 +173,8 @@ test.describe('settings on react-query', () => {
       await choose(page, 'Long Date Format', target);
       await save(page, '/config/ui');
 
-      // The feed was fetched once at startup; only the save can have changed it.
-      expect(await withReduxStore<string>(page, 'return store.getState().settings.ui.item.longDateFormat;')).toBe(target);
+      // The query was fetched once at startup (an hour's staleTime); only the save can have changed it.
+      expect(await withQueryClient<string>(page, "return client.getQueryData(['/config/ui']).longDateFormat;")).toBe(target);
 
       await clientNavigate(page, `/author/${author.titleSlug}`);
       const dateCell = page.locator('td[class*="BookRow-releaseDate"][title]').first();
@@ -382,8 +382,8 @@ test.describe('settings on react-query', () => {
       await expect(advancedButton(page)).toHaveText('Hide Advanced');
       expect(await storedFlag()).toBe(true);
 
-      // redux-localstorage drops the old path the next time it writes its blob, so the
-      // flag has to live under the new key from here on.
+      // The flag lives under the new key from here on (redux-localstorage, before
+      // stage 4c, dropped the old path the next time it wrote its blob).
       await page.reload();
       await expect(advancedButton(page)).toHaveText('Hide Advanced');
 

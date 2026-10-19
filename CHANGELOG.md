@@ -6,6 +6,10 @@ Versions are `0.5.0.<CI run number>`. Only pushes to `develop` publish an image,
 
 ## Unreleased
 
+The last redux state (app state, sidebar messages, UI settings, system status, the captcha and OAuth inputs) moved to zustand and react-query, and the router moved to React Router 7 (frontend migration stage 4). Nothing should look or work differently, and no saved setting resets.
+
+- Changed: A page address with extra parts after a real page, such as `/calendar/foo`, now shows Not Found instead of the page it starts with.
+
 The author, book, bookshelf, add new, calendar, wanted, search, import and editor pages moved to react-query with the Sonarr v5 look (frontend migration stage 3).
 
 - Changed: Saved columns, sort, filters and view choices on those pages are reset once, because they now live in new per-page stores.

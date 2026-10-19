@@ -10,6 +10,8 @@ Several fixes are ports of changes from Sonarr (https://github.com/Sonarr/Sonarr
 
 From 2026-10-18 the frontend is being moved onto Sonarr's v5 frontend (copyright Team Sonarr, GPL-3.0), starting with its data-fetching hooks, option stores and SignalR listener, then its v5 look: theme tokens, fonts, icons and component styles. Files ported from Sonarr are named, with the Sonarr commit they came from, in the commit that brought them in.
 
+Stage 4 of that move removes redux. Its app state and sidebar message stores come from Sonarr commit `878f879c4` (#8223), its captcha and OAuth input hooks from `8a68c860a` and `3c77c4b98`, its move to React Router 7 from `b4b415731` (#8614), and the removal of the redux store from `0460281f5` (#8692).
+
 Readarr Redux is not affiliated with, endorsed by or supported by the Readarr or Servarr teams. The app keeps the Readarr name, logo and internal identifiers so existing installs can move over; those belong to their owners.
 
 ## Third-party packages

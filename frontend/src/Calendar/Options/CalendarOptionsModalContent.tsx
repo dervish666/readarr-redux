@@ -41,7 +41,7 @@ interface CalendarOptionsModalContentProps {
 }
 
 // Local options live in the calendar's zustand store; the global ones are UI settings,
-// saved at once through react-query (which also copies them into the redux feed).
+// saved at once through react-query.
 function CalendarOptionsModalContent({
   onModalClose,
 }: CalendarOptionsModalContentProps) {

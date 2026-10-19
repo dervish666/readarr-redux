@@ -1,7 +1,7 @@
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSelector } from 'react-redux';
-import { useHistory } from 'react-router-dom';
+import { useLocation, useNavigationType } from 'react-router-dom';
+import { useAppDimension } from 'App/appStore';
 import AuthorEditorFooter from 'Author/Editor/AuthorEditorFooter';
 import NoAuthor from 'Author/NoAuthor';
 import { FILTERS } from 'Author/useAuthors';
@@ -22,7 +22,7 @@ import { useCustomFiltersList } from 'Filters/useCustomFilters';
 import useSelectState from 'Helpers/Hooks/useSelectState';
 import { align, icons, kinds } from 'Helpers/Props';
 import SortDirection from 'Helpers/Props/SortDirection';
-import scrollPositions from 'Store/scrollPositions';
+import scrollPositions from 'Helpers/scrollPositions';
 import { SelectStateInputProps } from 'typings/props';
 import translate from 'Utilities/String/translate';
 import getSelectedIds from 'Utilities/Table/getSelectedIds';
@@ -48,10 +48,6 @@ import useAuthorIndex, {
 } from './useAuthorIndex';
 import styles from './AuthorIndex.css';
 
-interface IndexState {
-  app: { dimensions: { isSmallScreen: boolean } };
-}
-
 interface JumpBarItems {
   characters: Record<string, number>;
   order: string[];
@@ -73,11 +69,10 @@ function AuthorIndex() {
     useAuthorIndexOptions();
 
   const customFilters = useCustomFiltersList(AUTHOR_INDEX_CUSTOM_FILTER_TYPE);
-  const history = useHistory();
+  const location = useLocation();
+  const navigationType = useNavigationType();
 
-  const isSmallScreen = useSelector(
-    (state: IndexState) => state.app.dimensions.isSmallScreen
-  );
+  const isSmallScreen = useAppDimension('isSmallScreen');
 
   const executeCommand = useExecuteCommand();
   const isRefreshingAuthor = useCommandExecuting(
@@ -89,12 +84,11 @@ function AuthorIndex() {
 
   // Back/forward (or an explicit restore) returns to where the list was left.
   const [scrollTop] = useState(() => {
-    const { action, location } = history;
     const state = location.state as
       | { restoreScrollPosition?: boolean }
       | undefined;
 
-    return action === 'POP' || state?.restoreScrollPosition
+    return navigationType === 'POP' || state?.restoreScrollPosition
       ? scrollPositions.authorIndex
       : 0;
   });

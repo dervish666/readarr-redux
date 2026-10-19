@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useHistory } from 'react-router';
+import { useNavigationType } from 'react-router-dom';
 import * as commandNames from 'Commands/commandNames';
 import { useCommandExecuting } from 'Commands/useCommands';
 import Alert from 'Components/Alert';
@@ -22,11 +22,11 @@ import styles from './Calendar.css';
 const UPDATE_DELAY = 3600000; // 1 hour
 
 function Calendar() {
-  const history = useHistory();
+  const navigationType = useNavigationType();
 
   // Coming back to the calendar (a POP) keeps the range the user left; any other
   // navigation starts at today, as withCurrentPage did.
-  const [keepCurrentRange] = useState(history.action === 'POP');
+  const [keepCurrentRange] = useState(navigationType === 'POP');
   const updateTimeout = useRef<ReturnType<typeof setTimeout>>();
 
   const { isFetching, isLoading, error, refetch } = useCalendar();

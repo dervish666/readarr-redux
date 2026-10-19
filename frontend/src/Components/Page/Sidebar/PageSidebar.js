@@ -455,8 +455,8 @@ class PageSidebar extends Component {
       transform
     } = this.state;
 
-    const urlBase = window.Readarr.urlBase;
-    const pathname = urlBase ? location.pathname.substr(urlBase.length) || '/' : location.pathname;
+    // Router locations are relative to the URL base (the router's basename).
+    const pathname = location.pathname;
     const activeParent = getActiveParent(pathname);
 
     let containerStyle = {};

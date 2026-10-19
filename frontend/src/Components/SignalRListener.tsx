@@ -5,7 +5,7 @@ import {
 } from '@microsoft/signalr';
 import { QueryClient, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
-import { useDispatch } from 'react-redux';
+import { setAppValue, setVersion } from 'App/appStore';
 import ModelBase from 'App/ModelBase';
 import Author from 'Author/Author';
 import Book from 'Book/Book';
@@ -14,7 +14,6 @@ import BookFile from 'BookFile/BookFile';
 import { bookFileBelongsTo } from 'BookFile/useBookFiles';
 import Command from 'Commands/Command';
 import { useUpdateCommand } from 'Commands/useCommands';
-import { setAppValue, setVersion } from 'Store/Actions/appActions';
 import {
   removeCachedItem,
   removeCachedItems,
@@ -36,7 +35,7 @@ interface SignalRMessage {
 }
 
 // SignalR messages (v1 hub) and what each one does. Every domain message updates
-// react-query only; redux gets nothing but app state (connection flags, version).
+// react-query; the zustand app store gets the connection flags and version.
 //
 // message          action                 effect
 // author           updated                merge into ['/author'] (a new author joins)
@@ -68,7 +67,7 @@ interface SignalRMessage {
 // rootfolder       any                    invalidate ['/rootFolder']
 // system/task      any                    invalidate ['/system/task'] and ['/command']
 // tag              any                    invalidate ['/tag'] and ['/tag/detail']
-// version          any                    redux app version (reload prompt)
+// version          any                    app store version (reload prompt)
 // wanted/cutoff,   updated                merge into shown ['/wanted/cutoff'] /
 // wanted/missing                          ['/wanted/missing'] page rows
 //
@@ -93,7 +92,6 @@ function invalidateQueries(queryClient: QueryClient, name: string) {
 
 function SignalRListener() {
   const queryClient = useQueryClient();
-  const dispatch = useDispatch();
   const updateCommandQuery = useUpdateCommand();
 
   const connection = useRef<HubConnection | null>(null);
@@ -102,42 +100,36 @@ function SignalRListener() {
     console.error('[signalR] failed to connect');
     console.error(error);
 
-    dispatch(
-      setAppValue({
-        isConnected: false,
-        isReconnecting: false,
-        isDisconnected: false,
-        isRestarting: false,
-      })
-    );
+    setAppValue({
+      isConnected: false,
+      isReconnecting: false,
+      isDisconnected: false,
+      isRestarting: false,
+    });
   });
 
   const handleStart = useRef(() => {
     console.debug('[signalR] connected');
 
-    dispatch(
-      setAppValue({
-        isConnected: true,
-        isReconnecting: false,
-        isDisconnected: false,
-        isRestarting: false,
-      })
-    );
+    setAppValue({
+      isConnected: true,
+      isReconnecting: false,
+      isDisconnected: false,
+      isRestarting: false,
+    });
   });
 
   const handleReconnecting = useRef(() => {
-    dispatch(setAppValue({ isReconnecting: true }));
+    setAppValue({ isReconnecting: true });
   });
 
   const handleReconnected = useRef(() => {
-    dispatch(
-      setAppValue({
-        isConnected: true,
-        isReconnecting: false,
-        isDisconnected: false,
-        isRestarting: false,
-      })
-    );
+    setAppValue({
+      isConnected: true,
+      isReconnecting: false,
+      isDisconnected: false,
+      isRestarting: false,
+    });
 
     // Repopulate the page (if a repopulator is set) to ensure things
     // are in sync after reconnecting.
@@ -294,7 +286,7 @@ function SignalRListener() {
         return;
 
       case 'version':
-        dispatch(setVersion({ version: body.version }));
+        setVersion({ version: body.version });
         return;
 
       case 'wanted/cutoff':
@@ -340,7 +332,7 @@ function SignalRListener() {
       .withAutomaticReconnect({
         nextRetryDelayInMilliseconds: (retryContext) => {
           if (retryContext.elapsedMilliseconds > 180000) {
-            dispatch(setAppValue({ isDisconnected: true }));
+            setAppValue({ isDisconnected: true });
           }
           return Math.min(retryContext.previousRetryCount, 10) * 1000;
         },
@@ -361,7 +353,7 @@ function SignalRListener() {
       connection.current?.stop();
       connection.current = null;
     };
-  }, [dispatch]);
+  }, []);
 
   return null;
 }

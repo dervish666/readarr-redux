@@ -1,14 +1,11 @@
 import PropTypes from 'prop-types';
-import React, { Component } from 'react';
-import { connect } from 'react-redux';
-import { hideMessage } from 'Store/Actions/appActions';
+import React, { PureComponent } from 'react';
+import { hideMessage } from 'App/messagesStore';
 import Message from './Message';
 
-const mapDispatchToProps = {
-  hideMessage
-};
-
-class MessageConnector extends Component {
+// PureComponent, as connect() was: a re-render with the same props must not
+// restart the hide timer.
+class MessageConnector extends PureComponent {
 
   //
   // Lifecycle
@@ -22,6 +19,12 @@ class MessageConnector extends Component {
 
   componentDidUpdate() {
     this.scheduleHideMessage(this.props.hideAfter);
+  }
+
+  componentWillUnmount() {
+    if (this._hideTimeoutId) {
+      clearTimeout(this._hideTimeoutId);
+    }
   }
 
   //
@@ -38,7 +41,7 @@ class MessageConnector extends Component {
   };
 
   hideMessage = () => {
-    this.props.hideMessage({ id: this.props.id });
+    hideMessage({ id: this.props.id });
   };
 
   //
@@ -55,13 +58,7 @@ class MessageConnector extends Component {
 
 MessageConnector.propTypes = {
   id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
-  hideAfter: PropTypes.number.isRequired,
-  hideMessage: PropTypes.func.isRequired
+  hideAfter: PropTypes.number.isRequired
 };
 
-MessageConnector.defaultProps = {
-  // Hide messages after 60 seconds if there is no activity
-  // hideAfter: 60
-};
-
-export default connect(undefined, mapDispatchToProps)(MessageConnector);
+export default MessageConnector;

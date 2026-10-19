@@ -1,12 +1,23 @@
-import { connect } from 'react-redux';
+import PropTypes from 'prop-types';
+import React from 'react';
 import ConnectionLostModal from './ConnectionLostModal';
 
-function createMapDispatchToProps(dispatch, props) {
-  return {
-    onModalClose() {
-      location.reload();
-    }
-  };
+// Closing the modal reloads the page, whatever onModalClose the caller passes.
+function onModalClose() {
+  location.reload();
 }
 
-export default connect(undefined, createMapDispatchToProps)(ConnectionLostModal);
+function ConnectionLostModalConnector({ isOpen }) {
+  return (
+    <ConnectionLostModal
+      isOpen={isOpen}
+      onModalClose={onModalClose}
+    />
+  );
+}
+
+ConnectionLostModalConnector.propTypes = {
+  isOpen: PropTypes.bool.isRequired
+};
+
+export default ConnectionLostModalConnector;

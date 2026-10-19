@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSelector } from 'react-redux';
 import {
   CellMeasurer,
   CellMeasurerCache,
   GridCellProps,
 } from 'react-virtualized';
+import { useAppDimension } from 'App/appStore';
 import NoAuthor from 'Author/NoAuthor';
 import { FILTERS, useUpdateAuthorMonitor } from 'Author/useAuthors';
 import Alert from 'Components/Alert';
@@ -62,10 +62,6 @@ const COLUMNS: Column[] = [
   },
 ];
 
-interface ShelfState {
-  app: { dimensions: { isSmallScreen: boolean } };
-}
-
 interface JumpBarItems {
   characters: Record<string, number>;
   order: string[];
@@ -87,9 +83,7 @@ function Bookshelf() {
 
   const { selectedFilterKey, sortKey, sortDirection } = useBookshelfOptions();
 
-  const isSmallScreen = useSelector(
-    (state: ShelfState) => state.app.dimensions.isSmallScreen
-  );
+  const isSmallScreen = useAppDimension('isSmallScreen');
 
   const [cache] = useState(
     () => new CellMeasurerCache({ defaultHeight: 100, fixedWidth: true })

@@ -57,10 +57,6 @@ class Page extends Component {
     });
   };
 
-  onConnectionLostModalClose = () => {
-    this.setState({ isConnectionLostModalOpen: false });
-  };
-
   //
   // Render
 
@@ -101,7 +97,6 @@ class Page extends Component {
 
           <ConnectionLostModalConnector
             isOpen={this.state.isConnectionLostModalOpen}
-            onModalClose={this.onConnectionLostModalClose}
           />
 
           <AuthenticationRequiredModal

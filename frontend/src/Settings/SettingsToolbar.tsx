@@ -1,11 +1,5 @@
-import React, {
-  ReactNode,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
-import { useHistory } from 'react-router-dom';
+import React, { ReactNode, useCallback, useEffect } from 'react';
+import { useBlocker } from 'react-router-dom';
 import PageToolbar from 'Components/Page/Toolbar/PageToolbar';
 import PageToolbarButton from 'Components/Page/Toolbar/PageToolbarButton';
 import PageToolbarSection from 'Components/Page/Toolbar/PageToolbarSection';
@@ -14,11 +8,6 @@ import { icons } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
 import AdvancedSettingsButton from './AdvancedSettingsButton';
 import PendingChangesModal from './PendingChangesModal';
-
-interface PendingLocation {
-  pathname: string;
-  search: string;
-}
 
 interface SettingsToolbarProps {
   showSave?: boolean;
@@ -29,8 +18,8 @@ interface SettingsToolbarProps {
 }
 
 // The toolbar every settings page shares: show advanced, Save (also mod+s) and the
-// "unsaved changes" prompt when leaving with pending changes. react-router 5 has no
-// useBlocker, so history.block does what Sonarr's useSettingsSave does.
+// "unsaved changes" prompt when leaving with pending changes, through useBlocker as
+// in Sonarr b4b415731 (#8614).
 function SettingsToolbar({
   showSave = true,
   isSaving = false,
@@ -38,42 +27,9 @@ function SettingsToolbar({
   additionalButtons,
   onSavePress,
 }: SettingsToolbarProps) {
-  const history = useHistory();
   const { bindShortcut, unbindShortcut } = useKeyboardShortcuts();
 
-  const [pendingLocation, setPendingLocation] = useState<{
-    location: PendingLocation;
-    action: string;
-  } | null>(null);
-
-  const hasPendingChangesRef = useRef(hasPendingChanges);
-  const isConfirmed = useRef(false);
-
-  hasPendingChangesRef.current = hasPendingChanges;
-
-  useEffect(() => {
-    const unblock = history.block(
-      (location: PendingLocation, action: string) => {
-        if (isConfirmed.current) {
-          isConfirmed.current = false;
-
-          return true;
-        }
-
-        if (hasPendingChangesRef.current) {
-          setPendingLocation({ location, action });
-
-          return false;
-        }
-
-        return true;
-      }
-    );
-
-    return () => {
-      unblock();
-    };
-  }, [history]);
+  const blocker = useBlocker(() => hasPendingChanges);
 
   useEffect(() => {
     bindShortcut(
@@ -94,27 +50,12 @@ function SettingsToolbar({
   }, [hasPendingChanges, onSavePress, bindShortcut, unbindShortcut]);
 
   const handleConfirmNavigation = useCallback(() => {
-    if (!pendingLocation) {
-      return;
-    }
-
-    const { location, action } = pendingLocation;
-
-    isConfirmed.current = true;
-    setPendingLocation(null);
-
-    if (action === 'PUSH') {
-      history.push(`${location.pathname}${location.search}`);
-    } else {
-      // Back and forward both arrive as POP, so which way the user went is unknown;
-      // assume back.
-      history.goBack();
-    }
-  }, [history, pendingLocation]);
+    blocker.proceed?.();
+  }, [blocker]);
 
   const handleCancelNavigation = useCallback(() => {
-    setPendingLocation(null);
-  }, []);
+    blocker.reset?.();
+  }, [blocker]);
 
   const handleSavePress = useCallback(() => {
     onSavePress?.();
@@ -143,7 +84,7 @@ function SettingsToolbar({
       </PageToolbarSection>
 
       <PendingChangesModal
-        isOpen={pendingLocation !== null}
+        isOpen={blocker.state === 'blocked'}
         onConfirm={handleConfirmNavigation}
         onCancel={handleCancelNavigation}
       />

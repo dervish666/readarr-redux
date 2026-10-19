@@ -1,26 +1,18 @@
-import { expect, openRoute, test } from './fixtures';
-import { withReduxStore } from './reactTree';
+import { expect, openRoute, test, waitForPage } from './fixtures';
+import { withQueryClient, withReduxStore } from './reactTree';
 
-// After stage 3 the redux store holds only what stage 4 removes: app state, the
-// captcha and oAuth form inputs, the UI settings feed (RelativeDateCellConnector) and
-// system status (page shell). The library data (authors, books, files, tags, root
-// folders, profiles, custom filters, commands) lives in react-query only.
+// Stage 4c deleted redux. App state and sidebar messages live in zustand
+// (App/appStore, App/messagesStore); UI settings and system status in react-query;
+// the captcha and oAuth inputs keep their own state; the router is React Router 7.
+// The tree walk that used to find the redux Provider must now come up empty, while
+// the same walk still finds the QueryClientProvider, so an empty result is not a
+// broken walk.
 
-test('redux: only the stage 4 slices are left', async ({ page }) => {
+test('redux: no store is left in the React tree', async ({ page }) => {
   await openRoute(page, '/authors');
+  await waitForPage(page);
 
-  const slices = await withReduxStore<{ top: string[]; settings: string[]; system: string[] }>(page, `
-    const state = store.getState();
-    return {
-      top: Object.keys(state).sort(),
-      settings: Object.keys(state.settings).sort(),
-      system: Object.keys(state.system).sort()
-    };
-  `);
+  expect(await withQueryClient<boolean>(page, 'return !!client.getQueryCache();')).toBe(true);
 
-  expect(slices).toStrictEqual({
-    top: ['app', 'captcha', 'oAuth', 'router', 'settings', 'system'],
-    settings: ['ui'],
-    system: ['status']
-  });
+  await expect(withReduxStore(page, 'return store;')).rejects.toThrow('No provider with a store prop');
 });

@@ -1,7 +1,7 @@
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSelector } from 'react-redux';
-import { useHistory } from 'react-router-dom';
+import { useLocation, useNavigationType } from 'react-router-dom';
+import { useAppDimension } from 'App/appStore';
 import NoAuthor from 'Author/NoAuthor';
 import BookEditorFooter from 'Book/Editor/BookEditorFooter';
 import * as commandNames from 'Commands/commandNames';
@@ -21,7 +21,7 @@ import TableOptionsModalWrapper from 'Components/Table/TableOptions/TableOptions
 import useSelectState from 'Helpers/Hooks/useSelectState';
 import { align, icons, kinds } from 'Helpers/Props';
 import SortDirection from 'Helpers/Props/SortDirection';
-import scrollPositions from 'Store/scrollPositions';
+import scrollPositions from 'Helpers/scrollPositions';
 import { SelectStateInputProps } from 'typings/props';
 import translate from 'Utilities/String/translate';
 import getSelectedIds from 'Utilities/Table/getSelectedIds';
@@ -46,10 +46,6 @@ import BookIndexTableOptions from './Table/BookIndexTableOptions';
 import useBookIndex, { useBookIndexCustomFilters } from './useBookIndex';
 import styles from './BookIndex.css';
 
-interface IndexState {
-  app: { dimensions: { isSmallScreen: boolean } };
-}
-
 interface JumpBarItems {
   characters: Record<string, number>;
   order: string[];
@@ -71,11 +67,10 @@ function BookIndex() {
     useBookIndexOptions();
 
   const customFilters = useBookIndexCustomFilters();
-  const history = useHistory();
+  const location = useLocation();
+  const navigationType = useNavigationType();
 
-  const isSmallScreen = useSelector(
-    (state: IndexState) => state.app.dimensions.isSmallScreen
-  );
+  const isSmallScreen = useAppDimension('isSmallScreen');
 
   const executeCommand = useExecuteCommand();
   const isRefreshingAuthors = useCommandExecuting(
@@ -94,12 +89,11 @@ function BookIndex() {
 
   // Back/forward (or an explicit restore) returns to where the list was left.
   const [scrollTop] = useState(() => {
-    const { action, location } = history;
     const state = location.state as
       | { restoreScrollPosition?: boolean }
       | undefined;
 
-    return action === 'POP' || state?.restoreScrollPosition
+    return navigationType === 'POP' || state?.restoreScrollPosition
       ? scrollPositions.bookIndex
       : 0;
   });

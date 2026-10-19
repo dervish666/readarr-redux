@@ -1,11 +1,9 @@
 import { useCallback } from 'react';
-import { useDispatch } from 'react-redux';
 import {
   useManageSettings,
   useSaveSettings,
   useSettings,
 } from 'Settings/useSettings';
-import { update } from 'Store/Actions/baseActions';
 
 // Readarr.Api.V1/Config/UiConfigResource.
 export interface UiSettingsModel {
@@ -25,19 +23,6 @@ export interface UiSettingsModel {
 const PATH = '/config/ui';
 const QUERY_OPTIONS = { staleTime: 60 * 60 * 1000 };
 
-// RelativeDateCellConnector still reads state.settings.ui (until Stage 4), so every
-// save copies the saved settings there too.
-const useCopyToFeed = () => {
-  const dispatch = useDispatch();
-
-  return useCallback(
-    (data: UiSettingsModel) => {
-      dispatch(update({ section: 'settings.ui', data }));
-    },
-    [dispatch]
-  );
-};
-
 export const useUiSettings = () => {
   return useSettings<UiSettingsModel>(PATH, QUERY_OPTIONS);
 };
@@ -49,12 +34,12 @@ export const useUiSettingsValues = () => {
 };
 
 export const useManageUiSettings = () => {
-  return useManageSettings<UiSettingsModel>(PATH, useCopyToFeed());
+  return useManageSettings<UiSettingsModel>(PATH);
 };
 
 export const useSaveUiSettings = () => {
   const data = useUiSettingsValues();
-  const { save } = useSaveSettings<UiSettingsModel>(PATH, useCopyToFeed());
+  const { save } = useSaveSettings<UiSettingsModel>(PATH);
 
   return useCallback(
     (changes: Partial<UiSettingsModel>) => {
