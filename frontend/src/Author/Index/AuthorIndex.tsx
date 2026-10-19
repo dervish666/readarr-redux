@@ -65,6 +65,7 @@ function AuthorIndex() {
     totalItems,
     isLoading,
     isFetched,
+    isSuccess,
     error,
   } = useAuthorIndex();
 
@@ -109,8 +110,11 @@ function AuthorIndex() {
   const { allSelected, allUnselected, selectedState } = selectState;
 
   useEffect(() => {
-    setSelectState({ type: 'updateItems', items });
-  }, [items, setSelectState]);
+    // A failed load must not drop the selection.
+    if (isSuccess) {
+      setSelectState({ type: 'updateItems', items });
+    }
+  }, [items, isSuccess, setSelectState]);
 
   const selectedAuthorIds = useMemo(() => {
     return allUnselected ? [] : getSelectedIds(selectedState);

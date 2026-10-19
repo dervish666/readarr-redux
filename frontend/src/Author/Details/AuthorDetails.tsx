@@ -104,6 +104,7 @@ function AuthorDetails({ authorId }: AuthorDetailsProps) {
     booksMap,
     isFetching: isBooksFetching,
     isFetched: isBooksFetched,
+    isSuccess: isBooksSuccess,
     error: booksError,
     refetch: refetchBooks,
   } = useAuthorBooks(authorId);
@@ -251,8 +252,11 @@ function AuthorDetails({ authorId }: AuthorDetailsProps) {
   }, [isRefreshing, wasRefreshing, isRenaming, wasRenaming, populate]);
 
   useEffect(() => {
-    setSelectState({ type: 'updateItems', items: books });
-  }, [books, setSelectState]);
+    // A failed load must not drop the selection.
+    if (isBooksSuccess) {
+      setSelectState({ type: 'updateItems', items: books });
+    }
+  }, [books, isBooksSuccess, setSelectState]);
 
   const overviewRef = useRef<HTMLParagraphElement>(null);
   const [isOverviewClamped, setIsOverviewClamped] = useState(false);

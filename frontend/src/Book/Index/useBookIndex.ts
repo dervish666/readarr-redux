@@ -41,7 +41,11 @@ const useBookIndex = () => {
   } = useBookIndexOptions();
 
   const { data: books, ...queryResult } = useBooks();
-  const { authorsMap, isFetched: isAuthorsFetched } = useAuthors();
+  const {
+    authorsMap,
+    isFetched: isAuthorsFetched,
+    isSuccess: isAuthorsSuccess,
+  } = useAuthors();
   const customFilters = useBookIndexCustomFilters();
 
   const { data, totalItems } = useMemo(() => {
@@ -71,6 +75,7 @@ const useBookIndex = () => {
     ...queryResult,
     // Rows and author filters need the author list too.
     isFetched: queryResult.isFetched && isAuthorsFetched,
+    isSuccess: queryResult.isSuccess && isAuthorsSuccess,
     data,
     totalItems,
   };

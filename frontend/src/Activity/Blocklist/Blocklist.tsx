@@ -41,6 +41,7 @@ function Blocklist() {
     error,
     isFetching,
     isFetched,
+    isSuccess,
     isLoading,
     page,
     goToPage,
@@ -68,8 +69,11 @@ function Blocklist() {
   const [isConfirmClearModalOpen, setIsConfirmClearModalOpen] = useState(false);
 
   useEffect(() => {
-    setSelectState({ type: 'updateItems', items: records });
-  }, [records, setSelectState]);
+    // A failed load must not drop the selection.
+    if (isSuccess) {
+      setSelectState({ type: 'updateItems', items: records });
+    }
+  }, [records, isSuccess, setSelectState]);
 
   useEffect(() => {
     const repopulate = () => {

@@ -49,6 +49,7 @@ function OrganizePreviewModalContent({
     items,
     isFetching: isPreviewFetching,
     isFetched: isPreviewFetched,
+    isSuccess: isPreviewSuccess,
     error: previewError,
   } = useOrganizePreview(authorId, bookId);
 
@@ -78,8 +79,11 @@ function OrganizePreviewModalContent({
   const { allSelected, allUnselected, selectedState } = selectState;
 
   useEffect(() => {
-    setSelectState({ type: 'updateItems', items: selectItems });
-  }, [selectItems, setSelectState]);
+    // A failed load must not drop the selection.
+    if (isPreviewSuccess) {
+      setSelectState({ type: 'updateItems', items: selectItems });
+    }
+  }, [selectItems, isPreviewSuccess, setSelectState]);
 
   const handleSelectAllChange = useCallback(
     ({ value }: InputChanged<boolean>) => {

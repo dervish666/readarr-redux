@@ -63,6 +63,7 @@ function BookIndex() {
     totalItems,
     isLoading,
     isFetched,
+    isSuccess,
     error,
   } = useBookIndex();
 
@@ -116,8 +117,11 @@ function BookIndex() {
   const { allSelected, allUnselected, selectedState } = selectState;
 
   useEffect(() => {
-    setSelectState({ type: 'updateItems', items });
-  }, [items, setSelectState]);
+    // A failed load must not drop the selection.
+    if (isSuccess) {
+      setSelectState({ type: 'updateItems', items });
+    }
+  }, [items, isSuccess, setSelectState]);
 
   const selectedBookIds = useMemo(() => {
     return allUnselected ? [] : getSelectedIds(selectedState);

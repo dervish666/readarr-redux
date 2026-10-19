@@ -47,6 +47,7 @@ function BookFileEditorTable({ authorId, bookId }: BookFileEditorTableProps) {
     data: bookFiles,
     isFetching,
     isFetched,
+    isSuccess,
     error,
   } = useBookFiles(bookId ? { bookId: [bookId] } : { authorId: authorId ?? 0 });
 
@@ -99,8 +100,11 @@ function BookFileEditorTable({ authorId, bookId }: BookFileEditorTableProps) {
   const hasSelectedFiles = selectedIds.length > 0;
 
   useEffect(() => {
-    setSelectState({ type: 'updateItems', items });
-  }, [items, setSelectState]);
+    // A failed load must not drop the selection.
+    if (isSuccess) {
+      setSelectState({ type: 'updateItems', items });
+    }
+  }, [items, isSuccess, setSelectState]);
 
   const handleSelectAllChange = useCallback(
     ({ value }: SelectStateInputProps) => {

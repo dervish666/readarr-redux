@@ -49,7 +49,7 @@ function RetagPreviewModalContent({
   onModalClose,
 }: RetagPreviewModalContentProps) {
   const executeCommand = useExecuteCommand();
-  const { items, isFetching, isFetched, error } = useRetagPreview(
+  const { items, isFetching, isFetched, isSuccess, error } = useRetagPreview(
     authorId,
     bookId
   );
@@ -72,8 +72,11 @@ function RetagPreviewModalContent({
   const { allSelected, allUnselected, selectedState } = selectState;
 
   useEffect(() => {
-    setSelectState({ type: 'updateItems', items: selectItems });
-  }, [selectItems, setSelectState]);
+    // A failed load must not drop the selection.
+    if (isSuccess) {
+      setSelectState({ type: 'updateItems', items: selectItems });
+    }
+  }, [selectItems, isSuccess, setSelectState]);
 
   const handleSelectAllChange = useCallback(
     ({ value }: InputChanged<boolean>) => {

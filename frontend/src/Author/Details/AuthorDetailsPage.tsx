@@ -15,7 +15,7 @@ import AuthorDetails from './AuthorDetails';
 // under the page (a refresh renamed it) the page follows the author to its new slug;
 // when the author is gone (deleted) it goes back to the index.
 function AuthorDetailsPage() {
-  const { data: allAuthors, isFetched, error } = useAuthors();
+  const { data: allAuthors, isFetched, isSuccess, error } = useAuthors();
   const { titleSlug } = useParams<{ titleSlug: string }>();
   const history = useHistory();
 
@@ -25,7 +25,10 @@ function AuthorDetailsPage() {
   const previousTitleSlug = usePrevious(titleSlug);
 
   useEffect(() => {
+    // Only a successful load can say the author is gone; a failed one would send the
+    // page back to the index.
     if (
+      !isSuccess ||
       authorId !== undefined ||
       previousAuthorId === undefined ||
       titleSlug !== previousTitleSlug
@@ -43,6 +46,7 @@ function AuthorDetailsPage() {
       history.push(`${window.Readarr.urlBase}/`);
     }
   }, [
+    isSuccess,
     allAuthors,
     authorId,
     previousAuthorId,

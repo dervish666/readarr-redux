@@ -123,6 +123,7 @@ const useBookshelf = () => {
     isLoading: authorsQuery.isLoading || booksQuery.isLoading,
     // Both lists must load; a failed load must not show an empty shelf.
     isFetched: authorsQuery.isFetched && booksQuery.isFetched,
+    isSuccess: authorsQuery.isSuccess && booksQuery.isSuccess,
     error: authorsQuery.error ?? booksQuery.error,
   };
 };
