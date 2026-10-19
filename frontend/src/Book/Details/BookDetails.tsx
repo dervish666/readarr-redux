@@ -42,8 +42,8 @@ import { icons, kinds, tooltipPositions } from 'Helpers/Props';
 import InteractiveSearch from 'InteractiveSearch/InteractiveSearch';
 import InteractiveSearchFilterMenu from 'InteractiveSearch/InteractiveSearchFilterMenu';
 import { useKeepReleases } from 'InteractiveSearch/useReleases';
-import OrganizePreviewModalConnector from 'Organize/OrganizePreviewModalConnector';
-import RetagPreviewModalConnector from 'Retag/RetagPreviewModalConnector';
+import OrganizePreviewModal from 'Organize/OrganizePreviewModal';
+import RetagPreviewModal from 'Retag/RetagPreviewModal';
 import { useUiSettingsValues } from 'Settings/UI/useUiSettings';
 import formatBytes from 'Utilities/Number/formatBytes';
 import {
@@ -555,14 +555,14 @@ function BookDetails({ bookId, initialBook }: BookDetailsProps) {
           </Tabs>
         </div>
 
-        <OrganizePreviewModalConnector
+        <OrganizePreviewModal
           isOpen={isOrganizeModalOpen}
           authorId={authorId}
           bookId={bookId}
           onModalClose={handleOrganizeModalClose}
         />
 
-        <RetagPreviewModalConnector
+        <RetagPreviewModal
           isOpen={isRetagModalOpen}
           authorId={authorId}
           bookId={bookId}

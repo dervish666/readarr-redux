@@ -1,0 +1,26 @@
+[
+  {
+    "authorId": 0,
+    "bookId": 0,
+    "bookFileId": 990101,
+    "existingPath": "/books/E2E Author/E2E Book 1/e2e-old-1.epub",
+    "newPath": "/books/E2E Author/E2E Book 1/E2E Book 1 - E2E Author.epub",
+    "id": 0
+  },
+  {
+    "authorId": 0,
+    "bookId": 0,
+    "bookFileId": 990102,
+    "existingPath": "/books/E2E Author/E2E Book 2/e2e-old-2.epub",
+    "newPath": "/books/E2E Author/E2E Book 2/E2E Book 2 - E2E Author.epub",
+    "id": 0
+  },
+  {
+    "authorId": 0,
+    "bookId": 0,
+    "bookFileId": 990103,
+    "existingPath": "/books/E2E Author/E2E Book 3/e2e-old-3.epub",
+    "newPath": "/books/E2E Author/E2E Book 3/E2E Book 3 - E2E Author.epub",
+    "id": 0
+  }
+]

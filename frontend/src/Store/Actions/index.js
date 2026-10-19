@@ -11,8 +11,6 @@ import * as customFilters from './customFilterActions';
 import * as editions from './editionActions';
 import * as interactiveImportActions from './interactiveImportActions';
 import * as oAuth from './oAuthActions';
-import * as organizePreview from './organizePreviewActions';
-import * as retagPreview from './retagPreviewActions';
 import * as settings from './settingsActions';
 import * as system from './systemActions';
 import * as tags from './tagActions';
@@ -31,8 +29,6 @@ export default [
   editions,
   interactiveImportActions,
   oAuth,
-  organizePreview,
-  retagPreview,
   settings,
   system,
   tags

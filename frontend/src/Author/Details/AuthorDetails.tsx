@@ -54,8 +54,8 @@ import InteractiveImportModal from 'InteractiveImport/InteractiveImportModal';
 import InteractiveSearch from 'InteractiveSearch/InteractiveSearch';
 import InteractiveSearchFilterMenu from 'InteractiveSearch/InteractiveSearchFilterMenu';
 import { useKeepReleases } from 'InteractiveSearch/useReleases';
-import OrganizePreviewModalConnector from 'Organize/OrganizePreviewModalConnector';
-import RetagPreviewModalConnector from 'Retag/RetagPreviewModalConnector';
+import OrganizePreviewModal from 'Organize/OrganizePreviewModal';
+import RetagPreviewModal from 'Retag/RetagPreviewModal';
 import useAuthorSeries from 'Series/useAuthorSeries';
 import { useMetadataProfile } from 'Settings/Profiles/Metadata/useMetadataProfiles';
 import QualityProfileName from 'Settings/Profiles/Quality/QualityProfileName';
@@ -951,13 +951,13 @@ function AuthorDetails({ authorId }: AuthorDetailsProps) {
           for new items!
         </div>
 
-        <OrganizePreviewModalConnector
+        <OrganizePreviewModal
           isOpen={isOrganizeModalOpen}
           authorId={authorId}
           onModalClose={handleOrganizeModalClose}
         />
 
-        <RetagPreviewModalConnector
+        <RetagPreviewModal
           isOpen={isRetagModalOpen}
           authorId={authorId}
           onModalClose={handleRetagModalClose}

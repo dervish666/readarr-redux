@@ -2,7 +2,6 @@ import AppSectionState, {
   AppSectionItemState,
   AppSectionSchemaState,
 } from 'App/State/AppSectionState';
-import { NamingSettingsModel } from 'Settings/MediaManagement/Naming/useNamingSettings';
 import { MetadataProfileModel } from 'Settings/Profiles/Metadata/useMetadataProfiles';
 import { QualityProfileModel } from 'Settings/Profiles/Quality/useQualityProfiles';
 import { UiSettingsModel } from 'Settings/UI/useUiSettings';
@@ -16,13 +15,10 @@ export interface QualityProfilesAppState
 
 export type MetadataProfilesAppState = AppSectionState<MetadataProfileModel>;
 
-export type NamingSettingsAppState = AppSectionItemState<NamingSettingsModel>;
-
 export type UiSettingsAppState = AppSectionItemState<UiSettingsModel>;
 
 interface SettingsAppState {
   metadataProfiles: MetadataProfilesAppState;
-  naming: NamingSettingsAppState;
   qualityProfiles: QualityProfilesAppState;
   rootFolders: AppSectionState<RootFolder>;
   ui: UiSettingsAppState;
