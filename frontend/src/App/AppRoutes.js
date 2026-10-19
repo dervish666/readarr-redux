@@ -1,6 +1,5 @@
-import PropTypes from 'prop-types';
 import React from 'react';
-import { Redirect, Route } from 'react-router-dom';
+import { Route } from 'react-router-dom';
 import Blocklist from 'Activity/Blocklist/Blocklist';
 import History from 'Activity/History/History';
 import Queue from 'Activity/Queue/Queue';
@@ -11,7 +10,6 @@ import BookIndex from 'Book/Index/BookIndex';
 import Bookshelf from 'Bookshelf/Bookshelf';
 import CalendarPage from 'Calendar/CalendarPage';
 import NotFound from 'Components/NotFound';
-import Switch from 'Components/Router/Switch';
 import AddNewItem from 'Search/AddNewItem';
 import CustomFormatSettingsPage from 'Settings/CustomFormats/CustomFormatSettingsPage';
 import DevelopmentSettings from 'Settings/Development/DevelopmentSettings';
@@ -35,79 +33,57 @@ import Status from 'System/Status/Status';
 import Tasks from 'System/Tasks/Tasks';
 import Updates from 'System/Updates/Updates';
 import UnmappedFiles from 'UnmappedFiles/UnmappedFiles';
-import getPathWithUrlBase from 'Utilities/getPathWithUrlBase';
 import CutoffUnmet from 'Wanted/CutoffUnmet/CutoffUnmet';
 import Missing from 'Wanted/Missing/Missing';
 
-function AppRoutes(props) {
-  const {
-    app
-  } = props;
-
+// The routes inside the page layout (App.js). Paths are relative to the URL base,
+// which the router's basename adds. As in Sonarr b4b415731 (#8614), paths match
+// whole: v5 matched a non-exact path as a prefix.
+export function appRouteElements() {
   return (
-    <Switch>
+    <>
       {/*
         Author
       */}
 
       <Route
-        exact={true}
         path="/"
-        component={AuthorIndex}
+        element={<AuthorIndex />}
       />
-
-      {
-        window.Readarr.urlBase &&
-          <Route
-            exact={true}
-            path="/"
-            addUrlBase={false}
-            render={() => {
-              return (
-                <Redirect
-                  to={getPathWithUrlBase('/')}
-                  component={app}
-                />
-              );
-            }}
-          />
-      }
 
       <Route
         path="/authors"
-        component={AuthorIndex}
+        element={<AuthorIndex />}
       />
 
       <Route
         path="/add/search"
-        component={AddNewItem}
+        element={<AddNewItem />}
       />
 
       <Route
-        exact={true}
         path="/shelf"
-        component={Bookshelf}
+        element={<Bookshelf />}
       />
 
       <Route
-        exact={true}
         path="/books"
-        component={BookIndex}
+        element={<BookIndex />}
       />
 
       <Route
         path="/unmapped"
-        component={UnmappedFiles}
+        element={<UnmappedFiles />}
       />
 
       <Route
         path="/author/:titleSlug"
-        component={AuthorDetailsPage}
+        element={<AuthorDetailsPage />}
       />
 
       <Route
         path="/book/:titleSlug"
-        component={BookDetailsPage}
+        element={<BookDetailsPage />}
       />
 
       {/*
@@ -116,7 +92,7 @@ function AppRoutes(props) {
 
       <Route
         path="/calendar"
-        component={CalendarPage}
+        element={<CalendarPage />}
       />
 
       {/*
@@ -125,17 +101,17 @@ function AppRoutes(props) {
 
       <Route
         path="/activity/history"
-        component={History}
+        element={<History />}
       />
 
       <Route
         path="/activity/queue"
-        component={Queue}
+        element={<Queue />}
       />
 
       <Route
         path="/activity/blocklist"
-        component={Blocklist}
+        element={<Blocklist />}
       />
 
       {/*
@@ -144,12 +120,12 @@ function AppRoutes(props) {
 
       <Route
         path="/wanted/missing"
-        component={Missing}
+        element={<Missing />}
       />
 
       <Route
         path="/wanted/cutoffunmet"
-        component={CutoffUnmet}
+        element={<CutoffUnmet />}
       />
 
       {/*
@@ -157,79 +133,78 @@ function AppRoutes(props) {
       */}
 
       <Route
-        exact={true}
         path="/settings"
-        component={Settings}
+        element={<Settings />}
       />
 
       <Route
         path="/settings/mediamanagement"
-        component={MediaManagement}
+        element={<MediaManagement />}
       />
 
       <Route
         path="/settings/profiles"
-        component={Profiles}
+        element={<Profiles />}
       />
 
       <Route
         path="/settings/quality"
-        component={Quality}
+        element={<Quality />}
       />
 
       <Route
         path="/settings/customformats"
-        component={CustomFormatSettingsPage}
+        element={<CustomFormatSettingsPage />}
       />
 
       <Route
         path="/settings/indexers"
-        component={IndexerSettings}
+        element={<IndexerSettings />}
       />
 
       <Route
         path="/settings/downloadclients"
-        component={DownloadClientSettings}
+        element={<DownloadClientSettings />}
       />
 
       <Route
         path="/settings/importlists"
-        component={ImportListSettings}
+        element={<ImportListSettings />}
       />
 
       <Route
         path="/settings/connect"
-        component={NotificationSettings}
+        element={<NotificationSettings />}
       />
 
       <Route
         path="/settings/metadata"
-        component={MetadataSettings}
+        element={<MetadataSettings />}
       />
 
       <Route
         path="/settings/metadatasource"
-        component={MetadataSourceSettings}
+        element={<MetadataSourceSettings />}
       />
 
       <Route
         path="/settings/tags"
-        component={TagSettings}
+        element={<TagSettings />}
       />
 
       <Route
         path="/settings/general"
-        component={GeneralSettings}
+        element={<GeneralSettings />}
       />
 
       <Route
         path="/settings/ui"
-        component={UISettings}
+        element={<UISettings />}
       />
 
       <Route
         path="/settings/development"
-        component={DevelopmentSettings}
+        element={<DevelopmentSettings />}
       />
 
       {/*
@@ -238,32 +213,32 @@ function AppRoutes(props) {
 
       <Route
         path="/system/status"
-        component={Status}
+        element={<Status />}
       />
 
       <Route
         path="/system/tasks"
-        component={Tasks}
+        element={<Tasks />}
       />
 
       <Route
         path="/system/backup"
-        component={Backups}
+        element={<Backups />}
       />
 
       <Route
         path="/system/updates"
-        component={Updates}
+        element={<Updates />}
       />
 
       <Route
         path="/system/events"
-        component={LogsTable}
+        element={<LogsTable />}
       />
 
       <Route
-        path="/system/logs/files"
-        component={Logs}
+        path="/system/logs/files/*"
+        element={<Logs />}
       />
 
       {/*
@@ -272,15 +247,9 @@ function AppRoutes(props) {
 
       <Route
         path="*"
-        component={NotFound}
+        element={<NotFound />}
       />
 
-    </Switch>
+    </>
   );
 }
-
-AppRoutes.propTypes = {
-  app: PropTypes.func.isRequired
-};
-
-export default AppRoutes;

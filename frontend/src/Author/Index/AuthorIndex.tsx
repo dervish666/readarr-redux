@@ -1,6 +1,6 @@
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useLocation, useNavigationType } from 'react-router-dom';
 import { useAppDimension } from 'App/appStore';
 import AuthorEditorFooter from 'Author/Editor/AuthorEditorFooter';
 import NoAuthor from 'Author/NoAuthor';
@@ -69,7 +69,8 @@ function AuthorIndex() {
     useAuthorIndexOptions();
 
   const customFilters = useCustomFiltersList(AUTHOR_INDEX_CUSTOM_FILTER_TYPE);
-  const history = useHistory();
+  const location = useLocation();
+  const navigationType = useNavigationType();
 
   const isSmallScreen = useAppDimension('isSmallScreen');
 
@@ -83,12 +84,11 @@ function AuthorIndex() {
 
   // Back/forward (or an explicit restore) returns to where the list was left.
   const [scrollTop] = useState(() => {
-    const { action, location } = history;
     const state = location.state as
       | { restoreScrollPosition?: boolean }
       | undefined;
 
-    return action === 'POP' || state?.restoreScrollPosition
+    return navigationType === 'POP' || state?.restoreScrollPosition
       ? scrollPositions.authorIndex
       : 0;
   });

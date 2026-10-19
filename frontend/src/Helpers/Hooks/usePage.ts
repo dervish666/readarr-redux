@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useHistory } from 'react-router';
+import { useNavigationType } from 'react-router-dom';
 import { create } from 'zustand';
 
 interface PageStore {
@@ -23,10 +23,10 @@ const pageStore = create<PageStore>(() => ({
 // The current page of a paged list. Going back to the list (a POP) keeps the page
 // the user left; any other navigation starts again at page 1, as withCurrentPage did.
 const usePage = (kind: keyof PageStore) => {
-  const history = useHistory();
+  const navigationType = useNavigationType();
 
   useState(() => {
-    if (history.action !== 'POP') {
+    if (navigationType !== 'POP') {
       pageStore.setState({ [kind]: 1 });
     }
 

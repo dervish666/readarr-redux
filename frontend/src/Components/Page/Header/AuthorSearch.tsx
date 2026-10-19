@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import useAuthors from 'Author/useAuthors';
 import useBooks from 'Book/useBooks';
 import { Tag, useTagList } from 'Tags/useTags';
@@ -9,7 +9,7 @@ import AuthorSearchInput from './AuthorSearchInput';
 // AuthorSearchInputConnector read the authors and books feeds), fuzzy matched by
 // AuthorSearchInput's fuse worker.
 function AuthorSearch() {
-  const history = useHistory();
+  const navigate = useNavigate();
   const { data: authors } = useAuthors();
   const { data: books } = useBooks();
   const tagList = useTagList();
@@ -58,25 +58,23 @@ function AuthorSearch() {
 
   const handleGoToAuthor = useCallback(
     (titleSlug: string) => {
-      history.push(`${window.Readarr.urlBase}/author/${titleSlug}`);
+      navigate(`/author/${titleSlug}`);
     },
-    [history]
+    [navigate]
   );
 
   const handleGoToBook = useCallback(
     (titleSlug: string) => {
-      history.push(`${window.Readarr.urlBase}/book/${titleSlug}`);
+      navigate(`/book/${titleSlug}`);
     },
-    [history]
+    [navigate]
   );
 
   const handleGoToAddNewAuthor = useCallback(
     (query: string) => {
-      history.push(
-        `${window.Readarr.urlBase}/add/search?term=${encodeURIComponent(query)}`
-      );
+      navigate(`/add/search?term=${encodeURIComponent(query)}`);
     },
-    [history]
+    [navigate]
   );
 
   return (

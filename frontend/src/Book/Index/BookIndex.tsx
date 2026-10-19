@@ -1,6 +1,6 @@
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useLocation, useNavigationType } from 'react-router-dom';
 import { useAppDimension } from 'App/appStore';
 import NoAuthor from 'Author/NoAuthor';
 import BookEditorFooter from 'Book/Editor/BookEditorFooter';
@@ -67,7 +67,8 @@ function BookIndex() {
     useBookIndexOptions();
 
   const customFilters = useBookIndexCustomFilters();
-  const history = useHistory();
+  const location = useLocation();
+  const navigationType = useNavigationType();
 
   const isSmallScreen = useAppDimension('isSmallScreen');
 
@@ -88,12 +89,11 @@ function BookIndex() {
 
   // Back/forward (or an explicit restore) returns to where the list was left.
   const [scrollTop] = useState(() => {
-    const { action, location } = history;
     const state = location.state as
       | { restoreScrollPosition?: boolean }
       | undefined;
 
-    return action === 'POP' || state?.restoreScrollPosition
+    return navigationType === 'POP' || state?.restoreScrollPosition
       ? scrollPositions.bookIndex
       : 0;
   });

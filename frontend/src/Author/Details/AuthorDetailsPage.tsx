@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useHistory, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import useAuthors from 'Author/useAuthors';
 import Alert from 'Components/Alert';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
@@ -17,7 +17,7 @@ import AuthorDetails from './AuthorDetails';
 function AuthorDetailsPage() {
   const { data: allAuthors, isFetched, isSuccess, error } = useAuthors();
   const { titleSlug } = useParams<{ titleSlug: string }>();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const author = allAuthors.find((a) => a.titleSlug === titleSlug);
   const authorId = author?.id;
@@ -39,11 +39,9 @@ function AuthorDetailsPage() {
     const renamedAuthor = allAuthors.find((a) => a.id === previousAuthorId);
 
     if (renamedAuthor) {
-      history.replace(
-        `${window.Readarr.urlBase}/author/${renamedAuthor.titleSlug}`
-      );
+      navigate(`/author/${renamedAuthor.titleSlug}`, { replace: true });
     } else {
-      history.push(`${window.Readarr.urlBase}/`);
+      navigate('/');
     }
   }, [
     isSuccess,
@@ -52,7 +50,7 @@ function AuthorDetailsPage() {
     previousAuthorId,
     titleSlug,
     previousTitleSlug,
-    history,
+    navigate,
   ]);
 
   if (!isFetched) {
