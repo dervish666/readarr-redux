@@ -1,0 +1,17 @@
+.error {
+  color: var(--dangerColor);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.json {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.button {
+  composes: button from 'Components/Link/Button.module.css';
+
+  position: relative;
+}

@@ -17,7 +17,7 @@ import History, { HistoryEventType } from 'typings/History';
 import formatCustomFormatScore from 'Utilities/Number/formatCustomFormatScore';
 import translate from 'Utilities/String/translate';
 import { AUTHOR_HISTORY_PATH } from './useAuthorHistory';
-import styles from './AuthorHistoryRow.css';
+import styles from './AuthorHistoryRow.module.css';
 
 function getTitle(eventType: HistoryEventType) {
   switch (eventType) {

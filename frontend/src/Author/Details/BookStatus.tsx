@@ -4,7 +4,7 @@ import BookFile from 'BookFile/BookFile';
 import Label from 'Components/Label';
 import { kinds } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
-import styles from './BookStatus.css';
+import styles from './BookStatus.module.css';
 
 interface BookStatusProps {
   isAvailable: boolean;

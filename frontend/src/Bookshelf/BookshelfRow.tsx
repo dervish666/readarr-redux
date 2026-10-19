@@ -11,7 +11,7 @@ import VirtualTableRowCell from 'Components/Table/Cells/VirtualTableRowCell';
 import VirtualTableSelectCell from 'Components/Table/Cells/VirtualTableSelectCell';
 import { SelectStateInputProps } from 'typings/props';
 import BookshelfBook from './BookshelfBook';
-import styles from './BookshelfRow.css';
+import styles from './BookshelfRow.module.css';
 
 interface BookshelfRowProps {
   author: Author;

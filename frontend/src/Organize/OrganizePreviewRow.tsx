@@ -4,7 +4,7 @@ import Icon from 'Components/Icon';
 import { icons, kinds } from 'Helpers/Props';
 import { InputChanged } from 'typings/inputs';
 import { SelectStateInputProps } from 'typings/props';
-import styles from './OrganizePreviewRow.css';
+import styles from './OrganizePreviewRow.module.css';
 
 interface OrganizePreviewRowProps {
   id: number;

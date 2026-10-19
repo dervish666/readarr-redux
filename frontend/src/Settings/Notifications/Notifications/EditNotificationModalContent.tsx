@@ -19,7 +19,7 @@ import { SelectedSchema } from 'Settings/useProviderSchema';
 import translate from 'Utilities/String/translate';
 import { NotificationModel, useManageConnection } from '../useConnections';
 import NotificationEventItems from './NotificationEventItems';
-import styles from './EditNotificationModalContent.css';
+import styles from './EditNotificationModalContent.module.css';
 
 export interface EditNotificationModalContentProps {
   id?: number;

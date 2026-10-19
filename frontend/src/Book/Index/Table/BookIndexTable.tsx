@@ -8,7 +8,7 @@ import { useBookIndexOptions } from '../bookIndexOptionsStore';
 import { useBookIndexSelect } from '../Select/BookIndexSelectContext';
 import BookIndexHeader from './BookIndexHeader';
 import BookIndexRow from './BookIndexRow';
-import styles from './BookIndexTable.css';
+import styles from './BookIndexTable.module.css';
 
 interface BookIndexTableProps {
   items: Book[];

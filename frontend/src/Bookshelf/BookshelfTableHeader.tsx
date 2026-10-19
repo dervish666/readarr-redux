@@ -4,7 +4,7 @@ import VirtualTableHeader from 'Components/Table/VirtualTableHeader';
 import VirtualTableHeaderCell from 'Components/Table/VirtualTableHeaderCell';
 import VirtualTableSelectAllHeaderCell from 'Components/Table/VirtualTableSelectAllHeaderCell';
 import SortDirection from 'Helpers/Props/SortDirection';
-import styles from './BookshelfTableHeader.css';
+import styles from './BookshelfTableHeader.module.css';
 
 interface BookshelfTableHeaderProps {
   columns: Column[];

@@ -8,7 +8,7 @@ import { InputChanged } from 'typings/inputs';
 import { SelectStateInputProps } from 'typings/props';
 import formatBytes from 'Utilities/Number/formatBytes';
 import { TagDifference } from './useRetagPreview';
-import styles from './RetagPreviewRow.css';
+import styles from './RetagPreviewRow.module.css';
 
 function formatValue(field: string, value?: string) {
   if (value === undefined || value === '0' || value === '') {

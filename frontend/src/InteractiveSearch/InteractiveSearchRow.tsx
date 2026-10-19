@@ -21,7 +21,7 @@ import translate from 'Utilities/String/translate';
 import InteractiveSearchPayload from './InteractiveSearchPayload';
 import Peers from './Peers';
 import { Release, useGrabRelease } from './useReleases';
-import styles from './InteractiveSearchRow.css';
+import styles from './InteractiveSearchRow.module.css';
 
 function getDownloadIcon(
   isGrabbing: boolean,

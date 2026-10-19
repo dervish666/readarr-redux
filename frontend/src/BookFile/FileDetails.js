@@ -8,7 +8,7 @@ import DescriptionListItemTitle from 'Components/DescriptionList/DescriptionList
 import Link from 'Components/Link/Link';
 import stripHtml from 'Utilities/String/stripHtml';
 import translate from 'Utilities/String/translate';
-import styles from './FileDetails.css';
+import styles from './FileDetails.module.css';
 
 function renderRejections(rejections) {
   return (

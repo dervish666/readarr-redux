@@ -16,7 +16,7 @@ import translate from 'Utilities/String/translate';
 import { useAuthorIndexPosterOptions } from '../authorIndexOptionsStore';
 import useAuthorIndexItem from '../useAuthorIndexItem';
 import AuthorIndexPosterInfo from './AuthorIndexPosterInfo';
-import styles from './AuthorIndexPoster.css';
+import styles from './AuthorIndexPoster.module.css';
 
 interface AuthorIndexPosterProps {
   authorId: number;

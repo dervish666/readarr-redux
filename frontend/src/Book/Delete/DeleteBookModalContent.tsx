@@ -13,7 +13,7 @@ import { inputTypes, kinds } from 'Helpers/Props';
 import { InputChanged } from 'typings/inputs';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
-import styles from './DeleteBookModalContent.css';
+import styles from './DeleteBookModalContent.module.css';
 
 export interface DeleteBookModalContentProps {
   bookId: number;

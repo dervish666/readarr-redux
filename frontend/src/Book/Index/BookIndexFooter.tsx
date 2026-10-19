@@ -6,7 +6,7 @@ import DescriptionListItem from 'Components/DescriptionList/DescriptionListItem'
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
 import useBookIndex from './useBookIndex';
-import styles from './BookIndexFooter.css';
+import styles from './BookIndexFooter.module.css';
 
 // Legend and totals for the books the index currently shows.
 function BookIndexFooter() {

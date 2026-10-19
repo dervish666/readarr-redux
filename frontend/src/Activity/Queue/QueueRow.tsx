@@ -42,7 +42,7 @@ import {
   useImportQueueItem,
   useRemoveQueueItem,
 } from './useQueue';
-import styles from './QueueRow.css';
+import styles from './QueueRow.module.css';
 
 interface QueueRowProps extends Queue {
   isSelected?: boolean;

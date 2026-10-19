@@ -26,7 +26,7 @@ import translate from 'Utilities/String/translate';
 import CalendarHeaderViewButton, {
   getCalendarViewTitle,
 } from './CalendarHeaderViewButton';
-import styles from './CalendarHeader.css';
+import styles from './CalendarHeader.module.css';
 
 const VIEWS: CalendarView[] = ['month', 'week', 'forecast', 'day', 'agenda'];
 

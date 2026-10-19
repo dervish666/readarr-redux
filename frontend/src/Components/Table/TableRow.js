@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import React from 'react';
-import styles from './TableRow.css';
+import styles from './TableRow.module.css';
 
 function TableRow(props) {
   const {

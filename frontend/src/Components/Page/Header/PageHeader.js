@@ -8,7 +8,7 @@ import translate from 'Utilities/String/translate';
 import AuthorSearch from './AuthorSearch';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import PageHeaderActionsMenuConnector from './PageHeaderActionsMenuConnector';
-import styles from './PageHeader.css';
+import styles from './PageHeader.module.css';
 
 class PageHeader extends Component {
 

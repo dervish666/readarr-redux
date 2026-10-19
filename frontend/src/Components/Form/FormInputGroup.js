@@ -33,7 +33,7 @@ import TextArea from './TextArea';
 import TextInput from './TextInput';
 import TextTagInput from './TextTagInput';
 import UMaskInput from './UMaskInput';
-import styles from './FormInputGroup.css';
+import styles from './FormInputGroup.module.css';
 
 function getComponent(type) {
   switch (type) {

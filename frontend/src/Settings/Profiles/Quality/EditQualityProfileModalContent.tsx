@@ -30,7 +30,7 @@ import {
   QualityProfileQualityItem,
   useManageQualityProfile,
 } from './useQualityProfiles';
-import styles from './EditQualityProfileModalContent.css';
+import styles from './EditQualityProfileModalContent.module.css';
 
 const NO_DRAG: DragMoveState = {
   dragQualityIndex: null,

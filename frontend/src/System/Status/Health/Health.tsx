@@ -16,7 +16,7 @@ import titleCase from 'Utilities/String/titleCase';
 import translate from 'Utilities/String/translate';
 import HealthItemLink from './HealthItemLink';
 import useHealth from './useHealth';
-import styles from './Health.css';
+import styles from './Health.module.css';
 
 // Checks the fork added. The Servarr wiki has no page for them, so they get no wiki link.
 const CHECKS_WITHOUT_WIKI = ['MetadataSourceCheck'];

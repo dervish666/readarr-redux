@@ -2,7 +2,7 @@ import React from 'react';
 import { kinds } from 'Helpers/Props';
 import { Tag } from 'Tags/useTags';
 import Label from './Label';
-import styles from './TagList.css';
+import styles from './TagList.module.css';
 
 interface TagListProps {
   tags: ReadonlyArray<number>;

@@ -17,7 +17,7 @@ import translate from 'Utilities/String/translate';
 import AddNewAuthorSearchResult from './Author/AddNewAuthorSearchResult';
 import AddNewBookSearchResult from './Book/AddNewBookSearchResult';
 import { useSearchLookup } from './useAddNew';
-import styles from './AddNewItem.css';
+import styles from './AddNewItem.module.css';
 
 const GOODREADS_SEARCH_HINT =
   'of a book (e.g. edition:656), work (e.g. work:4912783) or author (e.g. author:128382), the isbn (e.g. isbn:067003469X) or the asin (e.g. asin:B00JCDK5ME)';

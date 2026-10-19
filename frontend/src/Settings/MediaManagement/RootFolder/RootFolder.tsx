@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import Label from 'Components/Label';
 import ConfirmModal from 'Components/Modal/ConfirmModal';
 import SettingsCard from 'Components/SettingsCard/SettingsCard';
-import settingsCardStyles from 'Components/SettingsCard/SettingsCard.css';
+import settingsCardStyles from 'Components/SettingsCard/SettingsCard.module.css';
 import SettingsCardStatus, {
   SettingsCardStatusValue,
 } from 'Components/SettingsCard/SettingsCardStatus';
@@ -12,7 +12,7 @@ import RootFolderModel from 'typings/RootFolder';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
 import EditRootFolderModal from './EditRootFolderModal';
-import styles from './RootFolder.css';
+import styles from './RootFolder.module.css';
 
 interface Profile {
   name: string;

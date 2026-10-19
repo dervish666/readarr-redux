@@ -17,7 +17,7 @@ import { icons, kinds, tooltipPositions } from 'Helpers/Props';
 import { SelectStateInputProps } from 'typings/props';
 import translate from 'Utilities/String/translate';
 import BookStatus from './BookStatus';
-import styles from './BookRow.css';
+import styles from './BookRow.module.css';
 
 export interface MonitorBookOptions {
   shiftKey: boolean;

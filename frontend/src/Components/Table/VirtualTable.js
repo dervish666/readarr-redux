@@ -5,7 +5,7 @@ import Measure from 'Components/Measure';
 import Scroller from 'Components/Scroller/Scroller';
 import { scrollDirections } from 'Helpers/Props';
 import hasDifferentItemsOrOrder from 'Utilities/Object/hasDifferentItemsOrOrder';
-import styles from './VirtualTable.css';
+import styles from './VirtualTable.module.css';
 
 function overscanIndicesGetter(options) {
   const {

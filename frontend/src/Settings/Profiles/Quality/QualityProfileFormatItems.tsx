@@ -12,7 +12,7 @@ import { Failure } from 'typings/pending';
 import translate from 'Utilities/String/translate';
 import QualityProfileFormatItem from './QualityProfileFormatItem';
 import { QualityProfileFormatItem as FormatItemModel } from './useQualityProfiles';
-import styles from './QualityProfileFormatItems.css';
+import styles from './QualityProfileFormatItems.module.css';
 
 // Indexes into the profile's format items, highest score first.
 function calcOrder(profileFormatItems: FormatItemModel[]) {

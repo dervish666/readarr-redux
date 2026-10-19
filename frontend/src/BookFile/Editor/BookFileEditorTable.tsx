@@ -25,7 +25,7 @@ import translate from 'Utilities/String/translate';
 import getSelectedIds from 'Utilities/Table/getSelectedIds';
 import { bookFileEditorOptions } from './bookFileEditorOptionsStore';
 import BookFileEditorRow from './BookFileEditorRow';
-import styles from './BookFileEditorTable.css';
+import styles from './BookFileEditorTable.module.css';
 
 const SELECT_QUALITY = 'selectQuality';
 

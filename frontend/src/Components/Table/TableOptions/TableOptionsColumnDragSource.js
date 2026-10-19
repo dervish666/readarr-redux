@@ -5,7 +5,7 @@ import { DragSource, DropTarget } from 'react-dnd';
 import { findDOMNode } from 'react-dom';
 import { TABLE_COLUMN } from 'Helpers/dragTypes';
 import TableOptionsColumn from './TableOptionsColumn';
-import styles from './TableOptionsColumnDragSource.css';
+import styles from './TableOptionsColumnDragSource.module.css';
 
 const columnDragSource = {
   beginDrag(column) {

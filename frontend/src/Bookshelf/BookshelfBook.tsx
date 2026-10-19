@@ -3,7 +3,7 @@ import React, { useCallback } from 'react';
 import Book from 'Book/Book';
 import MonitorToggleButton from 'Components/MonitorToggleButton';
 import translate from 'Utilities/String/translate';
-import styles from './BookshelfBook.css';
+import styles from './BookshelfBook.module.css';
 
 interface BookshelfBookProps {
   book: Book;

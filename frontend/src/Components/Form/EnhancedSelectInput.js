@@ -18,7 +18,7 @@ import getUniqueElememtId from 'Utilities/getUniqueElementId';
 import HintedSelectInputOption from './HintedSelectInputOption';
 import HintedSelectInputSelectedValue from './HintedSelectInputSelectedValue';
 import TextInput from './TextInput';
-import styles from './EnhancedSelectInput.css';
+import styles from './EnhancedSelectInput.module.css';
 
 const MINIMUM_DISTANCE_FROM_EDGE = 10;
 

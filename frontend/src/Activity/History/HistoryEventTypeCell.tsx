@@ -4,7 +4,7 @@ import TableRowCell from 'Components/Table/Cells/TableRowCell';
 import { icons, kinds } from 'Helpers/Props';
 import { HistoryData, HistoryEventType } from 'typings/History';
 import translate from 'Utilities/String/translate';
-import styles from './HistoryEventTypeCell.css';
+import styles from './HistoryEventTypeCell.module.css';
 
 function getIconName(eventType: HistoryEventType) {
   switch (eventType) {

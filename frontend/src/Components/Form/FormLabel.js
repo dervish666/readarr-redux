@@ -2,7 +2,7 @@ import classNames from 'classnames';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { sizes } from 'Helpers/Props';
-import styles from './FormLabel.css';
+import styles from './FormLabel.module.css';
 
 function FormLabel(props) {
   const {

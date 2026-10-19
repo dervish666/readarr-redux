@@ -6,7 +6,7 @@ import usePrevious from 'Helpers/Hooks/usePrevious';
 import { icons, kinds } from 'Helpers/Props';
 import { ValidationFailure } from 'typings/pending';
 import { ApiError } from 'Utilities/Fetch/fetchJson';
-import styles from './SpinnerErrorButton.css';
+import styles from './SpinnerErrorButton.module.css';
 
 // Redux saves still hand over the jQuery xhr; react-query mutations hand over an ApiError.
 interface XhrError {

@@ -3,7 +3,7 @@ import React, { Component } from 'react';
 import Icon from 'Components/Icon';
 import { icons } from 'Helpers/Props';
 import MenuItem from './MenuItem';
-import styles from './SelectedMenuItem.css';
+import styles from './SelectedMenuItem.module.css';
 
 class SelectedMenuItem extends Component {
 

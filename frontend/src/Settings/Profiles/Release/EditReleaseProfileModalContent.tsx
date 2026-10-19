@@ -16,7 +16,7 @@ import {
   ReleaseProfileModel,
   useManageReleaseProfile,
 } from './useReleaseProfiles';
-import styles from './EditReleaseProfileModalContent.css';
+import styles from './EditReleaseProfileModalContent.module.css';
 
 const tagInputDelimiters = ['Tab', 'Enter'];
 

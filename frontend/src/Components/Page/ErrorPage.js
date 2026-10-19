@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import React from 'react';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
-import styles from './ErrorPage.css';
+import styles from './ErrorPage.module.css';
 
 function ErrorPage(props) {
   const {

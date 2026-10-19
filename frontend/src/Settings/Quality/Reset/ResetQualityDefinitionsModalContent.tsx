@@ -9,7 +9,7 @@ import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
 import { inputTypes, kinds } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
-import styles from './ResetQualityDefinitionsModalContent.css';
+import styles from './ResetQualityDefinitionsModalContent.module.css';
 
 export interface ResetQualityDefinitionsModalContentProps {
   isResettingQualityDefinitions: boolean;

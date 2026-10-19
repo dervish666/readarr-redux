@@ -15,7 +15,7 @@ import {
   useCustomFormatSchema,
 } from '../useCustomFormats';
 import AddSpecificationItem from './AddSpecificationItem';
-import styles from './AddSpecificationModalContent.css';
+import styles from './AddSpecificationModalContent.module.css';
 
 interface AddSpecificationModalContentProps {
   onModalClose: (selectedSpec?: CustomFormatSpecification) => void;

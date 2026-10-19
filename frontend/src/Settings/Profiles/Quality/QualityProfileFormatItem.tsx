@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import NumberInput from 'Components/Form/NumberInput';
-import styles from './QualityProfileFormatItem.css';
+import styles from './QualityProfileFormatItem.module.css';
 
 interface QualityProfileFormatItemProps {
   formatId: number;

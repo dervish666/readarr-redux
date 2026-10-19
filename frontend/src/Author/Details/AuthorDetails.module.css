@@ -1,0 +1,349 @@
+.innerContentBody {
+  padding: 0;
+}
+
+.header {
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
+  min-height: 380px;
+  width: 100%;
+  container-type: inline-size;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background-position: center 25%;
+  background-size: cover;
+  filter: saturate(1.1);
+}
+
+.backdropOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.42) 0%,
+      rgba(0, 0, 0, 0.56) 50%,
+      rgba(0, 0, 0, 0.78) 100%
+    );
+}
+
+.headerContent {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+
+  padding: 64px 32px 28px;
+  width: 100%;
+  height: 100%;
+  color: var(--seriesOverlayInk);
+}
+
+.poster {
+  flex-shrink: 0;
+  overflow: hidden;
+  width: clamp(160px, 20cqi, 210px);
+  border-radius: 12px;
+  box-shadow:
+    0 24px 60px -16px rgba(0, 0, 0, 0.55),
+    0 6px 14px -2px rgba(0, 0, 0, 0.3);
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 4px;
+  width: 100%;
+  gap: 12px;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 16px;
+}
+
+.title {
+  overflow: hidden;
+  max-height: calc(2 * 1.2em);
+  color: var(--white);
+  text-wrap: balance;
+  letter-spacing: -0.025em;
+  font-weight: 600;
+  font-size: clamp(2.25rem, 5cqi, 3.25rem);
+  font-family: $defaultFontFamily;
+  line-height: 1.2;
+}
+
+.authorNavigationButtons {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 1;
+  display: flex;
+  gap: 4px;
+
+  white-space: nowrap;
+}
+
+.authorNavigationButton {
+  composes: link from 'Components/Link/Link.module.css';
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  color: var(--seriesOverlayInk);
+  opacity: 0.78;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+  transition: opacity 200ms cubic-bezier(0.25, 1, 0.5, 1);
+
+  &:hover {
+    color: var(--white);
+    opacity: 1;
+  }
+}
+
+.details {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 6px 0 4px;
+  color: var(--seriesOverlayInk);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  font-size: 14px;
+  row-gap: 6px;
+}
+
+.detailsChips {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  margin-top: 4px;
+  gap: 10px;
+}
+
+.chipsRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.detailsLabel {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 5px 12px 5px 10px;
+  border-radius: 999px;
+  background-color: var(--seriesOverlayBackdrop);
+  color: color-mix(in oklch, var(--seriesOverlayInk) 95%, transparent);
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  font-weight: 500;
+  font-size: 12px;
+  gap: 8px;
+  backdrop-filter: blur(8px);
+}
+
+.detailsLabel svg {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.monitoredToggle {
+  composes: link from 'Components/Link/Link.module.css';
+
+  display: inline-flex;
+  transition: opacity 160ms cubic-bezier(0.25, 1, 0.5, 1);
+
+  &:disabled {
+    opacity: 0.55;
+  }
+}
+
+.chipText {
+  color: color-mix(in oklch, var(--seriesOverlayInk) 92%, transparent);
+  font-weight: 400;
+  font-size: 13px;
+}
+
+.heroFooter {
+  display: flex;
+  align-items: center;
+  margin-top: 12px;
+  color: color-mix(in oklch, var(--seriesOverlayInk) 70%, var(--seriesOverlayBackdrop));
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  font-size: 12px;
+  gap: 8px;
+}
+
+.path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: $monoSpaceFontFamily;
+}
+
+.contentContainer {
+  padding: 28px 32px 64px;
+  background-color: var(--pageBackground);
+}
+
+.overviewSection {
+  position: relative;
+  margin: 0 0 32px;
+}
+
+.overviewFrame {
+  position: relative;
+  margin-bottom: 14px;
+  padding-top: 14px;
+}
+
+.overviewFrame::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 36px;
+  height: 1px;
+  background-color: var(--accent);
+  content: "";
+}
+
+.overviewFrame::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 36px;
+  height: 1px;
+  background-color: var(--borderColor);
+  content: "";
+}
+
+.overviewLabel {
+  position: absolute;
+  top: -9px;
+  left: 0;
+  z-index: 1;
+  padding-right: 8px;
+  background-color: var(--pageBackground);
+  color: var(--accentDeep);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  font-size: 12px;
+  font-family: $monoSpaceFontFamily;
+}
+
+.overview {
+  margin: 0;
+  color: var(--inkSoft);
+  text-wrap: pretty;
+  font-style: italic;
+  font-size: 16px;
+  font-family: $defaultFontFamily;
+  line-height: 1.6;
+}
+
+.overviewClamped {
+  /* stylelint-disable-next-line value-no-vendor-prefix -- required for -webkit-line-clamp */
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+}
+
+.overviewToggle {
+  composes: link from 'Components/Link/Link.module.css';
+
+  margin-top: 8px;
+  color: var(--accent);
+  font-weight: 500;
+  font-size: 13px;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.tabList {
+  display: flex;
+  align-items: flex-end;
+  margin: 0 0 20px;
+  padding: 0;
+  border-bottom: 1px solid var(--borderColor);
+  gap: 4px;
+}
+
+.tab {
+  position: relative;
+  bottom: -1px;
+  display: inline-block;
+  padding: 8px 14px;
+  border-bottom: 2px solid transparent;
+  color: var(--inkMuted);
+  list-style: none;
+  letter-spacing: 0.01em;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: color 160ms cubic-bezier(0.25, 1, 0.5, 1), border-color 160ms cubic-bezier(0.25, 1, 0.5, 1);
+
+  &:hover {
+    color: var(--ink);
+  }
+}
+
+.selectedTab {
+  border-bottom-color: var(--accent);
+  color: var(--ink);
+}
+
+.filterIcon {
+  margin-left: auto;
+}
+
+.metadataMessage {
+  padding: 0 32px 32px;
+  color: var(--helpTextColor);
+  text-align: center;
+  font-weight: 300;
+  font-size: 16px;
+}
+
+@media only screen and (max-width: $breakpointSmall) {
+  .header {
+    min-height: 240px;
+  }
+
+  .poster {
+    display: none;
+  }
+
+  .headerContent {
+    padding: 40px 16px 16px;
+    gap: 16px;
+  }
+
+  .title {
+    font-size: 28px;
+  }
+
+  .contentContainer {
+    padding: 20px 16px 48px;
+  }
+
+  .tabList {
+    overflow-x: auto;
+  }
+}

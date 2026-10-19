@@ -11,7 +11,7 @@ import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
 import { icons, kinds } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
-import styles from './OrganizeAuthorModalContent.css';
+import styles from './OrganizeAuthorModalContent.module.css';
 
 interface OrganizeAuthorModalContentProps {
   authorIds: number[];

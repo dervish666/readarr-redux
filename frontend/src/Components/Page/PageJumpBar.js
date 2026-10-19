@@ -3,7 +3,7 @@ import React, { Component } from 'react';
 import Measure from 'Components/Measure';
 import dimensions from 'Styles/Variables/dimensions';
 import PageJumpBarItem from './PageJumpBarItem';
-import styles from './PageJumpBar.css';
+import styles from './PageJumpBar.module.css';
 
 const ITEM_HEIGHT = parseInt(dimensions.jumpBarItemHeight);
 

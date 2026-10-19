@@ -15,7 +15,7 @@ import formatDateTime from 'Utilities/Date/formatDateTime';
 import { ApiError } from 'Utilities/Fetch/fetchJson';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
-import styles from './ImportDestinationsModalContent.css';
+import styles from './ImportDestinationsModalContent.module.css';
 
 const NONE = '-';
 

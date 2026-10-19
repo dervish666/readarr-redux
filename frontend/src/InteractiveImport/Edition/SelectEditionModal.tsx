@@ -21,7 +21,7 @@ import { kinds, scrollDirections } from 'Helpers/Props';
 import { InputChanged } from 'typings/inputs';
 import titleCase from 'Utilities/String/titleCase';
 import translate from 'Utilities/String/translate';
-import styles from './SelectEditionModal.css';
+import styles from './SelectEditionModal.module.css';
 
 const COLUMNS: Column[] = [
   {

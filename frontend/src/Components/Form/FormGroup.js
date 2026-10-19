@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { map } from 'Helpers/elementChildren';
 import { sizes } from 'Helpers/Props';
-import styles from './FormGroup.css';
+import styles from './FormGroup.module.css';
 
 function FormGroup(props) {
   const {

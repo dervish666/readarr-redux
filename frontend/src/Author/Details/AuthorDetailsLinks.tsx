@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link as AuthorLink } from 'Author/Author';
 import Link from 'Components/Link/Link';
-import styles from './AuthorDetailsLinks.css';
+import styles from './AuthorDetailsLinks.module.css';
 
 interface AuthorDetailsLinksProps {
   links: AuthorLink[];

@@ -3,7 +3,7 @@ import React from 'react';
 import AuthorPoster from 'Author/AuthorPoster';
 import Label from 'Components/Label';
 import { kinds } from 'Helpers/Props';
-import styles from './AuthorSearchResult.css';
+import styles from './AuthorSearchResult.module.css';
 
 function AuthorSearchResult(props) {
   const {

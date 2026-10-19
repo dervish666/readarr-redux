@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
-import styles from './PageToolbar.css';
+import styles from './PageToolbar.module.css';
 
 class PageToolbar extends Component {
 

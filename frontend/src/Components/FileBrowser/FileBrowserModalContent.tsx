@@ -18,7 +18,7 @@ import usePaths from 'Path/usePaths';
 import { useSystemStatusData } from 'System/Status/useSystemStatus';
 import translate from 'Utilities/String/translate';
 import FileBrowserRow from './FileBrowserRow';
-import styles from './FileBrowserModalContent.css';
+import styles from './FileBrowserModalContent.module.css';
 
 const columns: Column[] = [
   {

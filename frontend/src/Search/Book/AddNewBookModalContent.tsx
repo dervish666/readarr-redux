@@ -19,7 +19,7 @@ import { InputChanged } from 'typings/inputs';
 import selectSettings from 'Utilities/selectSettings';
 import stripHtml from 'Utilities/String/stripHtml';
 import translate from 'Utilities/String/translate';
-import styles from './AddNewBookModalContent.css';
+import styles from './AddNewBookModalContent.module.css';
 
 export interface AddNewBookModalContentProps {
   book: Book;

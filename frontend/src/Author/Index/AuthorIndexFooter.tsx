@@ -6,7 +6,7 @@ import DescriptionListItem from 'Components/DescriptionList/DescriptionListItem'
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
 import useAuthorIndex from './useAuthorIndex';
-import styles from './AuthorIndexFooter.css';
+import styles from './AuthorIndexFooter.module.css';
 
 // Legend and totals for the authors the index currently shows.
 function AuthorIndexFooter() {

@@ -3,7 +3,7 @@ import React, { Component } from 'react';
 import IconButton from 'Components/Link/IconButton';
 import { icons } from 'Helpers/Props';
 import TextInput from './TextInput';
-import styles from './KeyValueListInputItem.css';
+import styles from './KeyValueListInputItem.module.css';
 
 class KeyValueListInputItem extends Component {
 

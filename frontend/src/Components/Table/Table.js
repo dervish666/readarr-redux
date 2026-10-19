@@ -9,7 +9,7 @@ import { icons, scrollDirections } from 'Helpers/Props';
 import TableHeader from './TableHeader';
 import TableHeaderCell from './TableHeaderCell';
 import TableSelectAllHeaderCell from './TableSelectAllHeaderCell';
-import styles from './Table.css';
+import styles from './Table.module.css';
 
 const tableHeaderCellProps = [
   'sortKey',

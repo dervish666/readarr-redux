@@ -4,7 +4,7 @@ import RelativeDateCellConnector from 'Components/Table/Cells/RelativeDateCellCo
 import TableRowCell from 'Components/Table/Cells/TableRowCell';
 import TableRow from 'Components/Table/TableRow';
 import translate from 'Utilities/String/translate';
-import styles from './LogFilesTableRow.css';
+import styles from './LogFilesTableRow.module.css';
 
 interface LogFilesTableRowProps {
   filename: string;

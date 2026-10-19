@@ -44,7 +44,7 @@ import { BookIndexSelectProvider } from './Select/BookIndexSelectContext';
 import BookIndexTable from './Table/BookIndexTable';
 import BookIndexTableOptions from './Table/BookIndexTableOptions';
 import useBookIndex, { useBookIndexCustomFilters } from './useBookIndex';
-import styles from './BookIndex.css';
+import styles from './BookIndex.module.css';
 
 interface JumpBarItems {
   characters: Record<string, number>;

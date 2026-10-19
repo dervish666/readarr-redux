@@ -9,7 +9,7 @@ import TableRow from 'Components/Table/TableRow';
 import { SelectStateInputProps } from 'typings/props';
 import formatBytes from 'Utilities/Number/formatBytes';
 import BookFileActionsCell from './BookFileActionsCell';
-import styles from './BookFileEditorRow.css';
+import styles from './BookFileEditorRow.module.css';
 
 interface BookFileEditorRowProps {
   bookFile: BookFile;

@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import styles from './PageToolbarSeparator.css';
+import styles from './PageToolbarSeparator.module.css';
 
 class PageToolbarSeparator extends Component {
 

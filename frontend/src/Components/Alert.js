@@ -2,7 +2,7 @@ import classNames from 'classnames';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { kinds } from 'Helpers/Props';
-import styles from './Alert.css';
+import styles from './Alert.module.css';
 
 function Alert(props) {
   const { className, kind, children, ...otherProps } = props;

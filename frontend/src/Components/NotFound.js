@@ -2,7 +2,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import PageContent from 'Components/Page/PageContent';
 import translate from 'Utilities/String/translate';
-import styles from './NotFound.css';
+import styles from './NotFound.module.css';
 
 function NotFound({ message }) {
   return (

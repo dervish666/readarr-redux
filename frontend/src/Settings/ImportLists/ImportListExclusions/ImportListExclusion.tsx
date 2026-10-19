@@ -8,7 +8,7 @@ import {
   ImportListExclusionModel,
   useDeleteImportListExclusion,
 } from './useImportListExclusions';
-import styles from './ImportListExclusion.css';
+import styles from './ImportListExclusion.module.css';
 
 function ImportListExclusion({
   id,

@@ -9,7 +9,7 @@ import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
 import { AuthorIndexOverviewOptions } from '../authorIndexOptionsStore';
 import { getBookCountLabel } from '../Posters/AuthorIndexPosterInfo';
-import styles from './AuthorIndexOverviewInfo.css';
+import styles from './AuthorIndexOverviewInfo.module.css';
 
 interface AuthorIndexOverviewInfoProps {
   author: Author;

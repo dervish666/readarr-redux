@@ -16,7 +16,7 @@ import formatDateTime from 'Utilities/Date/formatDateTime';
 import formatTimeSpan from 'Utilities/Date/formatTimeSpan';
 import translate from 'Utilities/String/translate';
 import { useRefreshTasks } from '../useTasks';
-import styles from './ScheduledTaskRow.css';
+import styles from './ScheduledTaskRow.module.css';
 
 interface ScheduledTaskRowProps {
   taskName: string;

@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import React from 'react';
-import styles from './VirtualTableRow.css';
+import styles from './VirtualTableRow.module.css';
 
 function VirtualTableRow(props) {
   const {

@@ -7,7 +7,7 @@ import tagShape from 'Helpers/Props/Shapes/tagShape';
 import AutoSuggestInput from './AutoSuggestInput';
 import TagInputInput from './TagInputInput';
 import TagInputTag from './TagInputTag';
-import styles from './TagInput.css';
+import styles from './TagInput.module.css';
 
 function getTag(value, selectedIndex, suggestions, allowNew) {
   if (selectedIndex == null && value) {

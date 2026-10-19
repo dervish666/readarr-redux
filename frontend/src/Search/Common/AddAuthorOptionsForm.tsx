@@ -18,7 +18,7 @@ import {
   ValidationWarning,
 } from 'typings/pending';
 import translate from 'Utilities/String/translate';
-import styles from './AddAuthorOptionsForm.css';
+import styles from './AddAuthorOptionsForm.module.css';
 
 export type AddNewOptionChanged = <K extends keyof AddNewOptions>(
   name: K,

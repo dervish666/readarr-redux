@@ -16,7 +16,7 @@ import {
   ImportListExclusionModel,
   useManageImportListExclusion,
 } from './useImportListExclusions';
-import styles from './EditImportListExclusionModalContent.css';
+import styles from './EditImportListExclusionModalContent.module.css';
 
 export interface EditImportListExclusionModalContentProps {
   id?: number;

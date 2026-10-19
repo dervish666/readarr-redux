@@ -3,7 +3,7 @@ import React, { Component } from 'react';
 import Scroller from 'Components/Scroller/Scroller';
 import { scrollDirections } from 'Helpers/Props';
 import { isLocked } from 'Utilities/scrollLock';
-import styles from './PageContentBody.css';
+import styles from './PageContentBody.module.css';
 
 class PageContentBody extends Component {
 

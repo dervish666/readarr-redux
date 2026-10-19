@@ -11,7 +11,7 @@ import {
 import { useAuthorIndexSelect } from '../Select/AuthorIndexSelectContext';
 import AuthorIndexHeader from './AuthorIndexHeader';
 import AuthorIndexRow from './AuthorIndexRow';
-import styles from './AuthorIndexTable.css';
+import styles from './AuthorIndexTable.module.css';
 
 interface AuthorIndexTableProps {
   items: Author[];

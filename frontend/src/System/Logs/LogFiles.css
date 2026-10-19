@@ -1,5 +1,0 @@
-.location {
-  composes: alert from '~Components/Alert.css';
-
-  margin-bottom: 24px;
-}

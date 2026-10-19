@@ -11,7 +11,7 @@ import ModalHeader from 'Components/Modal/ModalHeader';
 import { inputTypes, kinds, sizes } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
 import { QueueRemovalOptions } from './useQueue';
-import styles from './RemoveQueueItemModal.css';
+import styles from './RemoveQueueItemModal.module.css';
 
 interface RemoveQueueItemModalProps {
   isOpen: boolean;

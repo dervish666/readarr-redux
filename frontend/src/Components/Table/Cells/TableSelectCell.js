@@ -2,7 +2,7 @@ import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import CheckInput from 'Components/Form/CheckInput';
 import TableRowCell from './TableRowCell';
-import styles from './TableSelectCell.css';
+import styles from './TableSelectCell.module.css';
 
 class TableSelectCell extends Component {
 

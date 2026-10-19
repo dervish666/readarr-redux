@@ -18,7 +18,7 @@ import {
   ROW_BORDER,
   ROW_VERTICAL_PADDING,
 } from './overviewLayout';
-import styles from './BookIndexOverviews.css';
+import styles from './BookIndexOverviews.module.css';
 
 const progressBarHeight = parseInt(dimensions.progressBarSmallHeight);
 const detailedProgressBarHeight = parseInt(dimensions.progressBarMediumHeight);

@@ -68,7 +68,7 @@ import AuthorDetailsBooks from './AuthorDetailsBooks';
 import AuthorDetailsLinks from './AuthorDetailsLinks';
 import AuthorDetailsSeries from './AuthorDetailsSeries';
 import AuthorTags from './AuthorTags';
-import styles from './AuthorDetails.css';
+import styles from './AuthorDetails.module.css';
 
 const SEARCH_TAB_INDEX = 3;
 

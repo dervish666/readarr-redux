@@ -2,7 +2,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { tooltipPositions } from 'Helpers/Props';
 import Tooltip from './Tooltip';
-import styles from './Popover.css';
+import styles from './Popover.module.css';
 
 function Popover(props) {
   const {

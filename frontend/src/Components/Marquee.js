@@ -2,7 +2,7 @@ import classNames from 'classnames';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import Measure from './Measure';
-import styles from './Marquee.css';
+import styles from './Marquee.module.css';
 
 const SPEED = 50; // pixels per second
 

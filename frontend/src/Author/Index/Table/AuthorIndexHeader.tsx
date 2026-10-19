@@ -15,7 +15,7 @@ import {
 } from '../authorIndexOptionsStore';
 import AuthorIndexTableOptions from './AuthorIndexTableOptions';
 import hasGrowableColumns from './hasGrowableColumns';
-import styles from './AuthorIndexHeader.css';
+import styles from './AuthorIndexHeader.module.css';
 
 interface AuthorIndexHeaderProps {
   columns: Column[];

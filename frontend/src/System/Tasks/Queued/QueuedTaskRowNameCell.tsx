@@ -3,7 +3,7 @@ import { useMultipleAuthors } from 'Author/useAuthors';
 import { CommandBody } from 'Commands/Command';
 import TableRowCell from 'Components/Table/Cells/TableRowCell';
 import translate from 'Utilities/String/translate';
-import styles from './QueuedTaskRowNameCell.css';
+import styles from './QueuedTaskRowNameCell.module.css';
 
 function formatTitles(titles: string[]) {
   if (!titles) {

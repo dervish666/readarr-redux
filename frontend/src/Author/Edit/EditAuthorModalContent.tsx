@@ -28,7 +28,7 @@ import { useMetadataProfiles } from 'Settings/Profiles/Metadata/useMetadataProfi
 import { InputChanged } from 'typings/inputs';
 import selectSettings from 'Utilities/selectSettings';
 import translate from 'Utilities/String/translate';
-import styles from './EditAuthorModalContent.css';
+import styles from './EditAuthorModalContent.module.css';
 
 type EditableAuthor = Pick<
   Author,

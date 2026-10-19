@@ -10,7 +10,7 @@ import translate from 'Utilities/String/translate';
 import AuthorSearchResult from './AuthorSearchResult';
 import BookSearchResult from './BookSearchResult';
 import FuseWorker from './fuse.worker';
-import styles from './AuthorSearchInput.css';
+import styles from './AuthorSearchInput.module.css';
 
 const ADD_NEW_TYPE = 'addNew';
 

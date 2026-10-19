@@ -3,7 +3,7 @@ import React from 'react';
 import Icon from 'Components/Icon';
 import Link from 'Components/Link/Link';
 import { icons } from 'Helpers/Props';
-import styles from './ModalContent.css';
+import styles from './ModalContent.module.css';
 
 function ModalContent(props) {
   const {

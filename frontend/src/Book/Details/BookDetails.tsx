@@ -52,7 +52,7 @@ import {
 } from 'Utilities/pagePopulator';
 import stripHtml from 'Utilities/String/stripHtml';
 import translate from 'Utilities/String/translate';
-import styles from './BookDetails.css';
+import styles from './BookDetails.module.css';
 
 const SEARCH_TAB_INDEX = 1;
 

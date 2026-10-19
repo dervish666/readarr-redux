@@ -11,7 +11,7 @@ import { kinds, sizes } from 'Helpers/Props';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
 import useDiskSpace from './useDiskSpace';
-import styles from './DiskSpace.css';
+import styles from './DiskSpace.module.css';
 
 const columns: Column[] = [
   {

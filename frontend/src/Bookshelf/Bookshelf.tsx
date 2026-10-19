@@ -17,7 +17,7 @@ import PageToolbar from 'Components/Page/Toolbar/PageToolbar';
 import PageToolbarSection from 'Components/Page/Toolbar/PageToolbarSection';
 import Column from 'Components/Table/Column';
 import VirtualTable from 'Components/Table/VirtualTable';
-import rowStyles from 'Components/Table/VirtualTableRow.css';
+import rowStyles from 'Components/Table/VirtualTableRow.module.css';
 import useSelectState from 'Helpers/Hooks/useSelectState';
 import { align, kinds } from 'Helpers/Props';
 import SortDirection from 'Helpers/Props/SortDirection';
@@ -35,7 +35,7 @@ import {
 import BookshelfRow from './BookshelfRow';
 import BookshelfTableHeader from './BookshelfTableHeader';
 import useBookshelf from './useBookshelf';
-import styles from './Bookshelf.css';
+import styles from './Bookshelf.module.css';
 
 const COLUMNS: Column[] = [
   {

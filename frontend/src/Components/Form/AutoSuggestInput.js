@@ -4,7 +4,7 @@ import React, { Component } from 'react';
 import Autosuggest from 'react-autosuggest';
 import { Manager, Popper, Reference } from 'react-popper';
 import Portal from 'Components/Portal';
-import styles from './AutoSuggestInput.css';
+import styles from './AutoSuggestInput.module.css';
 
 class AutoSuggestInput extends Component {
 

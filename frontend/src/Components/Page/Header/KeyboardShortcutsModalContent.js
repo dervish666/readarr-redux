@@ -6,7 +6,7 @@ import ModalBody from 'Components/Modal/ModalBody';
 import ModalContent from 'Components/Modal/ModalContent';
 import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
-import styles from './KeyboardShortcutsModalContent.css';
+import styles from './KeyboardShortcutsModalContent.module.css';
 
 function getShortcuts() {
   const allShortcuts = [];

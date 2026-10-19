@@ -19,7 +19,7 @@ import { PendingField, PendingSection } from 'typings/pending';
 import selectSettings from 'Utilities/selectSettings';
 import translate from 'Utilities/String/translate';
 import { CustomFormatSpecification } from '../useCustomFormats';
-import styles from './EditSpecificationModalContent.css';
+import styles from './EditSpecificationModalContent.module.css';
 
 export interface EditSpecificationModalContentProps {
   specification: CustomFormatSpecification;

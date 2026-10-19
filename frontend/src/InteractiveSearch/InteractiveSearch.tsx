@@ -10,7 +10,7 @@ import InteractiveSearchPayload from './InteractiveSearchPayload';
 import InteractiveSearchRow from './InteractiveSearchRow';
 import { useReleaseOptions } from './releaseOptionsStore';
 import useReleases, { setReleaseSort } from './useReleases';
-import styles from './InteractiveSearch.css';
+import styles from './InteractiveSearch.module.css';
 
 interface InteractiveSearchProps {
   searchPayload: InteractiveSearchPayload;

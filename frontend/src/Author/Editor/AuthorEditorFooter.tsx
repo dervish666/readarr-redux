@@ -24,7 +24,7 @@ import DeleteAuthorModal from './Delete/DeleteAuthorModal';
 import OrganizeAuthorModal from './Organize/OrganizeAuthorModal';
 import TagsModal from './Tags/TagsModal';
 import { ApplyTagsMode } from './Tags/TagsModalContent';
-import styles from './AuthorEditorFooter.css';
+import styles from './AuthorEditorFooter.module.css';
 
 const NO_CHANGE = 'noChange';
 

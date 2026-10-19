@@ -13,7 +13,7 @@ import HealthStatus from 'System/Status/Health/HealthStatus';
 import translate from 'Utilities/String/translate';
 import MessagesConnector from './Messages/MessagesConnector';
 import PageSidebarItem from './PageSidebarItem';
-import styles from './PageSidebar.css';
+import styles from './PageSidebar.module.css';
 
 const HEADER_HEIGHT = parseInt(dimensions.headerHeight);
 const SIDEBAR_WIDTH = parseInt(dimensions.sidebarWidth);

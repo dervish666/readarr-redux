@@ -18,7 +18,7 @@ import {
   CustomFormatSpecification,
   useCustomFormatSchema,
 } from './useCustomFormats';
-import styles from './ImportCustomFormatModalContent.css';
+import styles from './ImportCustomFormatModalContent.module.css';
 
 interface ImportCustomFormatModalContentProps {
   onImport: (customFormat: CustomFormat) => void;

@@ -9,7 +9,7 @@ import { icons, kinds } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
 import AuthorHistoryRow from './AuthorHistoryRow';
 import useAuthorHistory from './useAuthorHistory';
-import styles from './AuthorHistoryTable.css';
+import styles from './AuthorHistoryTable.module.css';
 
 const columns: Column[] = [
   {

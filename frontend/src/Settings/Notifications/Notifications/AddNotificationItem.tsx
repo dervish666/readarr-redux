@@ -9,7 +9,7 @@ import { SelectedSchema } from 'Settings/useProviderSchema';
 import Provider from 'typings/Provider';
 import translate from 'Utilities/String/translate';
 import AddNotificationPresetMenuItem from './AddNotificationPresetMenuItem';
-import styles from './AddNotificationItem.css';
+import styles from './AddNotificationItem.module.css';
 
 interface AddNotificationItemProps {
   implementation: string;

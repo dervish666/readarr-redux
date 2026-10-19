@@ -1,7 +1,7 @@
 import classNames from 'classnames';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
-import styles from './SelectInput.css';
+import styles from './SelectInput.module.css';
 
 class SelectInput extends Component {
 

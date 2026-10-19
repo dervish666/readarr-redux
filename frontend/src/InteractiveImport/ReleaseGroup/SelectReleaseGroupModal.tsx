@@ -12,7 +12,7 @@ import ModalHeader from 'Components/Modal/ModalHeader';
 import { inputTypes, kinds, scrollDirections } from 'Helpers/Props';
 import { InputChanged } from 'typings/inputs';
 import translate from 'Utilities/String/translate';
-import styles from './SelectReleaseGroupModal.css';
+import styles from './SelectReleaseGroupModal.module.css';
 
 interface SelectReleaseGroupModalContentProps {
   releaseGroup: string;

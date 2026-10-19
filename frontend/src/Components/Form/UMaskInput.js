@@ -2,7 +2,7 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import EnhancedSelectInput from './EnhancedSelectInput';
-import styles from './UMaskInput.css';
+import styles from './UMaskInput.module.css';
 
 const umaskOptions = [
   {

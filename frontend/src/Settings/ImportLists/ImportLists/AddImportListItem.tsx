@@ -9,7 +9,7 @@ import { SelectedSchema } from 'Settings/useProviderSchema';
 import Provider from 'typings/Provider';
 import translate from 'Utilities/String/translate';
 import AddImportListPresetMenuItem from './AddImportListPresetMenuItem';
-import styles from './AddImportListItem.css';
+import styles from './AddImportListItem.module.css';
 
 interface AddImportListItemProps {
   implementation: string;

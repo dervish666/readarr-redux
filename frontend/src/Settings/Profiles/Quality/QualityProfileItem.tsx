@@ -6,7 +6,7 @@ import Icon from 'Components/Icon';
 import IconButton from 'Components/Link/IconButton';
 import { icons } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
-import styles from './QualityProfileItem.css';
+import styles from './QualityProfileItem.module.css';
 
 interface QualityProfileItemProps {
   // The drag preview has no handle to connect.

@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
-import styles from './PageContentFooter.css';
+import styles from './PageContentFooter.module.css';
 
 class PageContentFooter extends Component {
 

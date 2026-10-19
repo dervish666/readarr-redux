@@ -3,7 +3,7 @@ import React, { Component } from 'react';
 import Icon from 'Components/Icon';
 import Link from 'Components/Link/Link';
 import { icons, sortDirections } from 'Helpers/Props';
-import styles from './TableHeaderCell.css';
+import styles from './TableHeaderCell.module.css';
 
 class TableHeaderCell extends Component {
 

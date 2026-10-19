@@ -13,7 +13,7 @@ import { icons, inputTypes, kinds } from 'Helpers/Props';
 import { InputChanged } from 'typings/inputs';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
-import styles from './DeleteAuthorModalContent.css';
+import styles from './DeleteAuthorModalContent.module.css';
 
 export interface DeleteAuthorModalContentProps {
   authorId: number;

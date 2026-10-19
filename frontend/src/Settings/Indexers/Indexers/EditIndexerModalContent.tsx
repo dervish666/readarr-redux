@@ -18,7 +18,7 @@ import { useShowAdvancedSettings } from 'Settings/advancedSettingsStore';
 import { SelectedSchema } from 'Settings/useProviderSchema';
 import translate from 'Utilities/String/translate';
 import { IndexerModel, useManageIndexer } from '../useIndexers';
-import styles from './EditIndexerModalContent.css';
+import styles from './EditIndexerModalContent.module.css';
 
 export interface EditIndexerModalContentProps {
   id?: number;

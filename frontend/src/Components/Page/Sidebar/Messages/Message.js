@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import Icon from 'Components/Icon';
 import { icons } from 'Helpers/Props';
-import styles from './Message.css';
+import styles from './Message.module.css';
 
 function getIconName(name) {
   switch (name) {

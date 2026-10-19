@@ -8,7 +8,7 @@ import getRelativeDate from 'Utilities/Date/getRelativeDate';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
 import { BookIndexOverviewOptions } from '../bookIndexOptionsStore';
-import styles from './BookIndexOverviewInfo.css';
+import styles from './BookIndexOverviewInfo.module.css';
 
 interface BookIndexOverviewInfoProps {
   book: Book;

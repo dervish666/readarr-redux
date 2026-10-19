@@ -4,7 +4,7 @@ import { icons } from 'Helpers/Props';
 import FilterMenuContent from './FilterMenuContent';
 import Menu from './Menu';
 import ToolbarMenuButton from './ToolbarMenuButton';
-import styles from './FilterMenu.css';
+import styles from './FilterMenu.module.css';
 
 class FilterMenu extends Component {
 

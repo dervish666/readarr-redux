@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import formatBytes from 'Utilities/Number/formatBytes';
 import EnhancedSelectInputOption from './EnhancedSelectInputOption';
-import styles from './RootFolderSelectInputOption.css';
+import styles from './RootFolderSelectInputOption.module.css';
 
 function RootFolderSelectInputOption(props) {
   const {

@@ -14,7 +14,7 @@ import { inputTypes, kinds, sizes } from 'Helpers/Props';
 import { useTagList } from 'Tags/useTags';
 import { InputChanged } from 'typings/inputs';
 import translate from 'Utilities/String/translate';
-import styles from './TagsModalContent.css';
+import styles from './TagsModalContent.module.css';
 
 export type ApplyTagsMode = 'add' | 'remove' | 'replace';
 

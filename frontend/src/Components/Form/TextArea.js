@@ -1,7 +1,7 @@
 import classNames from 'classnames';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
-import styles from './TextArea.css';
+import styles from './TextArea.module.css';
 
 class TextArea extends Component {
 

@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import React from 'react';
-import styles from './VirtualTableHeader.css';
+import styles from './VirtualTableHeader.module.css';
 
 function VirtualTableHeader({ children }) {
   return (

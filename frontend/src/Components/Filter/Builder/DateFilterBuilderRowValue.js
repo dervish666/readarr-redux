@@ -6,7 +6,7 @@ import TextInput from 'Components/Form/TextInput';
 import { IN_LAST, IN_NEXT, NOT_IN_LAST, NOT_IN_NEXT } from 'Helpers/Props/filterTypes';
 import isString from 'Utilities/String/isString';
 import { NAME } from './FilterBuilderRowValue';
-import styles from './DateFilterBuilderRowValue.css';
+import styles from './DateFilterBuilderRowValue.module.css';
 
 const timeOptions = [
   { key: 'seconds', value: 'seconds' },

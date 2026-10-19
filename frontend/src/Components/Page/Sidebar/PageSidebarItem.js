@@ -4,7 +4,7 @@ import React, { Component } from 'react';
 import Icon from 'Components/Icon';
 import Link from 'Components/Link/Link';
 import { map } from 'Helpers/elementChildren';
-import styles from './PageSidebarItem.css';
+import styles from './PageSidebarItem.module.css';
 
 class PageSidebarItem extends Component {
 

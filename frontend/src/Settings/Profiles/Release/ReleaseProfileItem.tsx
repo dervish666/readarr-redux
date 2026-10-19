@@ -3,7 +3,7 @@ import MiddleTruncate from 'react-middle-truncate';
 import Label from 'Components/Label';
 import ConfirmModal from 'Components/Modal/ConfirmModal';
 import SettingsCard from 'Components/SettingsCard/SettingsCard';
-import settingsCardStyles from 'Components/SettingsCard/SettingsCard.css';
+import settingsCardStyles from 'Components/SettingsCard/SettingsCard.module.css';
 import SettingsCardAction from 'Components/SettingsCard/SettingsCardAction';
 import SettingsCardStatus, {
   SettingsCardStatusValue,
@@ -19,7 +19,7 @@ import {
   ReleaseProfileModel,
   useDeleteReleaseProfile,
 } from './useReleaseProfiles';
-import styles from './ReleaseProfileItem.css';
+import styles from './ReleaseProfileItem.module.css';
 
 interface ReleaseProfileItemProps extends ReleaseProfileModel {
   tagList: ReadonlyArray<Tag>;

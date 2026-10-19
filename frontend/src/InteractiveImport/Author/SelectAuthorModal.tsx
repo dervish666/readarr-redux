@@ -13,7 +13,7 @@ import Scroller from 'Components/Scroller/Scroller';
 import { scrollDirections } from 'Helpers/Props';
 import { InputChanged } from 'typings/inputs';
 import translate from 'Utilities/String/translate';
-import styles from './SelectAuthorModal.css';
+import styles from './SelectAuthorModal.module.css';
 
 interface SelectAuthorRowProps {
   author: Author;

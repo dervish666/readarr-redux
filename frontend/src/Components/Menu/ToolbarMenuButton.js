@@ -3,7 +3,7 @@ import React from 'react';
 import Icon from 'Components/Icon';
 import MenuButton from 'Components/Menu/MenuButton';
 import { icons } from 'Helpers/Props';
-import styles from './ToolbarMenuButton.css';
+import styles from './ToolbarMenuButton.module.css';
 
 function ToolbarMenuButton(props) {
   const {

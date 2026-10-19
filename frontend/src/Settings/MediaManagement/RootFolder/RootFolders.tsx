@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import FieldSet from 'Components/FieldSet';
 import PageSectionContent from 'Components/Page/PageSectionContent';
 import AddCard from 'Components/SettingsCard/AddCard';
-import settingsCardStyles from 'Components/SettingsCard/SettingsCard.css';
+import settingsCardStyles from 'Components/SettingsCard/SettingsCard.module.css';
 import useRootFolders from 'RootFolder/useRootFolders';
 import { useMetadataProfiles } from 'Settings/Profiles/Metadata/useMetadataProfiles';
 import { useQualityProfiles } from 'Settings/Profiles/Quality/useQualityProfiles';

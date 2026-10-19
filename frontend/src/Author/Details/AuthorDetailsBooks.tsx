@@ -13,7 +13,7 @@ import {
   AuthorDetailsTableOptions,
 } from './authorDetailsOptionsStore';
 import BookRow, { MonitorBookOptions } from './BookRow';
-import styles from './AuthorDetailsBooks.css';
+import styles from './AuthorDetailsBooks.module.css';
 
 // The redux books sort predicates the old Books tab used.
 export const BOOK_SORT_PREDICATES = {
