@@ -1,9 +1,9 @@
 import { Page, Response } from '@playwright/test';
 import { api, expect, openRoute, test } from './fixtures';
-import { holdCommandRefetches, withQueryClient, withReduxStore } from './reactTree';
+import { holdCommandRefetches, withQueryClient } from './reactTree';
 
-// Commands live in react-query (['/command']); pages not yet converted read the redux
-// state.commands feed. These checks run real commands on the local backend: Check
+// Commands live in react-query (['/command']); the redux state.commands feed is gone
+// (e2e/redux-state.spec.ts checks that). These checks run real commands on the local backend: Check
 // Health (fast, harmless) and one author refresh, the same one signalr-bridge runs.
 
 interface Author {
@@ -28,15 +28,8 @@ function queryCommandStatus(page: Page, id: number) {
   `);
 }
 
-function reduxCommandStatus(page: Page, id: number) {
-  return withReduxStore<string | null>(page, `
-    const command = store.getState().commands.items.find((c) => c.id === ${id});
-    return command ? command.status : null;
-  `);
-}
-
 async function openTasksInApp(page: Page) {
-  // Client-side navigation keeps the same redux store and query cache.
+  // Client-side navigation keeps the same query cache.
   await page.locator('[class*="PageSidebarItem-link"]', { hasText: /^System/ }).first().click();
   await page.locator('[class*="PageSidebarItem-link"]', { hasText: /^Tasks/ }).click();
   await expect(page.getByRole('heading', { name: /System · Tasks/ })).toBeVisible();
@@ -90,16 +83,10 @@ test('commands: a task run spins, clears and completes in the react-query list',
   const queued = page.locator('[class*="FieldSet-section"]').filter({ hasText: 'Queue' }).locator('tbody tr');
   await expect(queued.filter({ hasText: 'Check Health' }).first()).toBeVisible();
 
-  // The redux feed for unconverted pages has the same command, also completed.
-  await expect.poll(() => reduxCommandStatus(page, command.id), {
-    timeout: 30_000,
-    message: 'the redux command feed never saw the react-query run'
-  }).toBe('completed');
-
   release();
 });
 
-test('commands: a redux-started author refresh shows on the converted Tasks page', async ({ page }) => {
+test('commands: an author page refresh reaches the list and shows on the Tasks page', async ({ page }) => {
   const [author] = await api<Author[]>(page, '/author');
   expect(author, 'the library has no authors').toBeTruthy();
 
@@ -111,12 +98,9 @@ test('commands: a redux-started author refresh shows on the converted Tasks page
   const command = (await (await post).json()) as Command;
   expect(command.name).toBe('RefreshAuthor');
 
-  // Started through redux executeCommand, so it is in the redux feed...
-  await expect.poll(() => reduxCommandStatus(page, command.id)).not.toBeNull();
-
-  // ...and in the react-query list the converted pages read.
+  // Started through useExecuteCommand, which adds it to the react-query list.
   await expect.poll(() => queryCommandStatus(page, command.id), {
-    message: 'the react-query command list never saw the redux-started refresh'
+    message: 'the react-query command list never saw the refresh'
   }).not.toBeNull();
 
   await openTasksInApp(page);
@@ -124,9 +108,7 @@ test('commands: a redux-started author refresh shows on the converted Tasks page
   const queued = page.locator('[class*="FieldSet-section"]').filter({ hasText: 'Queue' }).locator('tbody tr');
   await expect(queued.filter({ hasText: 'Refresh Author' }).first()).toBeVisible();
 
-  // Both sides end on the same final status.
   await expect.poll(() => queryCommandStatus(page, command.id), { timeout: 60_000 }).toBe('completed');
-  await expect.poll(() => reduxCommandStatus(page, command.id), { timeout: 60_000 }).toBe('completed');
 
   release();
 });

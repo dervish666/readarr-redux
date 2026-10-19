@@ -27,7 +27,8 @@ function ViewMenu(props) {
 
 ViewMenu.propTypes = {
   children: PropTypes.node.isRequired,
-  isDisabled: PropTypes.bool.isRequired
+  isDisabled: PropTypes.bool.isRequired,
+  alignMenu: PropTypes.string
 };
 
 ViewMenu.defaultProps = {

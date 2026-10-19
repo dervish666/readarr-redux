@@ -68,7 +68,7 @@ function selectFields(
   });
 }
 
-// The react-query version of Store/Selectors/selectSettings: one
+// The react-query version of the old redux selectSettings: one
 // { value, errors, warnings, pending } entry per property, the shape
 // FormInputGroup takes, with pending changes laid over the saved item.
 // Providers get implementationName as a plain string and fields as PendingFields.

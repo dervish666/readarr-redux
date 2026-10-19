@@ -3,10 +3,10 @@
 interface CssExports {
   'allBooks': string;
   'book': string;
-  'bookType': string;
   'books': string;
   'info': string;
   'missingWanted': string;
+  'title': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

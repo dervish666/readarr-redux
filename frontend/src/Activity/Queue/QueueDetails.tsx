@@ -4,8 +4,7 @@ import Icon from 'Components/Icon';
 import { icons, kinds } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
 
-// The download state of one queue item, shown beside a book on the author,
-// calendar and wanted pages (which read it from the redux queue details feed).
+// The download state of one queue item, shown beside a book on the calendar.
 interface QueueDetailsProps {
   title: string;
   size: number;

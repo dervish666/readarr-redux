@@ -1,9 +1,7 @@
 import { keepPreviousData } from '@tanstack/react-query';
-import { useCallback, useMemo } from 'react';
-import { useDispatch } from 'react-redux';
+import { useMemo } from 'react';
 import useApiQuery from 'Helpers/Hooks/useApiQuery';
-import { useManageSettings } from 'Settings/useSettings';
-import { update } from 'Store/Actions/baseActions';
+import { useManageSettings, useSettings } from 'Settings/useSettings';
 import { PendingSection } from 'typings/pending';
 import { QueryParams } from 'Utilities/Fetch/getQueryString';
 
@@ -34,19 +32,12 @@ export interface NamingExamples {
   authorFolderExample: string | null;
 }
 
-// Organize (rename preview) still reads state.settings.naming, a read-only feed
-// until Stage 3; every save copies the saved settings there.
+export const useNamingSettings = () => {
+  return useSettings<NamingSettingsModel>(PATH);
+};
+
 export const useManageNamingSettings = () => {
-  const dispatch = useDispatch();
-
-  const handleSaved = useCallback(
-    (data: NamingSettingsModel) => {
-      dispatch(update({ section: 'settings.naming', data }));
-    },
-    [dispatch]
-  );
-
-  return useManageSettings<NamingSettingsModel>(PATH, handleSaved);
+  return useManageSettings<NamingSettingsModel>(PATH);
 };
 
 // The examples for the settings as edited, pending changes included.

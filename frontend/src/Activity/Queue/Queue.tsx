@@ -55,6 +55,7 @@ function Queue() {
     error,
     isFetching,
     isLoading,
+    isSuccess,
     page,
     goToPage,
     refetch,
@@ -98,8 +99,11 @@ function Queue() {
   const disableSelectedActions = selectedCount === 0;
 
   useEffect(() => {
-    setSelectState({ type: 'updateItems', items: records });
-  }, [records, setSelectState]);
+    // A failed load must not drop the selection.
+    if (isSuccess) {
+      setSelectState({ type: 'updateItems', items: records });
+    }
+  }, [records, isSuccess, setSelectState]);
 
   useEffect(() => {
     const repopulate = () => {

@@ -10,13 +10,10 @@ import useApiMutation, {
 import useApiQuery from 'Helpers/Hooks/useApiQuery';
 import { messageTypes } from 'Helpers/Props';
 import { showMessage } from 'Store/Actions/appActions';
-import { removeItem } from 'Store/Actions/baseActions';
-import { addCommand } from 'Store/Actions/commandActions';
 import { isSameCommand } from 'Utilities/Command';
 
-// The command list lives in react-query under ['/command']. Pages not yet off redux
-// still read state.commands, so every write here also reaches that redux feed, and
-// commandActions.executeCommand writes its new commands into this cache.
+// The command list lives in react-query under ['/command']; the redux commands feed
+// is gone. Only the sidebar messages are still redux app state.
 
 export const COMMAND_QUERY_KEY = ['/command'];
 
@@ -47,7 +44,6 @@ export default useCommands;
 
 export const useExecuteCommand = () => {
   const queryClient = useQueryClient();
-  const dispatch = useDispatch();
   const lastCommandRef = useRef<{
     command: NewCommandBody;
     timestamp: number;
@@ -61,8 +57,6 @@ export const useExecuteCommand = () => {
         queryClient.setQueryData<Command[]>(COMMAND_QUERY_KEY, (old) =>
           addNewCommand(old, newCommand)
         );
-
-        dispatch(addCommand(newCommand));
       },
     },
   });
@@ -99,7 +93,6 @@ export const useExecuteCommand = () => {
 
 export const useCancelCommand = (id: number) => {
   const queryClient = useQueryClient();
-  const dispatch = useDispatch();
 
   const { mutate, isPending, error } = useApiMutation<void, void>({
     method: 'DELETE',
@@ -109,8 +102,6 @@ export const useCancelCommand = (id: number) => {
         queryClient.setQueryData<Command[]>(COMMAND_QUERY_KEY, (old = []) =>
           old.filter((command) => command.id !== id)
         );
-
-        dispatch(removeItem({ section: 'commands', id }));
       },
     },
   });
@@ -176,8 +167,6 @@ function showCommandMessage(dispatch: Dispatch, command: Command) {
 
 // Applies a command pushed over SignalR to the react-query list: shows its sidebar
 // message once and runs the callback given to useExecuteCommand when it finishes.
-// The redux feed is updated separately by SignalRListener (finishCommand/updateCommand),
-// which runs the callbacks of commands started through redux executeCommand.
 export const useUpdateCommand = () => {
   const queryClient = useQueryClient();
   const dispatch = useDispatch();

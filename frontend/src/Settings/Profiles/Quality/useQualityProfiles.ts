@@ -1,5 +1,4 @@
-import { useCallback, useMemo } from 'react';
-import { useDispatch } from 'react-redux';
+import { useMemo } from 'react';
 import ModelBase from 'App/ModelBase';
 import useApiQuery from 'Helpers/Hooks/useApiQuery';
 import { Quality } from 'Quality/Quality';
@@ -8,7 +7,6 @@ import {
   useManageProviderSettings,
   useProviderSettings,
 } from 'Settings/useProviderSettings';
-import { fetchQualityProfiles } from 'Store/Actions/settingsActions';
 
 export interface QualityProfileFormatItem {
   format: number;
@@ -101,16 +99,6 @@ export const useQualityProfileSchema = (enabled: boolean) => {
   };
 };
 
-// Author, book, add-new, import list and editor pages still read the profiles from
-// the redux feed, so every change refreshes it as well.
-const useRefreshQualityProfilesFeed = () => {
-  const dispatch = useDispatch();
-
-  return useCallback(() => {
-    dispatch(fetchQualityProfiles());
-  }, [dispatch]);
-};
-
 export const useManageQualityProfile = (
   id: number | undefined,
   cloneId: number | undefined
@@ -136,8 +124,7 @@ export const useManageQualityProfile = (
   const manage = useManageProviderSettings<QualityProfileModel>(
     id,
     defaultProfile,
-    PATH,
-    useRefreshQualityProfilesFeed()
+    PATH
   );
 
   return {
@@ -149,11 +136,7 @@ export const useManageQualityProfile = (
 };
 
 export const useDeleteQualityProfile = (id: number) => {
-  const result = useDeleteProvider<QualityProfileModel>(
-    id,
-    PATH,
-    useRefreshQualityProfilesFeed()
-  );
+  const result = useDeleteProvider<QualityProfileModel>(id, PATH);
 
   return {
     ...result,

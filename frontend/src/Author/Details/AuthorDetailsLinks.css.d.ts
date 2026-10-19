@@ -2,7 +2,6 @@
 // Please do not change this file!
 interface CssExports {
   'link': string;
-  'linkLabel': string;
   'links': string;
 }
 export const cssExports: CssExports;

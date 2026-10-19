@@ -1,7 +1,5 @@
 import React, { useMemo } from 'react';
-import { useSelector } from 'react-redux';
-import ModelBase from 'App/ModelBase';
-import Author from 'Author/Author';
+import useAuthors from 'Author/useAuthors';
 import FieldSet from 'Components/FieldSet';
 import Label from 'Components/Label';
 import Button from 'Components/Link/Button';
@@ -19,23 +17,6 @@ import { useReleaseProfiles } from 'Settings/Profiles/Release/useReleaseProfiles
 import translate from 'Utilities/String/translate';
 import TagDetailsDelayProfile from './TagDetailsDelayProfile';
 import styles from './TagDetailsModalContent.css';
-
-// Authors are still a redux feed; everything else here is on react-query.
-interface TagLinksState {
-  authors: { items: Author[] };
-}
-
-function useMatchingItems<T extends ModelBase>(
-  ids: number[],
-  selectItems: (state: TagLinksState) => T[]
-) {
-  const items = useSelector(selectItems);
-
-  return useMemo(
-    () => items.filter((item) => ids.includes(item.id)),
-    [ids, items]
-  );
-}
 
 export interface TagDetailsModalContentProps {
   label: string;
@@ -64,15 +45,13 @@ function TagDetailsModalContent({
   onModalClose,
   onDeleteTagPress,
 }: TagDetailsModalContentProps) {
-  const matchingAuthors = useMatchingItems(
-    authorIds,
-    (state) => state.authors.items
-  );
-
+  const { data: allAuthors } = useAuthors();
   const authors = useMemo(
     () =>
-      [...matchingAuthors].sort((a, b) => a.sortName.localeCompare(b.sortName)),
-    [matchingAuthors]
+      allAuthors
+        .filter((item) => authorIds.includes(item.id))
+        .sort((a, b) => a.sortName.localeCompare(b.sortName)),
+    [allAuthors, authorIds]
   );
 
   const { data: allDelayProfiles } = useDelayProfiles();

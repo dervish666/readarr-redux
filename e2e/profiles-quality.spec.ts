@@ -1,13 +1,12 @@
 import { Locator, Page } from '@playwright/test';
 import { api, expect, openRoute, test } from './fixtures';
 import { apiKey, baseUrl } from './env';
-import { withQueryClient, withReduxStore } from './reactTree';
+import { withQueryClient } from './reactTree';
 
-// Settings > Profiles and Settings > Quality moved to react-query. Quality and metadata
-// profiles stay in redux as read-only feeds for the author, book, add-new and import
-// list pages, so the profile checks save through the converted UI and then look at
-// both sides and at a redux-fed select. Everything made here is deleted, and the
-// quality definition check restores the title it changes.
+// Settings > Profiles and Settings > Quality moved to react-query. The profile checks
+// save through the UI and then look at the react-query list and at the author edit
+// modal's profile select on another page, without a reload. Everything made here is
+// deleted, and the quality definition check restores the title it changes.
 
 interface NamedItem {
   id: number;
@@ -44,19 +43,13 @@ interface Author {
   titleSlug: string;
 }
 
-// Moves within the app without a reload, so redux and react-query keep their state.
+// Moves within the app without a reload, so react-query keeps its state.
 async function clientNavigate(page: Page, route: string) {
   await page.evaluate((path) => {
     const urlBase = (window as unknown as { Readarr: { urlBase: string } }).Readarr.urlBase;
     window.history.pushState({}, '', `${urlBase}${path}`);
     window.dispatchEvent(new PopStateEvent('popstate'));
   }, route);
-}
-
-function reduxProfileNames(page: Page, section: 'qualityProfiles' | 'metadataProfiles') {
-  return withReduxStore<string[]>(page, `
-    return store.getState().settings.${section}.items.map((p) => p.name);
-  `);
 }
 
 function queryProfileNames(page: Page, path: string) {
@@ -66,7 +59,7 @@ function queryProfileNames(page: Page, path: string) {
   `);
 }
 
-// The author edit modal's profile selects are JS inputs fed by redux. Opens the modal
+// The author edit modal's profile selects read react-query. Opens the modal
 // on the library's first author, without a reload, and returns the select's options.
 async function authorEditSelectOptions(page: Page, label: string) {
   const [author] = await api<Author[]>(page, '/author');
@@ -77,7 +70,8 @@ async function authorEditSelectOptions(page: Page, label: string) {
   const editButton = page.getByRole('button', { name: 'Edit', exact: true });
 
   if (!await editButton.isVisible()) {
-    await page.getByRole('button', { name: 'More' }).click();
+    // The toolbar's More menu, not the overview's More link on the same page.
+    await page.locator('[class*="ToolbarMenuButton-menuButton"]', { hasText: 'More' }).click();
   }
 
   await page.locator('[class*="MenuItem-menuItem"], button').filter({ hasText: /^\s*Edit\s*$/ }).first().click();
@@ -276,7 +270,7 @@ test('quality definitions: an audio minimum in MB saves as kilobits and keeps th
   }
 });
 
-test('metadata profiles: a new profile reaches the redux feed and the author edit select without a reload, then deletes', async ({ page }) => {
+test('metadata profiles: a new profile reaches the list and the author edit select without a reload, then deletes', async ({ page }) => {
   const name = uniqueName('metadata');
 
   await openRoute(page, '/settings/profiles');
@@ -294,9 +288,8 @@ test('metadata profiles: a new profile reaches the redux feed and the author edi
   await expect(addModal).toHaveCount(0);
   await expect(card(page, name)).toBeVisible();
 
-  // Both sides, then a redux-fed select on another page.
+  // The cached list, then a profile select on another page.
   await expect.poll(() => queryProfileNames(page, '/metadataprofile')).toContain(name);
-  await expect.poll(() => reduxProfileNames(page, 'metadataProfiles')).toContain(name);
   expect(await authorEditSelectOptions(page, 'Metadata Profile')).toContain(name);
 
   await clientNavigate(page, '/settings/profiles');
@@ -307,7 +300,7 @@ test('metadata profiles: a new profile reaches the redux feed and the author edi
   await page.getByRole('button', { name: 'Delete', exact: true }).last().click();
   await expect(profileCard).toHaveCount(0);
 
-  await expect.poll(() => reduxProfileNames(page, 'metadataProfiles')).not.toContain(name);
+  await expect.poll(() => queryProfileNames(page, '/metadataprofile')).not.toContain(name);
   expect((await api<NamedItem[]>(page, '/metadataprofile')).map((p) => p.name)).not.toContain(name);
 });
 
@@ -342,7 +335,7 @@ test('delay profiles: add one for a tag, see its row, delete it', async ({ page 
   expect((await api<DelayProfile[]>(page, '/delayprofile')).some((p) => p.tags.includes(tag.id))).toBe(false);
 });
 
-test('quality profiles: a clone renamed and saved reaches the redux feed and the author edit select without a reload, then deletes', async ({ page }) => {
+test('quality profiles: a clone renamed and saved reaches the list and the author edit select without a reload, then deletes', async ({ page }) => {
   const name = uniqueName('quality');
   const [source] = (await api<NamedItem[]>(page, '/qualityprofile')).sort((a, b) => a.name.localeCompare(b.name));
 
@@ -367,7 +360,6 @@ test('quality profiles: a clone renamed and saved reaches the redux feed and the
   await expect(card(page, name)).toBeVisible();
 
   await expect.poll(() => queryProfileNames(page, '/qualityprofile')).toContain(name);
-  await expect.poll(() => reduxProfileNames(page, 'qualityProfiles')).toContain(name);
   expect(await authorEditSelectOptions(page, 'Quality Profile')).toContain(name);
 
   await clientNavigate(page, '/settings/profiles');
@@ -378,6 +370,6 @@ test('quality profiles: a clone renamed and saved reaches the redux feed and the
   await page.getByRole('button', { name: 'Delete', exact: true }).last().click();
   await expect(profileCard).toHaveCount(0);
 
-  await expect.poll(() => reduxProfileNames(page, 'qualityProfiles')).not.toContain(name);
+  await expect.poll(() => queryProfileNames(page, '/qualityprofile')).not.toContain(name);
   expect((await api<NamedItem[]>(page, '/qualityprofile')).map((p) => p.name)).not.toContain(name);
 });

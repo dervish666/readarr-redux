@@ -2,15 +2,13 @@
 // Please do not change this file!
 interface CssExports {
   'action': string;
-  'container': string;
+  'author': string;
   'content': string;
   'controls': string;
-  'editorSelect': string;
-  'ended': string;
   'link': string;
-  'nextAiring': string;
+  'meta': string;
+  'metaSep': string;
   'overlayTitle': string;
-  'poster': string;
   'posterContainer': string;
   'title': string;
 }

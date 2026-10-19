@@ -15,7 +15,10 @@ function BookCover(props) {
 }
 
 BookCover.propTypes = {
-  size: PropTypes.number.isRequired
+  className: PropTypes.string,
+  images: PropTypes.arrayOf(PropTypes.object),
+  size: PropTypes.number.isRequired,
+  lazy: PropTypes.bool
 };
 
 BookCover.defaultProps = {

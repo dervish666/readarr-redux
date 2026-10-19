@@ -6,7 +6,6 @@ interface CssExports {
   'authorName': string;
   'bookFileCount': string;
   'genres': string;
-  'metadataProfileId': string;
   'path': string;
   'qualityProfileId': string;
   'ratings': string;

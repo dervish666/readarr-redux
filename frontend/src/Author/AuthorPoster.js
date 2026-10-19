@@ -14,7 +14,16 @@ function AuthorPoster(props) {
 }
 
 AuthorPoster.propTypes = {
-  size: PropTypes.number.isRequired
+  className: PropTypes.string,
+  style: PropTypes.object,
+  images: PropTypes.arrayOf(PropTypes.object).isRequired,
+  coverType: PropTypes.string,
+  size: PropTypes.number.isRequired,
+  lazy: PropTypes.bool,
+  overflow: PropTypes.bool,
+  blurBackground: PropTypes.bool,
+  onError: PropTypes.func,
+  onLoad: PropTypes.func
 };
 
 AuthorPoster.defaultProps = {

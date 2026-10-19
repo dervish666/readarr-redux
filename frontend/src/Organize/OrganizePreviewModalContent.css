@@ -1,9 +1,4 @@
-.path {
-  margin-left: 5px;
-  font-weight: bold;
-}
-
-.trackFormat {
+.bookFormat {
   margin-left: 5px;
   font-family: $monoSpaceFontFamily;
 }

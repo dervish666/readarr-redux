@@ -2,63 +2,77 @@
   display: flex;
 }
 
-.year {
-  margin-left: 5px;
-  color: var(--disabledColor);
-}
-
 .poster {
   flex: 0 0 170px;
   margin-right: 20px;
+  width: 170px;
   height: 250px;
+  border-radius: 8px;
+  object-fit: cover;
 }
 
 .info {
   flex-grow: 1;
+  min-width: 0;
 }
 
 .name {
-  font-weight: 300;
-  font-size: 36px;
+  margin-bottom: 12px;
+  color: var(--ink);
+  letter-spacing: -0.015em;
+  font-weight: 600;
+  font-size: 1.5rem;
+  line-height: 1.25;
 }
 
 .disambiguation {
-  margin-bottom: 20px;
-  color: var(--disabledColor);
-  font-weight: 300;
-  font-size: 20px;
+  margin-left: 7px;
+  color: var(--inkMuted);
+  font-weight: 400;
+  font-size: 16px;
 }
 
-.overview {
-  margin-bottom: 30px;
+.intro {
+  overflow: hidden;
+  margin: 0 0 20px;
+  padding-bottom: 20px;
   max-height: 230px;
-  text-align: justify;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--inkMuted);
+  font-size: 13px;
+  line-height: 1.55;
 }
 
-.searchForMissingBooksLabelContainer {
+.searchOptions {
   display: flex;
-  margin-top: 2px;
+  align-items: center;
+  margin-right: auto;
+  gap: 8px;
 }
 
-.searchForMissingBooksLabel {
-  margin-right: 8px;
-  font-weight: normal;
+.searchLabel {
+  color: var(--inkMuted);
+  font-weight: 400;
+  font-size: 13px;
 }
 
-.searchForMissingBooksContainer {
+.searchOption {
   composes: container from '~Components/Form/CheckInput.css';
 
-  flex: 0 1 0;
-}
-
-.searchForMissingBooksInput {
-  composes: input from '~Components/Form/CheckInput.css';
-
-  margin-top: 0;
+  flex: 0 0 auto;
 }
 
 .modalFooter {
   composes: modalFooter from '~Components/Modal/ModalFooter.css';
+
+  gap: 16px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 10px;
 }
 
 .addButton {
@@ -68,11 +82,6 @@
 
 @media only screen and (max-width: $breakpointSmall) {
   .modalFooter {
-    display: block;
-    text-align: center;
-  }
-
-  .addButton {
-    margin-top: 10px;
+    flex-direction: column;
   }
 }

@@ -3,17 +3,15 @@
 interface CssExports {
   'actions': string;
   'added': string;
+  'authorLink': string;
   'authorName': string;
-  'bannerImage': string;
   'bookFileCount': string;
-  'bookProgress': string;
   'cell': string;
   'checkInput': string;
   'genres': string;
-  'link': string;
-  'metadataProfileId': string;
-  'overlayTitle': string;
   'path': string;
+  'pathText': string;
+  'profileChip': string;
   'qualityProfileId': string;
   'ratings': string;
   'releaseDate': string;
@@ -21,6 +19,7 @@ interface CssExports {
   'status': string;
   'tags': string;
   'title': string;
+  'titleLink': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

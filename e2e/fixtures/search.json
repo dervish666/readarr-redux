@@ -1,0 +1,156 @@
+[
+  {
+    "foreignId": "990001",
+    "author": {
+      "authorMetadataId": 0,
+      "status": "continuing",
+      "ended": false,
+      "authorName": "E2E Add New Author",
+      "authorNameLastFirst": "Author, E2E Add New",
+      "foreignAuthorId": "990001",
+      "titleSlug": "990001",
+      "overview": "Sir Terence David John Pratchett was an English author, humorist, and satirist, best known for the Discworld series of 41 comic fantasy novels published between 1983\u20132015, and for the apocalyptic comedy novel Good Omens (1990), which he co-wrote with  Neil Gaiman.Pratchett's first novel, The Carpet People, was published in 1971. The first Discworld novel, The Colour of Magic, was published in 1983, after which Pratchett wrote an average of two books a year. The final Discworld novel, The Shepherd's Crown, was published in August 2015, five months after his death.With more than 100 million books sold worldwide in 43 languages, Pratchett was the UK's best-selling author of the 1990s. He was appointed an Officer of the Order of the British Empire (OBE) in 1998 and was knighted for services to literature in the 2009 New Year Honours. In 2001 he won the annual Carnegie Medal for The Amazing Maurice and His Educated Rodents, the first Discworld book marketed for children. He received the World Fantasy Award for Life Achievement in 2010.In December 2007 Pratchett announced that he had been diagnosed with early-onset Alzheimer's disease. He later made a substantial public donation to the Alzheimer's Research Trust (now Alzheimer's Research UK, ARUK), filmed three television programmes chronicling his experiences with the condition for the BBC, and became a patron of ARUK. Pratchett died on 12 March 2015, at the age of 66.",
+      "links": [
+        {
+          "url": "https://www.goodreads.com/author/show/1654.Terry_Pratchett",
+          "name": "Goodreads"
+        }
+      ],
+      "images": [],
+      "qualityProfileId": 0,
+      "metadataProfileId": 0,
+      "monitored": false,
+      "monitorNewItems": "all",
+      "genres": [],
+      "cleanName": "e2eaddnewauthor",
+      "sortName": "e2e add new author",
+      "sortNameLastFirst": "author, e2e add new",
+      "tags": [],
+      "added": "0001-01-01T00:00:00Z",
+      "ratings": {
+        "votes": 1500315,
+        "value": 4.107708,
+        "popularity": 6162855.9280199995
+      },
+      "id": 0,
+      "folder": "E2E Add New Author"
+    },
+    "id": 1
+  },
+  {
+    "foreignId": "990002",
+    "book": {
+      "title": "E2E Add New Book",
+      "authorTitle": "author, e2e add new E2E Add New Book",
+      "seriesTitle": "",
+      "disambiguation": "",
+      "authorId": 0,
+      "foreignBookId": "990002",
+      "foreignEditionId": "990003",
+      "titleSlug": "990002",
+      "monitored": false,
+      "anyEditionOk": true,
+      "ratings": {
+        "votes": 5829,
+        "value": 3.86,
+        "popularity": 22499.94
+      },
+      "releaseDate": "1989-10-05T07:00:00Z",
+      "pageCount": 157,
+      "genres": [
+        "Humor",
+        "Fantasy",
+        "Fiction",
+        "Cats",
+        "Animals",
+        "Comedy",
+        "British Literature",
+        "Ebooks",
+        "Comics",
+        "Satire"
+      ],
+      "images": [],
+      "links": [
+        {
+          "url": "https://www.goodreads.com/work/34467-the-unadulterated-cat",
+          "name": "Goodreads Editions"
+        },
+        {
+          "url": "https://www.goodreads.com/book/show/34496.The_Unadulterated_Cat",
+          "name": "Goodreads Book"
+        }
+      ],
+      "id": 0,
+      "overview": "The Unadulterated Cat is becoming an endangered species as more and more of us settle for those boring mass-produced cats the ad-men sell us - the pussies that purr into their gold-plated food bowls on the telly. But the Campaign for Real Cats sets out to change all that by helping us to recognise a true, unadulterated cat when we see one.\r\n\r\nFor example: real cats have ears that look like they've been trimmed with pinking shears; real cats never wear flea collars . . . or appear on Christmas cards . . . or chase anything with a bell in it; real cats do eat quiche. And giblets. And butter. And anything else left on the table, if they think they can get away with it. Real cats can hear a fridge door opening two rooms away . . .",
+      "added": "0001-01-01T00:00:00Z",
+      "author": {
+        "authorMetadataId": 0,
+        "status": "continuing",
+        "ended": false,
+        "authorName": "E2E Add New Author",
+        "authorNameLastFirst": "Author, E2E Add New",
+        "foreignAuthorId": "990001",
+        "titleSlug": "990001",
+        "overview": "Sir Terence David John Pratchett was an English author, humorist, and satirist, best known for the Discworld series of 41 comic fantasy novels published between 1983\u20132015, and for the apocalyptic comedy novel Good Omens (1990), which he co-wrote with  Neil Gaiman.Pratchett's first novel, The Carpet People, was published in 1971. The first Discworld novel, The Colour of Magic, was published in 1983, after which Pratchett wrote an average of two books a year. The final Discworld novel, The Shepherd's Crown, was published in August 2015, five months after his death.With more than 100 million books sold worldwide in 43 languages, Pratchett was the UK's best-selling author of the 1990s. He was appointed an Officer of the Order of the British Empire (OBE) in 1998 and was knighted for services to literature in the 2009 New Year Honours. In 2001 he won the annual Carnegie Medal for The Amazing Maurice and His Educated Rodents, the first Discworld book marketed for children. He received the World Fantasy Award for Life Achievement in 2010.In December 2007 Pratchett announced that he had been diagnosed with early-onset Alzheimer's disease. He later made a substantial public donation to the Alzheimer's Research Trust (now Alzheimer's Research UK, ARUK), filmed three television programmes chronicling his experiences with the condition for the BBC, and became a patron of ARUK. Pratchett died on 12 March 2015, at the age of 66.",
+        "links": [
+          {
+            "url": "https://www.goodreads.com/author/show/1654.Terry_Pratchett",
+            "name": "Goodreads"
+          }
+        ],
+        "images": [],
+        "qualityProfileId": 0,
+        "metadataProfileId": 0,
+        "monitored": false,
+        "monitorNewItems": "all",
+        "genres": [],
+        "cleanName": "e2eaddnewauthor",
+        "sortName": "e2e add new author",
+        "sortNameLastFirst": "author, e2e add new",
+        "tags": [],
+        "added": "0001-01-01T00:00:00Z",
+        "ratings": {
+          "votes": 1500315,
+          "value": 4.107708,
+          "popularity": 6162855.9280199995
+        },
+        "id": 0,
+        "folder": "E2E Add New Author"
+      },
+      "editions": [
+        {
+          "bookId": 0,
+          "foreignEditionId": "990003",
+          "titleSlug": "990003",
+          "isbn13": "9780752853697",
+          "asin": "0752853694",
+          "title": "E2E Add New Book",
+          "language": "eng",
+          "overview": "The Unadulterated Cat is becoming an endangered species as more and more of us settle for those boring mass-produced cats the ad-men sell us - the pussies that purr into their gold-plated food bowls on the telly. But the Campaign for Real Cats sets out to change all that by helping us to recognise a true, unadulterated cat when we see one.\r\n\r\nFor example: real cats have ears that look like they've been trimmed with pinking shears; real cats never wear flea collars . . . or appear on Christmas cards . . . or chase anything with a bell in it; real cats do eat quiche. And giblets. And butter. And anything else left on the table, if they think they can get away with it. Real cats can hear a fridge door opening two rooms away . . .",
+          "format": "Hardcover",
+          "isEbook": false,
+          "disambiguation": "",
+          "publisher": "Gollancz",
+          "pageCount": 157,
+          "releaseDate": "2002-09-26T07:00:00Z",
+          "images": [],
+          "links": [
+            {
+              "url": "https://www.goodreads.com/book/show/34496.The_Unadulterated_Cat",
+              "name": "Goodreads Book"
+            }
+          ],
+          "ratings": {
+            "votes": 5829,
+            "value": 3.86,
+            "popularity": 22499.94
+          },
+          "monitored": true,
+          "manualAdd": false,
+          "id": 0
+        }
+      ]
+    },
+    "id": 2
+  }
+]

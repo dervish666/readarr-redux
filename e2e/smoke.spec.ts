@@ -216,6 +216,9 @@ test('calendar month, agenda and today', async ({ page }) => {
 });
 
 test('stage 0: refresh one author and the update arrives over SignalR', async ({ page }) => {
+  // A refresh of a big author against a slow metadata source can run for minutes.
+  test.setTimeout(420_000);
+
   const author = await pickAuthor(page);
 
   // Record SignalR frames so the test proves the update came over the socket.
@@ -243,7 +246,7 @@ test('stage 0: refresh one author and the update arrives over SignalR', async ({
     (m) => m.name === 'command' && m.body?.resource?.id === commandId && m.body.resource.status === 'completed'
   );
 
-  await expect.poll(completed, { timeout: 60_000, message: `no SignalR 'completed' message for command ${commandId}` }).toBe(true);
+  await expect.poll(completed, { timeout: 360_000, message: `no SignalR 'completed' message for command ${commandId}` }).toBe(true);
 
   // The finished command clears the toolbar spinner.
   await expect(refresh.locator('.fa-spin')).toHaveCount(0);

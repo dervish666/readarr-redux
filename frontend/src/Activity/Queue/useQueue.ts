@@ -1,11 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
-import { useDispatch } from 'react-redux';
 import useApiMutation from 'Helpers/Hooks/useApiMutation';
 import useApiQuery from 'Helpers/Hooks/useApiQuery';
 import usePage from 'Helpers/Hooks/usePage';
 import usePagedApiQuery from 'Helpers/Hooks/usePagedApiQuery';
-import { fetchQueueDetails } from 'Store/Actions/queueActions';
 import Queue, {
   QueueImportDestination,
   QueueImportOptions,
@@ -26,17 +24,15 @@ interface BulkQueueData {
   ids: number[];
 }
 
-// After a queue change, refresh the queue page and sidebar count (react-query) and
-// the queue details feed that author, calendar and wanted pages still read from redux.
+// After a queue change, refresh the queue page, sidebar count and queue details.
 const useRefreshQueue = () => {
   const queryClient = useQueryClient();
-  const dispatch = useDispatch();
 
   return useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['/queue'] });
     queryClient.invalidateQueries({ queryKey: ['/queue/status'] });
-    dispatch(fetchQueueDetails());
-  }, [queryClient, dispatch]);
+    queryClient.invalidateQueries({ queryKey: ['/queue/details'] });
+  }, [queryClient]);
 };
 
 const getRemovalQueryString = (options: QueueRemovalOptions) => {

@@ -1,5 +1,9 @@
 .info {
-  background-color: #fafbfc;
-  text-align: center;
-  font-size: $smallFontSize;
+  @add-mixin truncate;
+
+  color: var(--inkMuted);
+  text-align: left;
+  font-size: 11.5px;
+  font-family: $defaultFontFamily;
+  line-height: 1.5;
 }

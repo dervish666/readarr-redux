@@ -6,6 +6,15 @@ Versions are `0.5.0.<CI run number>`. Only pushes to `develop` publish an image,
 
 ## Unreleased
 
+The author, book, bookshelf, add new, calendar, wanted, search, import and editor pages moved to react-query with the Sonarr v5 look (frontend migration stage 3).
+
+- Changed: Saved columns, sort, filters and view choices on those pages are reset once, because they now live in new per-page stores.
+- Fixed: Changing only "Monitor Author" on the bookshelf no longer monitors every book of the selected authors.
+- Fixed: A failed author list load no longer sends the author page back to the index as if the author were deleted, and no longer clears row selections on any list.
+- Fixed: The calendar legend shows again, and the calendar's midnight "today" timer no longer spins.
+- Fixed: Manual import stops when a checked row has no author, book or quality, instead of importing the rows before it.
+- Fixed: The book edit modal shows the edition picker when opened from the book index too.
+
 Fixes from the 2026-10-17 audit's Medium and Low findings.
 
 - Fixed: A book the metadata source can't find is no longer deleted on the first not-found. A refresh at least 12 hours later has to miss it too. The wait starts again after a restart, which only ever delays a delete.

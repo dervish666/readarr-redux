@@ -15,7 +15,13 @@ function AuthorBanner(props) {
 }
 
 AuthorBanner.propTypes = {
-  size: PropTypes.number.isRequired
+  className: PropTypes.string,
+  images: PropTypes.arrayOf(PropTypes.object).isRequired,
+  size: PropTypes.number.isRequired,
+  lazy: PropTypes.bool,
+  overflow: PropTypes.bool,
+  onError: PropTypes.func,
+  onLoad: PropTypes.func
 };
 
 AuthorBanner.defaultProps = {

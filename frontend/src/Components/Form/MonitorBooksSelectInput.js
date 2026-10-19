@@ -46,6 +46,9 @@ function MonitorBooksSelectInput(props) {
 }
 
 MonitorBooksSelectInput.propTypes = {
+  name: PropTypes.string,
+  value: PropTypes.string,
+  isDisabled: PropTypes.bool,
   includeNoChange: PropTypes.bool.isRequired,
   includeMixed: PropTypes.bool.isRequired,
   includeSpecificBook: PropTypes.bool.isRequired,

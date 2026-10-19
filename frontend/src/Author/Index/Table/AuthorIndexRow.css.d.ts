@@ -9,6 +9,7 @@ interface CssExports {
   'bookProgress': string;
   'cell': string;
   'checkInput': string;
+  'empty': string;
   'genres': string;
   'lastBook': string;
   'link': string;
@@ -16,13 +17,15 @@ interface CssExports {
   'nextBook': string;
   'overlayTitle': string;
   'path': string;
+  'pathText': string;
+  'profileChip': string;
   'qualityProfileId': string;
   'ratings': string;
   'sizeOnDisk': string;
   'sortName': string;
   'status': string;
   'tags': string;
-  'useSceneNumbering': string;
+  'titleLink': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

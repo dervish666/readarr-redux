@@ -1,6 +1,5 @@
 import { pick } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
-import { useSelector } from 'react-redux';
 import AuthorMetadataProfilePopoverContent from 'AddAuthor/AuthorMetadataProfilePopoverContent';
 import AuthorMonitoringOptionsPopoverContent from 'AddAuthor/AuthorMonitoringOptionsPopoverContent';
 import AuthorMonitorNewItemsOptionsPopoverContent from 'AddAuthor/AuthorMonitorNewItemsOptionsPopoverContent';
@@ -29,6 +28,7 @@ import {
 } from 'Helpers/Props';
 import { useRootFolder, useSaveRootFolder } from 'RootFolder/useRootFolders';
 import { useShowAdvancedSettings } from 'Settings/advancedSettingsStore';
+import { useMetadataProfiles } from 'Settings/Profiles/Metadata/useMetadataProfiles';
 import { ValidationFailure } from 'typings/pending';
 import RootFolder from 'typings/RootFolder';
 import { ApiError } from 'Utilities/Fetch/fetchJson';
@@ -128,13 +128,6 @@ function getFieldSettings(
   };
 }
 
-// Metadata profiles are still a redux feed.
-interface EditRootFolderState {
-  settings: {
-    metadataProfiles: { items: unknown[] };
-  };
-}
-
 export interface EditRootFolderModalContentProps {
   id?: number;
   onModalClose: () => void;
@@ -153,10 +146,8 @@ function EditRootFolderModalContent({
   const [changes, setChanges] = useState<Changes>({});
 
   const advancedSettings = useShowAdvancedSettings();
-  const showMetadataProfile = useSelector(
-    (state: EditRootFolderState) =>
-      state.settings.metadataProfiles.items.length > 1
-  );
+  const { data: metadataProfiles } = useMetadataProfiles();
+  const showMetadataProfile = metadataProfiles.length > 1;
 
   const item: EditableRootFolder = useMemo(() => {
     if (!rootFolder) {

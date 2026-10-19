@@ -2,10 +2,13 @@
 // Please do not change this file!
 interface CssExports {
   'alreadyExistsIcon': string;
+  'chip': string;
+  'chipDot': string;
+  'chipDotEnded': string;
+  'chips': string;
   'content': string;
+  'disambiguation': string;
   'icons': string;
-  'mbLink': string;
-  'mbLinkIcon': string;
   'name': string;
   'nameContainer': string;
   'nameRow': string;
@@ -13,9 +16,8 @@ interface CssExports {
   'overview': string;
   'poster': string;
   'searchResult': string;
-  'titleRow': string;
+  'sourceLink': string;
   'underlay': string;
-  'year': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

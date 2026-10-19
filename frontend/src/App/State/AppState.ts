@@ -1,10 +1,5 @@
-import { CustomFilter } from 'Filters/Filter';
-import AppSectionListState from './AppSectionState';
-import AuthorsAppState from './AuthorsAppState';
-import CommandAppState from './CommandAppState';
 import SettingsAppState from './SettingsAppState';
 import SystemAppState from './SystemAppState';
-import TagsAppState from './TagsAppState';
 
 export interface AppSectionState {
   isConnected: boolean;
@@ -12,8 +7,10 @@ export interface AppSectionState {
   isRestarting: boolean;
   version: string;
   prevVersion?: string;
+  isSidebarVisible: boolean;
   dimensions: {
     isSmallScreen: boolean;
+    isLargeScreen: boolean;
     width: number;
     height: number;
   };
@@ -21,12 +18,8 @@ export interface AppSectionState {
 
 interface AppState {
   app: AppSectionState;
-  authors: AuthorsAppState;
-  commands: CommandAppState;
-  customFilters: AppSectionListState<CustomFilter>;
   settings: SettingsAppState;
   system: SystemAppState;
-  tags: TagsAppState;
 }
 
 export default AppState;

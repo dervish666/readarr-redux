@@ -7,7 +7,7 @@ import translate from 'Utilities/String/translate';
 import AuthorTagInput from './AuthorTagInput';
 // import translate from 'Utilities/String/translate';
 import AutoCompleteInput from './AutoCompleteInput';
-import BookEditionSelectInputConnector from './BookEditionSelectInputConnector';
+import BookEditionSelectInput from './BookEditionSelectInput';
 import BookshelfInput from './BookshelfInput';
 import CaptchaInputConnector from './CaptchaInputConnector';
 import CheckInput from './CheckInput';
@@ -18,7 +18,7 @@ import FormInputHelpText from './FormInputHelpText';
 import IndexerFlagsSelectInput from './IndexerFlagsSelectInput';
 import IndexerSelectInput from './IndexerSelectInput';
 import KeyValueListInput from './KeyValueListInput';
-import MetadataProfileSelectInputConnector from './MetadataProfileSelectInputConnector';
+import MetadataProfileSelectInput from './MetadataProfileSelectInput';
 import MonitorBooksSelectInput from './MonitorBooksSelectInput';
 import MonitorNewItemsSelectInput from './MonitorNewItemsSelectInput';
 import NumberInput from './NumberInput';
@@ -26,12 +26,12 @@ import OAuthInputConnector from './OAuthInputConnector';
 import PasswordInput from './PasswordInput';
 import PathInput from './PathInput';
 import ProviderOptionSelectInput from './ProviderOptionSelectInput';
-import QualityProfileSelectInputConnector from './QualityProfileSelectInputConnector';
+import QualityProfileSelectInput from './QualityProfileSelectInput';
 import RootFolderSelectInput from './RootFolderSelectInput';
-import TagSelectInputConnector from './TagSelectInputConnector';
+import TagSelectInput from './TagSelectInput';
 import TextArea from './TextArea';
 import TextInput from './TextInput';
-import TextTagInputConnector from './TextTagInputConnector';
+import TextTagInput from './TextTagInput';
 import UMaskInput from './UMaskInput';
 import styles from './FormInputGroup.css';
 
@@ -74,13 +74,13 @@ function getComponent(type) {
       return PathInput;
 
     case inputTypes.QUALITY_PROFILE_SELECT:
-      return QualityProfileSelectInputConnector;
+      return QualityProfileSelectInput;
 
     case inputTypes.METADATA_PROFILE_SELECT:
-      return MetadataProfileSelectInputConnector;
+      return MetadataProfileSelectInput;
 
     case inputTypes.BOOK_EDITION_SELECT:
-      return BookEditionSelectInputConnector;
+      return BookEditionSelectInput;
 
     case inputTypes.INDEXER_SELECT:
       return IndexerSelectInput;
@@ -107,10 +107,10 @@ function getComponent(type) {
       return TextArea;
 
     case inputTypes.TEXT_TAG:
-      return TextTagInputConnector;
+      return TextTagInput;
 
     case inputTypes.TAG_SELECT:
-      return TagSelectInputConnector;
+      return TagSelectInput;
 
     case inputTypes.UMASK:
       return UMaskInput;
@@ -292,11 +292,13 @@ FormInputGroup.propTypes = {
   max: PropTypes.number,
   unit: PropTypes.string,
   buttons: PropTypes.oneOfType([PropTypes.node, PropTypes.arrayOf(PropTypes.node)]),
+  placeholder: PropTypes.string,
   helpText: PropTypes.string,
   helpTexts: PropTypes.arrayOf(PropTypes.string),
   helpTextWarning: PropTypes.string,
   helpLink: PropTypes.string,
   autoFocus: PropTypes.bool,
+  readOnly: PropTypes.bool,
   includeNoChange: PropTypes.bool,
   includeNoChangeDisabled: PropTypes.bool,
   selectedValueOptions: PropTypes.object,
@@ -304,7 +306,8 @@ FormInputGroup.propTypes = {
   pending: PropTypes.bool,
   errors: PropTypes.arrayOf(PropTypes.object),
   warnings: PropTypes.arrayOf(PropTypes.object),
-  onChange: PropTypes.func.isRequired
+  onChange: PropTypes.func.isRequired,
+  onFocus: PropTypes.func
 };
 
 FormInputGroup.defaultProps = {

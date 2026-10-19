@@ -25,8 +25,8 @@ export interface UiSettingsModel {
 const PATH = '/config/ui';
 const QUERY_OPTIONS = { staleTime: 60 * 60 * 1000 };
 
-// The author, book, calendar and other redux pages read state.settings.ui (a
-// read-only feed until Stage 3), so every save copies the saved settings there too.
+// RelativeDateCellConnector still reads state.settings.ui (until Stage 4), so every
+// save copies the saved settings there too.
 const useCopyToFeed = () => {
   const dispatch = useDispatch();
 

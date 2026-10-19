@@ -1,0 +1,165 @@
+import moment from 'moment';
+import React, { useCallback, useMemo } from 'react';
+import { useSelector } from 'react-redux';
+import AppState from 'App/State/AppState';
+import {
+  setCalendarOption,
+  useCalendarOption,
+} from 'Calendar/calendarOptionsStore';
+import { CalendarView } from 'Calendar/calendarViews';
+import useCalendar, {
+  goToNextRange,
+  goToPreviousRange,
+  goToToday,
+  useCalendarRange,
+  useCalendarTime,
+} from 'Calendar/useCalendar';
+import Icon from 'Components/Icon';
+import Link from 'Components/Link/Link';
+import LoadingIndicator from 'Components/Loading/LoadingIndicator';
+import Menu from 'Components/Menu/Menu';
+import MenuButton from 'Components/Menu/MenuButton';
+import MenuContent from 'Components/Menu/MenuContent';
+import ViewMenuItem from 'Components/Menu/ViewMenuItem';
+import { align, icons } from 'Helpers/Props';
+import { useUiSettingsValues } from 'Settings/UI/useUiSettings';
+import translate from 'Utilities/String/translate';
+import CalendarHeaderViewButton, {
+  getCalendarViewTitle,
+} from './CalendarHeaderViewButton';
+import styles from './CalendarHeader.css';
+
+const VIEWS: CalendarView[] = ['month', 'week', 'forecast', 'day', 'agenda'];
+
+function CalendarHeader() {
+  const { isFetching } = useCalendar();
+  const view = useCalendarOption('view');
+  const time = useCalendarTime();
+  const { start, end } = useCalendarRange();
+
+  const { isSmallScreen, isLargeScreen } = useSelector(
+    (state: AppState) => state.app.dimensions
+  );
+
+  const { longDateFormat } = useUiSettingsValues();
+
+  const handleViewChange = useCallback((newView: CalendarView) => {
+    setCalendarOption('view', newView);
+  }, []);
+
+  const title = useMemo(() => {
+    const timeMoment = moment(time);
+    const startMoment = moment(start);
+    const endMoment = moment(end);
+
+    if (view === 'day') {
+      return timeMoment.format(longDateFormat);
+    } else if (view === 'month') {
+      return timeMoment.format('MMMM YYYY');
+    } else if (view === 'agenda') {
+      return translate('Agenda');
+    }
+
+    let startFormat = 'MMM D YYYY';
+    let endFormat = 'MMM D YYYY';
+
+    if (startMoment.isSame(endMoment, 'month')) {
+      startFormat = 'MMM D';
+      endFormat = 'D YYYY';
+    } else if (startMoment.isSame(endMoment, 'year')) {
+      startFormat = 'MMM D';
+      endFormat = 'MMM D YYYY';
+    }
+
+    return `${startMoment.format(startFormat)} — ${endMoment.format(
+      endFormat
+    )}`;
+  }, [time, start, end, view, longDateFormat]);
+
+  return (
+    <div>
+      {isSmallScreen ? <div className={styles.titleMobile}>{title}</div> : null}
+
+      <div className={styles.header}>
+        <div className={styles.navigationButtons}>
+          <Link
+            className={styles.navButton}
+            isDisabled={view === 'agenda'}
+            aria-label={translate('Previous')}
+            onPress={goToPreviousRange}
+          >
+            <Icon name={icons.PAGE_PREVIOUS} />
+          </Link>
+
+          <Link
+            className={styles.navButton}
+            isDisabled={view === 'agenda'}
+            aria-label={translate('Next')}
+            onPress={goToNextRange}
+          >
+            <Icon name={icons.PAGE_NEXT} />
+          </Link>
+
+          <Link
+            className={styles.todayButton}
+            isDisabled={view === 'agenda'}
+            onPress={goToToday}
+          >
+            {translate('Today')}
+          </Link>
+        </div>
+
+        {isSmallScreen ? null : (
+          <div className={styles.titleDesktop}>{title}</div>
+        )}
+
+        <div className={styles.viewButtonsContainer}>
+          {isFetching ? (
+            <LoadingIndicator className={styles.loading} size={20} />
+          ) : null}
+
+          {isLargeScreen ? (
+            <Menu className={styles.viewMenu} alignMenu={align.RIGHT}>
+              <MenuButton>
+                <Icon name={icons.VIEW} size={22} />
+              </MenuButton>
+
+              <MenuContent>
+                {VIEWS.map((v) => {
+                  if (v === 'month' && isSmallScreen) {
+                    return null;
+                  }
+
+                  return (
+                    <ViewMenuItem
+                      key={v}
+                      name={v}
+                      selectedView={view}
+                      onPress={handleViewChange}
+                    >
+                      {getCalendarViewTitle(v)}
+                    </ViewMenuItem>
+                  );
+                })}
+              </MenuContent>
+            </Menu>
+          ) : (
+            VIEWS.map((v) => {
+              return (
+                <CalendarHeaderViewButton
+                  key={v}
+                  className={styles.viewButton}
+                  view={v}
+                  selectedView={view}
+                  onPress={handleViewChange}
+                />
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default CalendarHeader;

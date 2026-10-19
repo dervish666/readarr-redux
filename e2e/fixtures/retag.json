@@ -1,0 +1,42 @@
+[
+  {
+    "authorId": 0,
+    "bookId": 0,
+    "trackNumbers": [],
+    "bookFileId": 990201,
+    "path": "/books/E2E Author/E2E Book 1/E2E Book 1.epub",
+    "changes": [
+      {
+        "field": "Title",
+        "oldValue": "e2e old title 1",
+        "newValue": "E2E Book 1"
+      },
+      {
+        "field": "Image Size",
+        "oldValue": "0",
+        "newValue": "20480"
+      }
+    ],
+    "id": 0
+  },
+  {
+    "authorId": 0,
+    "bookId": 0,
+    "trackNumbers": [],
+    "bookFileId": 990202,
+    "path": "/books/E2E Author/E2E Book 2/E2E Book 2.epub",
+    "changes": [
+      {
+        "field": "Title",
+        "oldValue": "e2e old title 2",
+        "newValue": "E2E Book 2"
+      },
+      {
+        "field": "Image Size",
+        "oldValue": "0",
+        "newValue": "20480"
+      }
+    ],
+    "id": 0
+  }
+]

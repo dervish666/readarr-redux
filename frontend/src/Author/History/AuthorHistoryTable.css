@@ -1,9 +1,16 @@
 .container {
+  overflow: hidden;
   border: 1px solid var(--borderColor);
-  border-radius: 4px;
-  background-color: var(--inputBackgroundColor);
+  border-radius: 12px;
+  background-color: var(--cardBackgroundColor);
 
   &:last-of-type {
     margin-bottom: 0;
   }
+}
+
+.blankpad {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  padding-left: 2em;
 }

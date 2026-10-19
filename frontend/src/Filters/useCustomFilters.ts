@@ -1,9 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
-import { useDispatch } from 'react-redux';
 import useApiMutation from 'Helpers/Hooks/useApiMutation';
 import useApiQuery from 'Helpers/Hooks/useApiQuery';
-import { removeItem, updateItem } from 'Store/Actions/baseActions';
 import { CustomFilter } from './Filter';
 
 const DEFAULT_CUSTOM_FILTERS: CustomFilter[] = [];
@@ -33,27 +31,33 @@ export const useCustomFiltersList = (type: string) => {
   );
 };
 
-// After a custom filter change, update react-query and the redux customFilters feed
-// that author, book, bookshelf, calendar, wanted and release pages still read. The
-// feed gets the saved filter straight away, so a page that selects it right after the
-// save finds it.
+// After a custom filter change, update react-query. The list gets the saved filter
+// straight away, so a page that selects it right after the save finds it.
 const useSyncCustomFilters = () => {
   const queryClient = useQueryClient();
-  const dispatch = useDispatch();
 
   return useCallback(
     (change: { saved: CustomFilter } | { deletedId: number }) => {
-      queryClient.invalidateQueries({ queryKey: ['/customFilter'] });
+      // Write the change into the list first: the author index reads its filters from
+      // react-query and selects a new filter straight after the save, so waiting for the
+      // refetch renders once with a selected filter that isn't in the list yet.
+      queryClient.setQueryData<CustomFilter[]>(['/customFilter'], (old) => {
+        if (!old) {
+          return old;
+        }
 
-      if ('saved' in change) {
-        dispatch(updateItem({ section: 'customFilters', ...change.saved }));
-      } else {
-        dispatch(
-          removeItem({ section: 'customFilters', id: change.deletedId })
-        );
-      }
+        if ('saved' in change) {
+          const others = old.filter((f) => f.id !== change.saved.id);
+
+          return [...others, change.saved];
+        }
+
+        return old.filter((f) => f.id !== change.deletedId);
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['/customFilter'] });
     },
-    [queryClient, dispatch]
+    [queryClient]
   );
 };
 

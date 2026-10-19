@@ -3,7 +3,6 @@
 interface CssExports {
   'calendarInnerPageBody': string;
   'calendarPageBody': string;
-  'errorMessage': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

@@ -4,15 +4,15 @@ import { Redirect, Route } from 'react-router-dom';
 import Blocklist from 'Activity/Blocklist/Blocklist';
 import History from 'Activity/History/History';
 import Queue from 'Activity/Queue/Queue';
-import AuthorDetailsPageConnector from 'Author/Details/AuthorDetailsPageConnector';
-import AuthorIndexConnector from 'Author/Index/AuthorIndexConnector';
-import BookDetailsPageConnector from 'Book/Details/BookDetailsPageConnector';
-import BookIndexConnector from 'Book/Index/BookIndexConnector';
-import BookshelfConnector from 'Bookshelf/BookshelfConnector';
-import CalendarPageConnector from 'Calendar/CalendarPageConnector';
+import AuthorDetailsPage from 'Author/Details/AuthorDetailsPage';
+import AuthorIndex from 'Author/Index/AuthorIndex';
+import BookDetailsPage from 'Book/Details/BookDetailsPage';
+import BookIndex from 'Book/Index/BookIndex';
+import Bookshelf from 'Bookshelf/Bookshelf';
+import CalendarPage from 'Calendar/CalendarPage';
 import NotFound from 'Components/NotFound';
 import Switch from 'Components/Router/Switch';
-import AddNewItemConnector from 'Search/AddNewItemConnector';
+import AddNewItem from 'Search/AddNewItem';
 import CustomFormatSettingsPage from 'Settings/CustomFormats/CustomFormatSettingsPage';
 import DevelopmentSettings from 'Settings/Development/DevelopmentSettings';
 import DownloadClientSettings from 'Settings/DownloadClients/DownloadClientSettings';
@@ -34,10 +34,10 @@ import Logs from 'System/Logs/Logs';
 import Status from 'System/Status/Status';
 import Tasks from 'System/Tasks/Tasks';
 import Updates from 'System/Updates/Updates';
-import UnmappedFilesTableConnector from 'UnmappedFiles/UnmappedFilesTableConnector';
+import UnmappedFiles from 'UnmappedFiles/UnmappedFiles';
 import getPathWithUrlBase from 'Utilities/getPathWithUrlBase';
-import CutoffUnmetConnector from 'Wanted/CutoffUnmet/CutoffUnmetConnector';
-import MissingConnector from 'Wanted/Missing/MissingConnector';
+import CutoffUnmet from 'Wanted/CutoffUnmet/CutoffUnmet';
+import Missing from 'Wanted/Missing/Missing';
 
 function AppRoutes(props) {
   const {
@@ -53,7 +53,7 @@ function AppRoutes(props) {
       <Route
         exact={true}
         path="/"
-        component={AuthorIndexConnector}
+        component={AuthorIndex}
       />
 
       {
@@ -75,39 +75,39 @@ function AppRoutes(props) {
 
       <Route
         path="/authors"
-        component={AuthorIndexConnector}
+        component={AuthorIndex}
       />
 
       <Route
         path="/add/search"
-        component={AddNewItemConnector}
+        component={AddNewItem}
       />
 
       <Route
         exact={true}
         path="/shelf"
-        component={BookshelfConnector}
+        component={Bookshelf}
       />
 
       <Route
         exact={true}
         path="/books"
-        component={BookIndexConnector}
+        component={BookIndex}
       />
 
       <Route
         path="/unmapped"
-        component={UnmappedFilesTableConnector}
+        component={UnmappedFiles}
       />
 
       <Route
         path="/author/:titleSlug"
-        component={AuthorDetailsPageConnector}
+        component={AuthorDetailsPage}
       />
 
       <Route
         path="/book/:titleSlug"
-        component={BookDetailsPageConnector}
+        component={BookDetailsPage}
       />
 
       {/*
@@ -116,7 +116,7 @@ function AppRoutes(props) {
 
       <Route
         path="/calendar"
-        component={CalendarPageConnector}
+        component={CalendarPage}
       />
 
       {/*
@@ -144,12 +144,12 @@ function AppRoutes(props) {
 
       <Route
         path="/wanted/missing"
-        component={MissingConnector}
+        component={Missing}
       />
 
       <Route
         path="/wanted/cutoffunmet"
-        component={CutoffUnmetConnector}
+        component={CutoffUnmet}
       />
 
       {/*
