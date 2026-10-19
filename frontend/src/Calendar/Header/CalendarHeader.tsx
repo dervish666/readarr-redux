@@ -1,7 +1,6 @@
 import moment from 'moment';
 import React, { useCallback, useMemo } from 'react';
-import { useSelector } from 'react-redux';
-import AppState from 'App/State/AppState';
+import { useAppDimensions } from 'App/appStore';
 import {
   setCalendarOption,
   useCalendarOption,
@@ -37,9 +36,7 @@ function CalendarHeader() {
   const time = useCalendarTime();
   const { start, end } = useCalendarRange();
 
-  const { isSmallScreen, isLargeScreen } = useSelector(
-    (state: AppState) => state.app.dimensions
-  );
+  const { isSmallScreen, isLargeScreen } = useAppDimensions();
 
   const { longDateFormat } = useUiSettingsValues();
 

@@ -1,7 +1,7 @@
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSelector } from 'react-redux';
 import { useHistory } from 'react-router-dom';
+import { useAppDimension } from 'App/appStore';
 import AuthorEditorFooter from 'Author/Editor/AuthorEditorFooter';
 import NoAuthor from 'Author/NoAuthor';
 import { FILTERS } from 'Author/useAuthors';
@@ -48,10 +48,6 @@ import useAuthorIndex, {
 } from './useAuthorIndex';
 import styles from './AuthorIndex.css';
 
-interface IndexState {
-  app: { dimensions: { isSmallScreen: boolean } };
-}
-
 interface JumpBarItems {
   characters: Record<string, number>;
   order: string[];
@@ -75,9 +71,7 @@ function AuthorIndex() {
   const customFilters = useCustomFiltersList(AUTHOR_INDEX_CUSTOM_FILTER_TYPE);
   const history = useHistory();
 
-  const isSmallScreen = useSelector(
-    (state: IndexState) => state.app.dimensions.isSmallScreen
-  );
+  const isSmallScreen = useAppDimension('isSmallScreen');
 
   const executeCommand = useExecuteCommand();
   const isRefreshingAuthor = useCommandExecuting(

@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useDispatch } from 'react-redux';
 import * as commandNames from 'Commands/commandNames';
 import { useCommandExecuting, useExecuteCommand } from 'Commands/useCommands';
 import Alert from 'Components/Alert';
@@ -13,8 +12,8 @@ import usePrevious from 'Helpers/Hooks/usePrevious';
 import { kinds } from 'Helpers/Props';
 import { useShowAdvancedSettings } from 'Settings/advancedSettingsStore';
 import SettingsToolbar from 'Settings/SettingsToolbar';
-import { restart } from 'Store/Actions/systemActions';
 import { useSystemStatusData } from 'System/Status/useSystemStatus';
+import { useRestart } from 'System/useSystem';
 import { InputChanged } from 'typings/inputs';
 import translate from 'Utilities/String/translate';
 import AnalyticSettings from './AnalyticSettings';
@@ -40,7 +39,7 @@ const requiresRestartKeys: (keyof GeneralSettingsModel)[] = [
 ];
 
 function GeneralSettings() {
-  const dispatch = useDispatch();
+  const { mutate: restart } = useRestart();
   const advancedSettings = useShowAdvancedSettings();
   const { isWindows, mode, packageUpdateMechanism } = useSystemStatusData();
   const isWindowsService = isWindows && mode === 'service';
@@ -96,8 +95,8 @@ function GeneralSettings() {
 
   const handleConfirmRestart = useCallback(() => {
     setIsRestartRequiredModalOpen(false);
-    dispatch(restart());
-  }, [dispatch]);
+    restart();
+  }, [restart]);
 
   const handleCloseRestartRequiredModal = useCallback(() => {
     setIsRestartRequiredModalOpen(false);

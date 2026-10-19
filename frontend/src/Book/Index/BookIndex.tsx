@@ -1,7 +1,7 @@
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSelector } from 'react-redux';
 import { useHistory } from 'react-router-dom';
+import { useAppDimension } from 'App/appStore';
 import NoAuthor from 'Author/NoAuthor';
 import BookEditorFooter from 'Book/Editor/BookEditorFooter';
 import * as commandNames from 'Commands/commandNames';
@@ -46,10 +46,6 @@ import BookIndexTableOptions from './Table/BookIndexTableOptions';
 import useBookIndex, { useBookIndexCustomFilters } from './useBookIndex';
 import styles from './BookIndex.css';
 
-interface IndexState {
-  app: { dimensions: { isSmallScreen: boolean } };
-}
-
 interface JumpBarItems {
   characters: Record<string, number>;
   order: string[];
@@ -73,9 +69,7 @@ function BookIndex() {
   const customFilters = useBookIndexCustomFilters();
   const history = useHistory();
 
-  const isSmallScreen = useSelector(
-    (state: IndexState) => state.app.dimensions.isSmallScreen
-  );
+  const isSmallScreen = useAppDimension('isSmallScreen');
 
   const executeCommand = useExecuteCommand();
   const isRefreshingAuthors = useCommandExecuting(

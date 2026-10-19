@@ -1,45 +1,19 @@
 import $ from 'jquery';
-import { createAction } from 'redux-actions';
-import { batchActions } from 'redux-batched-actions';
-import { set } from 'Store/Actions/baseActions';
-import { createThunk, handleThunks } from 'Store/thunks';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
 import requestAction from 'Utilities/requestAction';
-import getSectionState from 'Utilities/State/getSectionState';
-import updateSectionState from 'Utilities/State/updateSectionState';
-import createHandleActions from './Creators/createHandleActions';
 
-//
-// Variables
+// The OAuth state lives with the input that starts it, as in Sonarr 3c77c4b98.
+// The request chain is Readarr's own: it keeps the poll limit and rejects a
+// failed poll instead of leaving the button spinning.
 
-export const section = 'oAuth';
 const callbackUrl = `${window.location.origin}${window.Readarr.urlBase}/oauth.html`;
 
-//
-// State
-
-export const defaultState = {
+const defaultState = {
   authorizing: false,
   result: null,
   error: null
 };
-
-//
-// Actions Types
-
-export const START_OAUTH = 'oAuth/startOAuth';
-export const SET_OAUTH_VALUE = 'oAuth/setOAuthValue';
-export const RESET_OAUTH = 'oAuth/resetOAuth';
-
-//
-// Action Creators
-
-export const startOAuth = createThunk(START_OAUTH);
-export const setOAuthValue = createAction(SET_OAUTH_VALUE);
-export const resetOAuth = createAction(RESET_OAUTH);
-
-//
-// Helpers
 
 function showOAuthWindow(url, payload, poll = false, ajaxOptions = undefined) {
   const deferred = $.Deferred();
@@ -143,15 +117,33 @@ function executeIntermediateRequest(payload, ajaxOptions) {
   });
 }
 
-//
-// Action Handlers
+function useOAuth() {
+  const [state, setState] = useState(defaultState);
 
-export const actionHandlers = handleThunks({
+  // A sign-in that finishes after the input unmounted has nowhere to go.
+  const isMounted = useRef(true);
 
-  [START_OAUTH]: function(getState, payload, dispatch) {
+  useEffect(() => {
+    isMounted.current = true;
+
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  const setOAuthValue = useCallback((values) => {
+    if (isMounted.current) {
+      setState((prevState) => ({ ...prevState, ...values }));
+    }
+  }, []);
+
+  const resetOAuth = useCallback(() => {
+    setState(defaultState);
+  }, []);
+
+  const startOAuth = useCallback((payload) => {
     const {
       name,
-      section: actionSection,
       ...otherPayload
     } = payload;
 
@@ -161,13 +153,11 @@ export const actionHandlers = handleThunks({
       ...otherPayload
     };
 
-    dispatch(setOAuthValue({
-      authorizing: true
-    }));
+    setOAuthValue({ authorizing: true });
 
     let startResponse = {};
 
-    const promise = requestAction(actionPayload)
+    requestAction(actionPayload)
       .then((response) => {
         startResponse = response;
 
@@ -195,62 +185,28 @@ export const actionHandlers = handleThunks({
         });
       })
       .then((response) => {
-        dispatch(setOAuthValue({
+        setOAuthValue({
           authorizing: false,
           result: response,
           error: null
-        }));
-      });
+        });
+      }, (xhr) => {
+        // The button shows the error (validation failures for a 400).
+        console.error(`[oAuth] ${name} sign-in failed`, xhr?.status);
 
-    // Settings pages on react-query pass no section; the button shows the error itself.
-    promise.done(() => {
-      if (!actionSection) {
-        return;
-      }
-
-      // Clear any previously set save error.
-      dispatch(set({
-        section: actionSection,
-        saveError: null
-      }));
-    });
-
-    promise.fail((xhr) => {
-      const actions = [
         setOAuthValue({
           authorizing: false,
           result: null,
           error: xhr
-        })
-      ];
+        });
+      });
+  }, [setOAuthValue]);
 
-      if (xhr.status === 400 && actionSection) {
-        // Set a save error so the UI can display validation errors to the user.
-        actions.splice(0, 0, set({
-          section: actionSection,
-          saveError: xhr
-        }));
-      }
+  return {
+    ...state,
+    startOAuth,
+    resetOAuth
+  };
+}
 
-      dispatch(batchActions(actions));
-    });
-  }
-
-});
-
-//
-// Reducers
-
-export const reducers = createHandleActions({
-
-  [SET_OAUTH_VALUE]: function(state, { payload }) {
-    const newState = Object.assign(getSectionState(state, section), payload);
-
-    return updateSectionState(state, section, newState);
-  },
-
-  [RESET_OAUTH]: function(state) {
-    return updateSectionState(state, section, defaultState);
-  }
-
-}, defaultState, section);
+export default useOAuth;

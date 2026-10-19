@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { useSelector } from 'react-redux';
-import AppState from 'App/State/AppState';
+import { useAppDimension } from 'App/appStore';
 import Author from 'Author/Author';
 import AuthorPoster from 'Author/AuthorPoster';
 import CheckInput from 'Components/Form/CheckInput';
@@ -36,9 +35,7 @@ function AddNewAuthorModalContent({
 
   const options = addAuthorOptions.useOptions();
   const { data: metadataProfiles } = useMetadataProfiles();
-  const isSmallScreen = useSelector(
-    (state: AppState) => state.app.dimensions.isSmallScreen
-  );
+  const isSmallScreen = useAppDimension('isSmallScreen');
   const [searchForMissingBooks, setSearchForMissingBooks] = useState(false);
 
   const { addAuthor, isAdding, addError } = useAddAuthor(onModalClose);

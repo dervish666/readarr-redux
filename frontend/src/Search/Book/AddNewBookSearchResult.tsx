@@ -1,7 +1,6 @@
 import moment from 'moment';
 import React, { useCallback, useEffect, useState } from 'react';
-import { useSelector } from 'react-redux';
-import AppState from 'App/State/AppState';
+import { useAppDimension } from 'App/appStore';
 import Book from 'Book/Book';
 import BookCover from 'Book/BookCover';
 import HeartRating from 'Components/HeartRating';
@@ -35,9 +34,7 @@ function AddNewBookSearchResult({ book }: AddNewBookSearchResultProps) {
   const existingBook = useExistingBook(foreignBookId);
   const existingAuthor = useExistingAuthor(author?.foreignAuthorId);
   const isExistingBook = !!existingBook;
-  const isSmallScreen = useSelector(
-    (state: AppState) => state.app.dimensions.isSmallScreen
-  );
+  const isSmallScreen = useAppDimension('isSmallScreen');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const handlePress = useCallback(() => {

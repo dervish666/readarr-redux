@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import AppState from 'App/State/AppState';
+import { useAppValue } from 'App/appStore';
 import TextInput from 'Components/Form/TextInput';
 import Icon from 'Components/Icon';
 import Button from 'Components/Link/Button';
@@ -11,7 +10,7 @@ import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
 import usePrevious from 'Helpers/Hooks/usePrevious';
 import { icons, kinds } from 'Helpers/Props';
-import { restart } from 'Store/Actions/systemActions';
+import { useRestart } from 'System/useSystem';
 import { ApiError } from 'Utilities/Fetch/fetchJson';
 import translate from 'Utilities/String/translate';
 import { useRestoreBackup, useRestoreBackupUpload } from './useBackups';
@@ -65,8 +64,8 @@ function RestoreBackupModalContent({
   name,
   onModalClose,
 }: RestoreBackupModalContentProps) {
-  const dispatch = useDispatch();
-  const isRestarting = useSelector((state: AppState) => state.app.isRestarting);
+  const isRestarting = useAppValue('isRestarting');
+  const { mutate: restart } = useRestart();
 
   const { restoreBackupById, isRestoringBackup, restoreBackupError } =
     useRestoreBackup(id ?? 0);
@@ -109,9 +108,9 @@ function RestoreBackupModalContent({
   useEffect(() => {
     if (wasRestoring && !isRestoring && !restoreError) {
       setIsRestored(true);
-      dispatch(restart());
+      restart();
     }
-  }, [isRestoring, wasRestoring, restoreError, dispatch]);
+  }, [isRestoring, wasRestoring, restoreError, restart]);
 
   useEffect(() => {
     if (wasRestarting && !isRestarting) {

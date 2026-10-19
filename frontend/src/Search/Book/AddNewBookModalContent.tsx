@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { useSelector } from 'react-redux';
-import AppState from 'App/State/AppState';
+import { useAppDimension } from 'App/appStore';
 import Book from 'Book/Book';
 import BookCover from 'Book/BookCover';
 import CheckInput from 'Components/Form/CheckInput';
@@ -39,9 +38,7 @@ function AddNewBookModalContent({
   const authorName = author?.authorName ?? '';
 
   const options = addBookOptions.useOptions();
-  const isSmallScreen = useSelector(
-    (state: AppState) => state.app.dimensions.isSmallScreen
-  );
+  const isSmallScreen = useAppDimension('isSmallScreen');
   const [searchForNewBook, setSearchForNewBook] = useState(false);
 
   const { addBook, isAdding, addError } = useAddBook(onModalClose);

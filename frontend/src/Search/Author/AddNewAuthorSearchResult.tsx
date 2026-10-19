@@ -1,7 +1,6 @@
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useState } from 'react';
-import { useSelector } from 'react-redux';
-import AppState from 'App/State/AppState';
+import { useAppDimension } from 'App/appStore';
 import Author from 'Author/Author';
 import AuthorPoster from 'Author/AuthorPoster';
 import HeartRating from 'Components/HeartRating';
@@ -32,9 +31,7 @@ function AddNewAuthorSearchResult({ author }: AddNewAuthorSearchResultProps) {
 
   const existingAuthor = useExistingAuthor(foreignAuthorId);
   const isExistingAuthor = !!existingAuthor;
-  const isSmallScreen = useSelector(
-    (state: AppState) => state.app.dimensions.isSmallScreen
-  );
+  const isSmallScreen = useAppDimension('isSmallScreen');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const handlePress = useCallback(() => {

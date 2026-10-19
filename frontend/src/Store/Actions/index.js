@@ -1,13 +1,4 @@
-import * as app from './appActions';
-import * as captcha from './captchaActions';
-import * as oAuth from './oAuthActions';
-import * as settings from './settingsActions';
-import * as system from './systemActions';
-
-export default [
-  app,
-  captcha,
-  oAuth,
-  settings,
-  system
-];
+// Every slice has moved to zustand or react-query. Only the router slice
+// (connected-react-router, added in createReducers) is left, until the React
+// Router 7 move drops it.
+export default [];

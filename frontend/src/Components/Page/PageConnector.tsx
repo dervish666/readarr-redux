@@ -1,7 +1,11 @@
-import React, { ReactNode, useCallback, useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import React, { ReactNode, useCallback, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { createSelector } from 'reselect';
+import {
+  saveDimensions,
+  setIsSidebarVisible,
+  useAppDimension,
+  useAppValues,
+} from 'App/appStore';
 import useTranslations from 'App/useTranslations';
 import useAuthors from 'Author/useAuthors';
 import useCommands from 'Commands/useCommands';
@@ -10,37 +14,11 @@ import useIndexerFlags from 'Settings/Indexers/useIndexerFlags';
 import { useMetadataProfiles } from 'Settings/Profiles/Metadata/useMetadataProfiles';
 import { useQualityProfiles } from 'Settings/Profiles/Quality/useQualityProfiles';
 import { useUiSettings } from 'Settings/UI/useUiSettings';
-import { saveDimensions, setIsSidebarVisible } from 'Store/Actions/appActions';
-import { fetchUISettings } from 'Store/Actions/settingsActions';
-import { fetchStatus } from 'Store/Actions/systemActions';
+import useSystemStatus from 'System/Status/useSystemStatus';
 import useTags from 'Tags/useTags';
 import ErrorPage from './ErrorPage';
 import LoadingPage from './LoadingPage';
 import Page from './Page';
-
-// Only the redux sections the startup gate reads.
-interface SectionState {
-  isPopulated: boolean;
-  error: object | null;
-}
-
-interface PageState {
-  app: {
-    isSidebarVisible: boolean;
-    version: string;
-    isUpdated: boolean;
-    isDisconnected: boolean;
-    dimensions: { isSmallScreen: boolean };
-  };
-  settings: {
-    ui: SectionState;
-  };
-  system: {
-    status: SectionState & {
-      item: { authentication?: string; authenticationNoneConfirmed?: boolean };
-    };
-  };
-}
 
 function testLocalStorage() {
   const key = 'readarrTest';
@@ -55,18 +33,6 @@ function testLocalStorage() {
   }
 }
 
-const selectReduxPopulated = (state: PageState) =>
-  state.settings.ui.isPopulated && state.system.status.isPopulated;
-
-const selectReduxErrors = createSelector(
-  (state: PageState) => state.settings.ui.error,
-  (state: PageState) => state.system.status.error,
-  (uiSettingsError, systemStatusError) => ({
-    uiSettingsError,
-    systemStatusError,
-  })
-);
-
 interface PageConnectorProps {
   children: ReactNode;
 }
@@ -79,7 +45,6 @@ function startupError(result: { error: unknown; dataUpdatedAt: number }) {
 }
 
 function PageConnector({ children }: PageConnectorProps) {
-  const dispatch = useDispatch();
   const location = useLocation();
   const [isLocalStorageSupported] = useState(testLocalStorage);
 
@@ -123,32 +88,30 @@ function PageConnector({ children }: PageConnectorProps) {
     metadataProfilesError,
   };
 
-  const isReduxPopulated = useSelector(selectReduxPopulated);
-  const errors = useSelector(selectReduxErrors);
-
-  const { isSidebarVisible, version, isUpdated, isDisconnected } = useSelector(
-    (state: PageState) => state.app
+  const { isSidebarVisible, version, isUpdated, isDisconnected } = useAppValues(
+    'isSidebarVisible',
+    'version',
+    'isUpdated',
+    'isDisconnected'
   );
-  const isSmallScreen = useSelector(
-    (state: PageState) => state.app.dimensions.isSmallScreen
-  );
+  const isSmallScreen = useAppDimension('isSmallScreen');
 
-  // UI settings: react-query for the pages and the theme, plus the redux
-  // state.settings.ui feed (fetched below) for RelativeDateCellConnector.
   const uiSettingsQuery = useUiSettings();
   const { data: uiSettings, isFetched: isUiSettingsFetched } = uiSettingsQuery;
-  const uiSettingsQueryError = startupError(uiSettingsQuery);
+  const uiSettingsError = startupError(uiSettingsQuery);
   const enableColorImpairedMode = !!uiSettings.enableColorImpairedMode;
-  const authenticationEnabled = useSelector((state: PageState) => {
-    const status = state.system.status.item;
 
-    return (
-      status.authentication !== 'none' || !!status.authenticationNoneConfirmed
-    );
-  });
+  // The header menu, keyboard shortcuts and first run modal read the same query.
+  const systemStatusQuery = useSystemStatus();
+  const { data: systemStatus, isFetched: isSystemStatusFetched } =
+    systemStatusQuery;
+  const systemStatusError = startupError(systemStatusQuery);
+  const authenticationEnabled =
+    systemStatus.authentication !== 'none' ||
+    !!systemStatus.authenticationNoneConfirmed;
 
   const isPopulated =
-    isReduxPopulated &&
+    isSystemStatusFetched &&
     isAuthorsFetched &&
     isTagsFetched &&
     isCustomFiltersFetched &&
@@ -160,28 +123,20 @@ function PageConnector({ children }: PageConnectorProps) {
   const hasError =
     !!translationsError ||
     !!indexerFlagsError ||
-    !!uiSettingsQueryError ||
-    Object.values(queryErrors).some((error) => !!error) ||
-    Object.values(errors).some((error) => !!error);
-
-  useEffect(() => {
-    dispatch(fetchUISettings());
-    dispatch(fetchStatus());
-  }, [dispatch]);
+    !!uiSettingsError ||
+    !!systemStatusError ||
+    Object.values(queryErrors).some((error) => !!error);
 
   const handleResize = useCallback(
     (dimensions: { width: number; height: number }) => {
-      dispatch(saveDimensions(dimensions));
+      saveDimensions(dimensions);
     },
-    [dispatch]
+    []
   );
 
-  const handleSidebarVisibleChange = useCallback(
-    (visible: boolean) => {
-      dispatch(setIsSidebarVisible({ isSidebarVisible: visible }));
-    },
-    [dispatch]
-  );
+  const handleSidebarVisibleChange = useCallback((visible: boolean) => {
+    setIsSidebarVisible({ isSidebarVisible: visible });
+  }, []);
 
   const handleSidebarToggle = useCallback(() => {
     handleSidebarVisibleChange(!isSidebarVisible);
@@ -199,8 +154,8 @@ function PageConnector({ children }: PageConnectorProps) {
         customFiltersError={customFiltersError ?? undefined}
         qualityProfilesError={qualityProfilesError ?? undefined}
         metadataProfilesError={metadataProfilesError ?? undefined}
-        {...errors}
-        uiSettingsError={errors.uiSettingsError ?? uiSettingsQueryError}
+        uiSettingsError={uiSettingsError ?? undefined}
+        systemStatusError={systemStatusError ?? undefined}
       />
     );
   }

@@ -20,7 +20,6 @@ class RelativeDateCell extends PureComponent {
       longDateFormat,
       timeFormat,
       component: Component,
-      dispatch,
       ...otherProps
     } = this.props;
 
@@ -53,8 +52,7 @@ RelativeDateCell.propTypes = {
   shortDateFormat: PropTypes.string.isRequired,
   longDateFormat: PropTypes.string.isRequired,
   timeFormat: PropTypes.string.isRequired,
-  component: PropTypes.elementType,
-  dispatch: PropTypes.func
+  component: PropTypes.elementType
 };
 
 RelativeDateCell.defaultProps = {

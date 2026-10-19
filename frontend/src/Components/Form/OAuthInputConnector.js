@@ -1,89 +1,49 @@
 import PropTypes from 'prop-types';
-import React, { Component } from 'react';
-import { connect } from 'react-redux';
-import { createSelector } from 'reselect';
-import { resetOAuth, startOAuth } from 'Store/Actions/oAuthActions';
+import React, { useCallback, useEffect } from 'react';
+import usePrevious from 'Helpers/Hooks/usePrevious';
+import useOAuth from 'OAuth/useOAuth';
 import OAuthInput from './OAuthInput';
 
-function createMapStateToProps() {
-  return createSelector(
-    (state) => state.oAuth,
-    (oAuth) => {
-      return oAuth;
-    }
-  );
-}
+function OAuthInputConnector(props) {
+  const {
+    name,
+    provider,
+    providerData,
+    onChange
+  } = props;
 
-const mapDispatchToProps = {
-  startOAuth,
-  resetOAuth
-};
+  const { authorizing, result, error, startOAuth } = useOAuth();
+  const previousResult = usePrevious(result);
 
-class OAuthInputConnector extends Component {
-
-  //
-  // Lifecycle
-
-  componentDidUpdate(prevProps) {
-    const {
-      result,
-      onChange
-    } = this.props;
-
-    if (!result || result === prevProps.result) {
+  useEffect(() => {
+    if (!result || result === previousResult) {
       return;
     }
 
     Object.keys(result).forEach((key) => {
       onChange({ name: key, value: result[key] });
     });
-  }
+  }, [result, previousResult, onChange]);
 
-  componentWillUnmount = () => {
-    this.props.resetOAuth();
-  };
+  const handlePress = useCallback(() => {
+    startOAuth({ name, provider, providerData });
+  }, [name, provider, providerData, startOAuth]);
 
-  //
-  // Listeners
-
-  onPress = () => {
-    const {
-      name,
-      provider,
-      providerData,
-      section
-    } = this.props;
-
-    this.props.startOAuth({
-      name,
-      provider,
-      providerData,
-      section
-    });
-  };
-
-  //
-  // Render
-
-  render() {
-    return (
-      <OAuthInput
-        {...this.props}
-        onPress={this.onPress}
-      />
-    );
-  }
+  return (
+    <OAuthInput
+      {...props}
+      authorizing={authorizing}
+      error={error}
+      onPress={handlePress}
+    />
+  );
 }
 
 OAuthInputConnector.propTypes = {
   name: PropTypes.string.isRequired,
-  result: PropTypes.object,
   provider: PropTypes.string.isRequired,
   providerData: PropTypes.object.isRequired,
-  section: PropTypes.string,
-  onChange: PropTypes.func.isRequired,
-  startOAuth: PropTypes.func.isRequired,
-  resetOAuth: PropTypes.func.isRequired
+  onChange: PropTypes.func.isRequired
 };
 
-export default connect(createMapStateToProps, mapDispatchToProps)(OAuthInputConnector);
+export default OAuthInputConnector;

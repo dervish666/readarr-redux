@@ -19,7 +19,7 @@ export const useSettings = <T extends object>(
   };
 };
 
-// onSaved gets the saved resource, so a hook can copy it into a redux feed.
+// onSaved gets the saved resource.
 export const useSaveSettings = <T extends object>(
   path: string,
   onSaved?: (updatedSettings: T) => void

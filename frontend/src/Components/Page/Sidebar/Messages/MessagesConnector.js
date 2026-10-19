@@ -1,16 +1,12 @@
-import { connect } from 'react-redux';
-import { createSelector } from 'reselect';
+import React, { useMemo } from 'react';
+import { useMessages } from 'App/messagesStore';
 import Messages from './Messages';
 
-function createMapStateToProps() {
-  return createSelector(
-    (state) => state.app.messages.items,
-    (messages) => {
-      return {
-        messages: messages.slice().reverse()
-      };
-    }
-  );
+function MessagesConnector() {
+  const items = useMessages();
+  const messages = useMemo(() => items.slice().reverse(), [items]);
+
+  return <Messages messages={messages} />;
 }
 
-export default connect(createMapStateToProps)(Messages);
+export default MessagesConnector;

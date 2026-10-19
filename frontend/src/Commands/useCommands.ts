@@ -1,7 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useRef } from 'react';
-import { useDispatch } from 'react-redux';
-import { Dispatch } from 'redux';
+import { MessageType, showMessage } from 'App/messagesStore';
 import { addNewCommand } from 'Commands/addNewCommand';
 import Command, { NewCommandBody } from 'Commands/Command';
 import useApiMutation, {
@@ -9,11 +8,10 @@ import useApiMutation, {
 } from 'Helpers/Hooks/useApiMutation';
 import useApiQuery from 'Helpers/Hooks/useApiQuery';
 import { messageTypes } from 'Helpers/Props';
-import { showMessage } from 'Store/Actions/appActions';
 import { isSameCommand } from 'Utilities/Command';
 
-// The command list lives in react-query under ['/command']; the redux commands feed
-// is gone. Only the sidebar messages are still redux app state.
+// The command list lives in react-query under ['/command']; the sidebar messages
+// live in the zustand messages store.
 
 export const COMMAND_QUERY_KEY = ['/command'];
 
@@ -144,14 +142,14 @@ export const useExecutingCommands = () => {
   return useMemo(() => commands.filter(isCommandExecuting), [commands]);
 };
 
-function showCommandMessage(dispatch: Dispatch, command: Command) {
+function showCommandMessage(command: Command) {
   const { id, name, trigger, message, body, status } = command;
 
   if (!message || !body || !body.sendUpdatesToClient || body.suppressMessages) {
     return;
   }
 
-  let type = messageTypes.INFO;
+  let type: MessageType = messageTypes.INFO;
   let hideAfter = 0;
 
   if (status === 'completed') {
@@ -162,14 +160,13 @@ function showCommandMessage(dispatch: Dispatch, command: Command) {
     hideAfter = trigger === 'manual' ? 10 : 4;
   }
 
-  dispatch(showMessage({ id, name, message, type, hideAfter }));
+  showMessage({ id, name, message, type, hideAfter });
 }
 
 // Applies a command pushed over SignalR to the react-query list: shows its sidebar
 // message once and runs the callback given to useExecuteCommand when it finishes.
 export const useUpdateCommand = () => {
   const queryClient = useQueryClient();
-  const dispatch = useDispatch();
 
   return useCallback(
     (command: Command) => {
@@ -177,7 +174,7 @@ export const useUpdateCommand = () => {
         addOrUpdateQueryClientItem(old, command, 'id')
       );
 
-      showCommandMessage(dispatch, command);
+      showCommandMessage(command);
 
       // Both successful and failed commands need to be
       // completed, otherwise they spin until they time out.
@@ -190,6 +187,6 @@ export const useUpdateCommand = () => {
         }
       }
     },
-    [queryClient, dispatch]
+    [queryClient]
   );
 };

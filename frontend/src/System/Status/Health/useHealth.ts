@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
-import { useSelector } from 'react-redux';
-import AppState from 'App/State/AppState';
+import { useAppValue } from 'App/appStore';
 import useApiQuery from 'Helpers/Hooks/useApiQuery';
 import Health from 'typings/Health';
 
@@ -16,7 +15,7 @@ const SIGNALR_HEALTH: Health = {
 };
 
 const useHealth = () => {
-  const isConnected = useSelector((state: AppState) => state.app.isConnected);
+  const isConnected = useAppValue('isConnected');
 
   const result = useApiQuery<Health[]>({
     path: '/health',
