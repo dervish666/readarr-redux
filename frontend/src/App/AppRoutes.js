@@ -17,11 +17,11 @@ import CustomFormatSettingsConnector from 'Settings/CustomFormats/CustomFormatSe
 import DevelopmentSettingsConnector from 'Settings/Development/DevelopmentSettingsConnector';
 import DownloadClientSettings from 'Settings/DownloadClients/DownloadClientSettings';
 import GeneralSettingsConnector from 'Settings/General/GeneralSettingsConnector';
-import ImportListSettingsConnector from 'Settings/ImportLists/ImportListSettingsConnector';
+import ImportListSettings from 'Settings/ImportLists/ImportListSettings';
 import IndexerSettings from 'Settings/Indexers/IndexerSettings';
 import MediaManagementConnector from 'Settings/MediaManagement/MediaManagementConnector';
 import MetadataSettings from 'Settings/Metadata/MetadataSettings';
-import MetadataSourceSettingsConnector from 'Settings/MetadataSource/MetadataSourceSettingsConnector';
+import MetadataSourceSettings from 'Settings/MetadataSource/MetadataSourceSettings';
 import NotificationSettings from 'Settings/Notifications/NotificationSettings';
 import Profiles from 'Settings/Profiles/Profiles';
 import Quality from 'Settings/Quality/Quality';
@@ -194,7 +194,7 @@ function AppRoutes(props) {
 
       <Route
         path="/settings/importlists"
-        component={ImportListSettingsConnector}
+        component={ImportListSettings}
       />
 
       <Route
@@ -209,7 +209,7 @@ function AppRoutes(props) {
 
       <Route
         path="/settings/metadatasource"
-        component={MetadataSourceSettingsConnector}
+        component={MetadataSourceSettings}
       />
 
       <Route

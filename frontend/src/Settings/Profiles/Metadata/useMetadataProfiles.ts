@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import ModelBase from 'App/ModelBase';
 import AppState from 'App/State/AppState';
 import useApiQuery from 'Helpers/Hooks/useApiQuery';
+import { useImportListsData } from 'Settings/ImportLists/ImportLists/useImportLists';
 import {
   useDeleteProvider,
   useManageProviderSettings,
@@ -125,18 +126,19 @@ export const useDeleteMetadataProfile = (id: number) => {
   };
 };
 
-// Authors and import lists are still redux, as createProfileInUseSelector read them.
+// Authors are still a redux feed; import lists are on react-query.
 export const useMetadataProfileInUse = (id: number | undefined) => {
-  return useSelector((state: AppState) => {
-    if (!id) {
-      return false;
-    }
+  const importLists = useImportListsData();
 
+  const usedByAuthor = useSelector((state: AppState) => {
     return (
-      state.authors.items.some((author) => author.metadataProfileId === id) ||
-      state.settings.importLists.items.some(
-        (list) => list.metadataProfileId === id
-      )
+      !!id &&
+      state.authors.items.some((author) => author.metadataProfileId === id)
     );
   });
+
+  return (
+    usedByAuthor ||
+    (!!id && importLists.some((list) => list.metadataProfileId === id))
+  );
 };

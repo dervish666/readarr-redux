@@ -11,25 +11,18 @@ import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
 import { kinds } from 'Helpers/Props';
 import { useDownloadClientsData } from 'Settings/DownloadClients/DownloadClients/useDownloadClients';
+import { useImportListsData } from 'Settings/ImportLists/ImportLists/useImportLists';
 import { useIndexersData } from 'Settings/Indexers/useIndexers';
+import { useConnectionsData } from 'Settings/Notifications/useConnections';
 import { useDelayProfiles } from 'Settings/Profiles/Delay/useDelayProfiles';
 import { useReleaseProfiles } from 'Settings/Profiles/Release/useReleaseProfiles';
 import translate from 'Utilities/String/translate';
 import TagDetailsDelayProfile from './TagDetailsDelayProfile';
 import styles from './TagDetailsModalContent.css';
 
-interface NamedItem extends ModelBase {
-  name: string;
-}
-
-// Authors and these settings are still redux feeds; only the parts read here.
-// Delay and release profiles, indexers and download clients are on react-query.
+// Authors are still a redux feed; everything else here is on react-query.
 interface TagLinksState {
   authors: { items: Author[] };
-  settings: {
-    importLists: { items: NamedItem[] };
-    notifications: { items: NamedItem[] };
-  };
 }
 
 function useMatchingItems<T extends ModelBase>(
@@ -87,13 +80,15 @@ function TagDetailsModalContent({
     () => allDelayProfiles.filter((item) => delayProfileIds.includes(item.id)),
     [allDelayProfiles, delayProfileIds]
   );
-  const importLists = useMatchingItems(
-    importListIds,
-    (state) => state.settings.importLists.items
+  const allImportLists = useImportListsData();
+  const importLists = useMemo(
+    () => allImportLists.filter((item) => importListIds.includes(item.id)),
+    [allImportLists, importListIds]
   );
-  const notifications = useMatchingItems(
-    notificationIds,
-    (state) => state.settings.notifications.items
+  const allNotifications = useConnectionsData();
+  const notifications = useMemo(
+    () => allNotifications.filter((item) => notificationIds.includes(item.id)),
+    [allNotifications, notificationIds]
   );
   const { data: allReleaseProfiles } = useReleaseProfiles();
   const releaseProfiles = useMemo(

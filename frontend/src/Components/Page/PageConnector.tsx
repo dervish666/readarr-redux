@@ -11,7 +11,6 @@ import { fetchBooks } from 'Store/Actions/bookActions';
 import { fetchCommands } from 'Store/Actions/commandActions';
 import { fetchCustomFilters } from 'Store/Actions/customFilterActions';
 import {
-  fetchImportLists,
   fetchLanguages,
   fetchMetadataProfiles,
   fetchQualityProfiles,
@@ -45,7 +44,6 @@ interface PageState {
     languages: SectionState;
     qualityProfiles: SectionState;
     metadataProfiles: SectionState;
-    importLists: SectionState;
   };
   system: {
     status: SectionState & {
@@ -75,7 +73,6 @@ const selectReduxPopulated = (state: PageState) =>
   state.settings.languages.isPopulated &&
   state.settings.qualityProfiles.isPopulated &&
   state.settings.metadataProfiles.isPopulated &&
-  state.settings.importLists.isPopulated &&
   state.system.status.isPopulated;
 
 const selectReduxErrors = createSelector(
@@ -86,7 +83,6 @@ const selectReduxErrors = createSelector(
   (state: PageState) => state.settings.languages.error,
   (state: PageState) => state.settings.qualityProfiles.error,
   (state: PageState) => state.settings.metadataProfiles.error,
-  (state: PageState) => state.settings.importLists.error,
   (state: PageState) => state.system.status.error,
   (
     authorError,
@@ -96,7 +92,6 @@ const selectReduxErrors = createSelector(
     languagesError,
     qualityProfilesError,
     metadataProfilesError,
-    importListsError,
     systemStatusError
   ) => ({
     authorError,
@@ -106,7 +101,6 @@ const selectReduxErrors = createSelector(
     languagesError,
     qualityProfilesError,
     metadataProfilesError,
-    importListsError,
     systemStatusError,
   })
 );
@@ -165,7 +159,6 @@ function PageConnector({ children }: PageConnectorProps) {
     dispatch(fetchLanguages());
     dispatch(fetchQualityProfiles());
     dispatch(fetchMetadataProfiles());
-    dispatch(fetchImportLists());
     dispatch(fetchUISettings());
     dispatch(fetchStatus());
     // Redux command feed for the pages not yet on react-query.

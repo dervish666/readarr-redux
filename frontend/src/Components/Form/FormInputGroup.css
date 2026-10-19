@@ -9,6 +9,38 @@
   flex-wrap: wrap;
 }
 
+/* Text inputs with buttons drop their own border (Input.css hasButton); the
+   group draws it around both, as in Sonarr v5. */
+.hasButtons {
+  overflow: hidden;
+  border: 1px solid var(--inputBorderColor);
+  border-radius: 8px;
+  background-color: var(--inputBackgroundColor);
+  transition:
+    border-color 160ms cubic-bezier(0.25, 1, 0.5, 1),
+    box-shadow 160ms cubic-bezier(0.25, 1, 0.5, 1);
+
+  &:focus-within {
+    border-color: var(--accent);
+  }
+
+  &.hasError {
+    border-color: var(--inputErrorBorderColor);
+
+    &:focus-within {
+      border-color: var(--inputErrorBorderColor);
+    }
+  }
+
+  &.hasWarning {
+    border-color: var(--inputWarningBorderColor);
+
+    &:focus-within {
+      border-color: var(--inputWarningBorderColor);
+    }
+  }
+}
+
 .inputContainer {
   position: relative;
   flex: 1 1 auto;

@@ -1,27 +1,23 @@
 import { useSelector } from 'react-redux';
 import Author from 'Author/Author';
-import ImportList from 'typings/ImportList';
+import { useImportListsData } from 'Settings/ImportLists/ImportLists/useImportLists';
 
-// Authors and import lists are still redux feeds.
+// Authors are still a redux feed; import lists are on react-query.
 interface ProfileInUseState {
   authors: { items: Author[] };
-  settings: { importLists: { items: ImportList[] } };
 }
 
-// The quality profile half of Store/Selectors/createProfileInUseSelector.
 function useQualityProfileInUse(id: number | undefined) {
-  return useSelector((state: ProfileInUseState) => {
-    if (!id) {
-      return false;
-    }
+  const importLists = useImportListsData();
 
-    return (
-      state.authors.items.some((author) => author.qualityProfileId === id) ||
-      state.settings.importLists.items.some(
-        (list) => list.qualityProfileId === id
-      )
-    );
+  const usedByAuthor = useSelector((state: ProfileInUseState) => {
+    return !!id && state.authors.items.some((a) => a.qualityProfileId === id);
   });
+
+  return (
+    usedByAuthor ||
+    (!!id && importLists.some((list) => list.qualityProfileId === id))
+  );
 }
 
 export default useQualityProfileInUse;

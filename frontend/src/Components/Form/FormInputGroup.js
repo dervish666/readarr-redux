@@ -1,3 +1,4 @@
+import classNames from 'classnames';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Link from 'Components/Link/Link';
@@ -7,10 +8,10 @@ import AuthorTagInput from './AuthorTagInput';
 // import translate from 'Utilities/String/translate';
 import AutoCompleteInput from './AutoCompleteInput';
 import BookEditionSelectInputConnector from './BookEditionSelectInputConnector';
-import BookshelfInputConnector from './BookshelfInputConnector';
+import BookshelfInput from './BookshelfInput';
 import CaptchaInputConnector from './CaptchaInputConnector';
 import CheckInput from './CheckInput';
-import DeviceInputConnector from './DeviceInputConnector';
+import DeviceInput from './DeviceInput';
 import DownloadClientSelectInput from './DownloadClientSelectInput';
 import EnhancedSelectInput from './EnhancedSelectInput';
 import FormInputHelpText from './FormInputHelpText';
@@ -46,10 +47,10 @@ function getComponent(type) {
       return CheckInput;
 
     case inputTypes.DEVICE:
-      return DeviceInputConnector;
+      return DeviceInput;
 
     case inputTypes.BOOKSHELF:
-      return BookshelfInputConnector;
+      return BookshelfInput;
 
     case inputTypes.KEY_VALUE_LIST:
       return KeyValueListInput;
@@ -147,7 +148,14 @@ function FormInputGroup(props) {
 
   return (
     <div className={containerClassName}>
-      <div className={className}>
+      <div
+        className={classNames(
+          className,
+          hasButton && styles.hasButtons,
+          hasButton && hasError && styles.hasError,
+          hasButton && hasWarning && styles.hasWarning
+        )}
+      >
         <div className={styles.inputContainer}>
           <InputComponent
             className={inputClassName}

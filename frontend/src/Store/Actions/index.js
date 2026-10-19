@@ -16,7 +16,6 @@ import * as editions from './editionActions';
 import * as interactiveImportActions from './interactiveImportActions';
 import * as oAuth from './oAuthActions';
 import * as organizePreview from './organizePreviewActions';
-import * as providerOptions from './providerOptionActions';
 import * as queue from './queueActions';
 import * as releases from './releaseActions';
 import * as retagPreview from './retagPreviewActions';
@@ -46,7 +45,6 @@ export default [
   interactiveImportActions,
   oAuth,
   organizePreview,
-  providerOptions,
   queue,
   releases,
   retagPreview,

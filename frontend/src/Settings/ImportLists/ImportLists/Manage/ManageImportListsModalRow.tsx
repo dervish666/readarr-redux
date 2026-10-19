@@ -1,12 +1,12 @@
 import React, { useCallback } from 'react';
-import { useSelector } from 'react-redux';
 import TableRowCell from 'Components/Table/Cells/TableRowCell';
 import TableSelectCell from 'Components/Table/Cells/TableSelectCell';
 import Column from 'Components/Table/Column';
 import TableRow from 'Components/Table/TableRow';
-import TagListConnector from 'Components/TagListConnector';
-import { createMetadataProfileSelectorForHook } from 'Store/Selectors/createMetadataProfileSelector';
-import { createQualityProfileSelectorForHook } from 'Store/Selectors/createQualityProfileSelector';
+import TagList from 'Components/TagList';
+import { useMetadataProfile } from 'Settings/Profiles/Metadata/useMetadataProfiles';
+import { useQualityProfile } from 'Settings/Profiles/Quality/useQualityProfiles';
+import { useTagList } from 'Tags/useTags';
 import { SelectStateInputProps } from 'typings/props';
 import translate from 'Utilities/String/translate';
 import styles from './ManageImportListsModalRow.css';
@@ -39,13 +39,9 @@ function ManageImportListsModalRow(props: ManageImportListsModalRowProps) {
     onSelectedChange,
   } = props;
 
-  const qualityProfile = useSelector(
-    createQualityProfileSelectorForHook(qualityProfileId)
-  );
-
-  const metadataProfile = useSelector(
-    createMetadataProfileSelectorForHook(metadataProfileId)
-  );
+  const qualityProfile = useQualityProfile(qualityProfileId);
+  const metadataProfile = useMetadataProfile(metadataProfileId);
+  const tagList = useTagList();
 
   const onSelectedChangeWrapper = useCallback(
     (result: SelectStateInputProps) => {
@@ -75,7 +71,7 @@ function ManageImportListsModalRow(props: ManageImportListsModalRowProps) {
       </TableRowCell>
 
       <TableRowCell className={styles.metadataProfileId}>
-        {metadataProfile?.name ?? 'None'}
+        {metadataProfile?.name ?? translate('None')}
       </TableRowCell>
 
       <TableRowCell className={styles.rootFolderPath}>
@@ -87,7 +83,7 @@ function ManageImportListsModalRow(props: ManageImportListsModalRowProps) {
       </TableRowCell>
 
       <TableRowCell className={styles.tags}>
-        <TagListConnector tags={tags} />
+        <TagList tags={tags} tagList={tagList} />
       </TableRowCell>
     </TableRow>
   );
