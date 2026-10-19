@@ -1,5 +1,18 @@
 import ModelBase from 'App/ModelBase';
 
+// Readarr's CommandStatus, CommandPriority and CommandResult enums, camelCased by v1.
+export type CommandStatus =
+  | 'queued'
+  | 'started'
+  | 'completed'
+  | 'failed'
+  | 'aborted'
+  | 'cancelled'
+  | 'orphaned';
+
+export type CommandResult = 'unknown' | 'successful' | 'unsuccessful';
+export type CommandPriority = 'low' | 'normal' | 'high';
+
 export interface CommandBody {
   sendUpdatesToClient: boolean;
   updateScheduledTask: boolean;
@@ -14,6 +27,20 @@ export interface CommandBody {
   suppressMessages: boolean;
   authorId?: number;
   authorIds?: number[];
+  bookId?: number;
+  bookIds?: number[];
+  [key: string]: unknown;
+}
+
+// What the UI posts to /command: a name plus the command's own fields.
+export interface NewCommandBody {
+  name: string;
+  priority?: CommandPriority;
+  authorId?: number;
+  authorIds?: number[];
+  bookId?: number;
+  bookIds?: number[];
+  [key: string]: string | number | boolean | number[] | object | undefined;
 }
 
 interface Command extends ModelBase {
@@ -21,18 +48,20 @@ interface Command extends ModelBase {
   commandName: string;
   message: string;
   body: CommandBody;
-  priority: string;
-  status: string;
-  result: string;
+  priority: CommandPriority;
+  status: CommandStatus;
+  result: CommandResult;
   queued: string;
-  started: string;
-  ended: string;
-  duration: string;
+  started?: string;
+  ended?: string;
+  duration?: string;
+  exception?: string;
   trigger: string;
-  stateChangeTime: string;
+  clientUserAgent?: string;
+  stateChangeTime?: string;
   sendUpdatesToClient: boolean;
   updateScheduledTask: boolean;
-  lastExecutionTime: string;
+  lastExecutionTime?: string;
 }
 
 export default Command;

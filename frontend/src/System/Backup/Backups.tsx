@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
 import * as commandNames from 'Commands/commandNames';
+import { useCommandExecuting, useExecuteCommand } from 'Commands/useCommands';
 import Alert from 'Components/Alert';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import PageContent from 'Components/Page/PageContent';
@@ -14,8 +14,6 @@ import Table from 'Components/Table/Table';
 import TableBody from 'Components/Table/TableBody';
 import usePrevious from 'Helpers/Hooks/usePrevious';
 import { icons, kinds } from 'Helpers/Props';
-import { executeCommand } from 'Store/Actions/commandActions';
-import createCommandExecutingSelector from 'Store/Selectors/createCommandExecutingSelector';
 import translate from 'Utilities/String/translate';
 import BackupRow from './BackupRow';
 import RestoreBackupModal from './RestoreBackupModal';
@@ -50,13 +48,10 @@ const columns: Column[] = [
 ];
 
 function Backups() {
-  const dispatch = useDispatch();
   const { data: items, isLoading, isFetched, error, refetch } = useBackups();
 
-  // Commands are still redux: the Backup command and its spinner.
-  const isBackupExecuting: boolean = useSelector(
-    createCommandExecutingSelector(commandNames.BACKUP)
-  );
+  const isBackupExecuting: boolean = useCommandExecuting(commandNames.BACKUP);
+  const executeCommand = useExecuteCommand();
   const wasBackupExecuting = usePrevious(isBackupExecuting);
 
   const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
@@ -65,8 +60,8 @@ function Backups() {
   const noBackups = isFetched && !error && !items.length;
 
   const handleBackupPress = useCallback(() => {
-    dispatch(executeCommand({ name: commandNames.BACKUP }));
-  }, [dispatch]);
+    executeCommand({ name: commandNames.BACKUP });
+  }, [executeCommand]);
 
   const handleRestorePress = useCallback(() => {
     setIsRestoreModalOpen(true);

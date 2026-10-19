@@ -1,13 +1,19 @@
 import { batchActions } from 'redux-batched-actions';
-import { messageTypes } from 'Helpers/Props';
+import { queryClient } from 'App/queryClient';
+import { addNewCommand } from 'Commands/addNewCommand';
 import { createThunk, handleThunks } from 'Store/thunks';
 import { isSameCommand } from 'Utilities/Command';
 import createAjaxRequest from 'Utilities/createAjaxRequest';
-import { hideMessage, showMessage } from './appActions';
+import { hideMessage } from './appActions';
 import { removeItem, updateItem } from './baseActions';
 import createFetchHandler from './Creators/createFetchHandler';
 import createHandleActions from './Creators/createHandleActions';
-import createRemoveItemHandler from './Creators/createRemoveItemHandler';
+
+// Redux feed of the command list for pages not yet on react-query (author, book,
+// calendar, wanted, interactive import, organize/retag, settings). Commands/useCommands.ts
+// owns the list, the sidebar messages and the SignalR updates; SignalRListener also
+// dispatches updateCommand/finishCommand here, and executeCommand below writes its new
+// command into the react-query cache, so both sides see every command.
 
 //
 // Variables
@@ -26,8 +32,7 @@ export const defaultState = {
   isFetching: false,
   isPopulated: false,
   error: null,
-  items: [],
-  handlers: {}
+  items: []
 };
 
 //
@@ -35,7 +40,6 @@ export const defaultState = {
 
 export const FETCH_COMMANDS = 'commands/fetchCommands';
 export const EXECUTE_COMMAND = 'commands/executeCommand';
-export const CANCEL_COMMAND = 'commands/cancelCommand';
 export const ADD_COMMAND = 'commands/addCommand';
 export const UPDATE_COMMAND = 'commands/updateCommand';
 export const FINISH_COMMAND = 'commands/finishCommand';
@@ -46,7 +50,6 @@ export const REMOVE_COMMAND = 'commands/removeCommand';
 
 export const fetchCommands = createThunk(FETCH_COMMANDS);
 export const executeCommand = createThunk(EXECUTE_COMMAND);
-export const cancelCommand = createThunk(CANCEL_COMMAND);
 export const addCommand = createThunk(ADD_COMMAND);
 export const updateCommand = createThunk(UPDATE_COMMAND);
 export const finishCommand = createThunk(FINISH_COMMAND);
@@ -54,45 +57,6 @@ export const removeCommand = createThunk(REMOVE_COMMAND);
 
 //
 // Helpers
-
-function showCommandMessage(payload, dispatch) {
-  const {
-    id,
-    name,
-    trigger,
-    message,
-    body = {},
-    status
-  } = payload;
-
-  const {
-    sendUpdatesToClient,
-    suppressMessages
-  } = body;
-
-  if (!message || !body || !sendUpdatesToClient || suppressMessages) {
-    return;
-  }
-
-  let type = messageTypes.INFO;
-  let hideAfter = 0;
-
-  if (status === 'completed') {
-    type = messageTypes.SUCCESS;
-    hideAfter = 4;
-  } else if (status === 'failed') {
-    type = messageTypes.ERROR;
-    hideAfter = trigger === 'manual' ? 10 : 4;
-  }
-
-  dispatch(showMessage({
-    id,
-    name,
-    message,
-    type,
-    hideAfter
-  }));
-}
 
 function scheduleRemoveCommand(command, dispatch) {
   const {
@@ -155,6 +119,10 @@ export function executeCommandHelper(payload, dispatch) {
     }
 
     dispatch(addCommand(data));
+
+    queryClient.setQueryData(['/command'], (oldCommands) => addNewCommand(oldCommands, data));
+
+    return data;
   });
 }
 
@@ -168,31 +136,22 @@ export const actionHandlers = handleThunks({
     executeCommandHelper(payload, dispatch);
   },
 
-  [CANCEL_COMMAND]: createRemoveItemHandler(section, '/command'),
-
   [ADD_COMMAND]: function(getState, payload, dispatch) {
+    // SignalR progress can land before the POST response; don't roll it back to queued.
+    if (getState().commands.items.some((command) => command.id === payload.id)) {
+      return;
+    }
+
     dispatch(updateItem({ section: 'commands', ...payload }));
   },
 
   [UPDATE_COMMAND]: function(getState, payload, dispatch) {
     dispatch(updateItem({ section: 'commands', ...payload }));
 
-    showCommandMessage(payload, dispatch);
     scheduleRemoveCommand(payload, dispatch);
   },
 
   [FINISH_COMMAND]: function(getState, payload, dispatch) {
-    const state = getState();
-    const handlers = state.commands.handlers;
-
-    Object.keys(handlers).forEach((key) => {
-      const handler = handlers[key];
-
-      if (handler.name === payload.name) {
-        dispatch(handler.handler(payload));
-      }
-    });
-
     const commandFinished = commandFinishedCallbacks[payload.id];
 
     if (commandFinished) {
@@ -203,7 +162,6 @@ export const actionHandlers = handleThunks({
 
     dispatch(updateItem({ section: 'commands', ...payload }));
     scheduleRemoveCommand(payload, dispatch);
-    showCommandMessage(payload, dispatch);
   },
 
   [REMOVE_COMMAND]: function(getState, payload, dispatch) {

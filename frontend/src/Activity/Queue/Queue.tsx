@@ -6,8 +6,8 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
 import * as commandNames from 'Commands/commandNames';
+import { useCommandExecuting, useExecuteCommand } from 'Commands/useCommands';
 import Alert from 'Components/Alert';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import PageContent from 'Components/Page/PageContent';
@@ -24,8 +24,6 @@ import TablePager from 'Components/Table/TablePager';
 import useSelectState from 'Helpers/Hooks/useSelectState';
 import { align, icons, kinds } from 'Helpers/Props';
 import SortDirection from 'Helpers/Props/SortDirection';
-import { executeCommand } from 'Store/Actions/commandActions';
-import createCommandExecutingSelector from 'Store/Selectors/createCommandExecutingSelector';
 import { SelectStateInputProps } from 'typings/props';
 import QueueModel from 'typings/Queue';
 import {
@@ -50,8 +48,6 @@ import useQueue, {
 } from './useQueue';
 
 function Queue() {
-  const dispatch = useDispatch();
-
   const {
     records,
     totalPages,
@@ -69,9 +65,11 @@ function Queue() {
   const { isRemoving, removeQueueItems } = useRemoveQueueItems();
   const { isGrabbing, grabQueueItems } = useGrabQueueItems();
 
-  const isRefreshMonitoredDownloadsExecuting = useSelector(
-    createCommandExecutingSelector(commandNames.REFRESH_MONITORED_DOWNLOADS)
+  const isRefreshMonitoredDownloadsExecuting = useCommandExecuting(
+    commandNames.REFRESH_MONITORED_DOWNLOADS
   );
+
+  const executeCommand = useExecuteCommand();
 
   // While a row's modal is open the table keeps what it showed, so the row
   // doesn't vanish from under the modal when the queue refreshes.
@@ -139,10 +137,8 @@ function Queue() {
   );
 
   const handleRefreshPress = useCallback(() => {
-    dispatch(
-      executeCommand({ name: commandNames.REFRESH_MONITORED_DOWNLOADS })
-    );
-  }, [dispatch]);
+    executeCommand({ name: commandNames.REFRESH_MONITORED_DOWNLOADS });
+  }, [executeCommand]);
 
   const handleQueueRowModalOpenOrClose = useCallback((isOpen: boolean) => {
     shouldBlockRefresh.current = isOpen;

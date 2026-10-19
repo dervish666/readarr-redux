@@ -1,16 +1,17 @@
 import moment from 'moment';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import AppState from 'App/State/AppState';
-import Command from 'Commands/Command';
+import { useSelector } from 'react-redux';
+import {
+  isCommandExecuting,
+  useCommand,
+  useExecuteCommand,
+} from 'Commands/useCommands';
 import SpinnerIconButton from 'Components/Link/SpinnerIconButton';
 import TableRowCell from 'Components/Table/Cells/TableRowCell';
 import TableRow from 'Components/Table/TableRow';
 import usePrevious from 'Helpers/Hooks/usePrevious';
 import { icons } from 'Helpers/Props';
-import { executeCommand } from 'Store/Actions/commandActions';
 import createUISettingsSelector from 'Store/Selectors/createUISettingsSelector';
-import { findCommand, isCommandExecuting } from 'Utilities/Command';
 import formatDate from 'Utilities/Date/formatDate';
 import formatDateTime from 'Utilities/Date/formatDateTime';
 import formatTimeSpan from 'Utilities/Date/formatTimeSpan';
@@ -37,15 +38,12 @@ function ScheduledTaskRow({
   lastDuration,
   nextExecution,
 }: ScheduledTaskRowProps) {
-  const dispatch = useDispatch();
+  const executeCommand = useExecuteCommand();
   const refreshTasks = useRefreshTasks();
   const { showRelativeDates, longDateFormat, shortDateFormat, timeFormat } =
     useSelector(createUISettingsSelector());
 
-  // Commands are still redux: running a task and its spinner use the command list.
-  const command: Command | undefined = useSelector((state: AppState) =>
-    findCommand(state.commands.items, { name: taskName })
-  );
+  const command = useCommand(taskName);
 
   const [time, setTime] = useState(Date.now());
 
@@ -88,8 +86,8 @@ function ScheduledTaskRow({
   ]);
 
   const handleExecutePress = useCallback(() => {
-    dispatch(executeCommand({ name: taskName }));
-  }, [taskName, dispatch]);
+    executeCommand({ name: taskName });
+  }, [taskName, executeCommand]);
 
   useEffect(() => {
     // The system/task SignalR sync normally refreshes the list; this covers a

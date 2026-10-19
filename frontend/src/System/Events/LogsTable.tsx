@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
 import * as commandNames from 'Commands/commandNames';
+import { useCommandExecuting, useExecuteCommand } from 'Commands/useCommands';
 import Alert from 'Components/Alert';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import FilterMenu from 'Components/Menu/FilterMenu';
@@ -16,8 +16,6 @@ import TableOptionsModalWrapper from 'Components/Table/TableOptions/TableOptions
 import TablePager from 'Components/Table/TablePager';
 import { align, icons, kinds } from 'Helpers/Props';
 import SortDirection from 'Helpers/Props/SortDirection';
-import { executeCommand } from 'Store/Actions/commandActions';
-import createCommandExecutingSelector from 'Store/Selectors/createCommandExecutingSelector';
 import {
   registerPagePopulator,
   unregisterPagePopulator,
@@ -36,8 +34,6 @@ import useEvents, { FILTERS } from './useEvents';
 const NO_CUSTOM_FILTERS: never[] = [];
 
 function LogsTable() {
-  const dispatch = useDispatch();
-
   const {
     records,
     totalPages,
@@ -54,10 +50,10 @@ function LogsTable() {
   const { columns, pageSize, sortKey, sortDirection, selectedFilterKey } =
     useEventOptions();
 
-  // Commands are still redux: Clear runs the ClearLog command.
-  const isClearLogExecuting: boolean = useSelector(
-    createCommandExecutingSelector(commandNames.CLEAR_LOGS)
+  const isClearLogExecuting: boolean = useCommandExecuting(
+    commandNames.CLEAR_LOGS
   );
+  const executeCommand = useExecuteCommand();
 
   useEffect(() => {
     const repopulate = () => {
@@ -103,16 +99,11 @@ function LogsTable() {
   }, [goToPage, refetch]);
 
   const handleClearLogsPress = useCallback(() => {
-    dispatch(
-      executeCommand({
-        name: commandNames.CLEAR_LOGS,
-        commandFinished: () => {
-          goToPage(1);
-          refetch();
-        },
-      })
-    );
-  }, [dispatch, goToPage, refetch]);
+    executeCommand({ name: commandNames.CLEAR_LOGS }, () => {
+      goToPage(1);
+      refetch();
+    });
+  }, [executeCommand, goToPage, refetch]);
 
   const handlePreviousPagePress = useCallback(() => {
     goToPage(Math.max(page - 1, 1));

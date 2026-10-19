@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import AppState from 'App/State/AppState';
 import * as commandNames from 'Commands/commandNames';
+import { useCommandExecuting, useExecuteCommand } from 'Commands/useCommands';
 import Alert from 'Components/Alert';
 import Icon from 'Components/Icon';
 import Label from 'Components/Label';
@@ -13,9 +14,7 @@ import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import PageHeading from 'Components/Page/PageHeading';
 import { icons, kinds } from 'Helpers/Props';
-import { executeCommand } from 'Store/Actions/commandActions';
 import { fetchGeneralSettings } from 'Store/Actions/settingsActions';
-import createCommandExecutingSelector from 'Store/Selectors/createCommandExecutingSelector';
 import createUISettingsSelector from 'Store/Selectors/createUISettingsSelector';
 import { useSystemStatusData } from 'System/Status/useSystemStatus';
 import { UpdateMechanism } from 'typings/Settings/General';
@@ -34,9 +33,10 @@ function Updates() {
   const { shortDateFormat, longDateFormat, timeFormat } = useSelector(
     createUISettingsSelector()
   );
-  const isInstallingUpdate = useSelector(
-    createCommandExecutingSelector(commandNames.APPLICATION_UPDATE)
+  const isInstallingUpdate = useCommandExecuting(
+    commandNames.APPLICATION_UPDATE
   );
+  const executeCommand = useExecuteCommand();
 
   const {
     data: items,
@@ -92,20 +92,18 @@ function Updates() {
     if (isMajorUpdate) {
       setIsMajorUpdateModalOpen(true);
     } else {
-      dispatch(executeCommand({ name: commandNames.APPLICATION_UPDATE }));
+      executeCommand({ name: commandNames.APPLICATION_UPDATE });
     }
-  }, [isMajorUpdate, setIsMajorUpdateModalOpen, dispatch]);
+  }, [isMajorUpdate, setIsMajorUpdateModalOpen, executeCommand]);
 
   const handleInstallLatestMajorVersionPress = useCallback(() => {
     setIsMajorUpdateModalOpen(false);
 
-    dispatch(
-      executeCommand({
-        name: commandNames.APPLICATION_UPDATE,
-        installMajorUpdate: true,
-      })
-    );
-  }, [setIsMajorUpdateModalOpen, dispatch]);
+    executeCommand({
+      name: commandNames.APPLICATION_UPDATE,
+      installMajorUpdate: true,
+    });
+  }, [setIsMajorUpdateModalOpen, executeCommand]);
 
   const handleCancelMajorVersionPress = useCallback(() => {
     setIsMajorUpdateModalOpen(false);

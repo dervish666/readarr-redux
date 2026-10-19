@@ -8,6 +8,7 @@ import { useEffect, useRef } from 'react';
 import { useDispatch } from 'react-redux';
 import ModelBase from 'App/ModelBase';
 import Command from 'Commands/Command';
+import { useUpdateCommand } from 'Commands/useCommands';
 import { setAppValue, setVersion } from 'Store/Actions/appActions';
 import { fetchAuthor } from 'Store/Actions/authorActions';
 import { removeItem, updateItem } from 'Store/Actions/baseActions';
@@ -37,14 +38,13 @@ interface SignalRMessage {
 // The react-query side of the bridge. Each message marks the queries under these
 // /api/v1 path prefixes stale, so any react-query consumer refetches what changed.
 // Each Stage 2 and 3 PR that moves a domain over keeps (or sharpens) its entry here
-// and drops the redux dispatch below. queue/status is absent on purpose: its message
-// carries the new counts, which the switch below writes straight into the cache.
+// and drops the redux dispatch below. queue/status and command are absent on purpose:
+// their messages carry the new value, which the switch below writes into the cache.
 const QUERY_KEYS_BY_MESSAGE: Record<string, string[]> = {
   author: ['/author'],
   book: ['/book'],
   bookfile: ['/bookfile'],
   calendar: ['/calendar'],
-  command: ['/command'],
   health: ['/health'],
   qualitydefinition: ['/qualitydefinition'],
   queue: ['/queue'],
@@ -67,6 +67,7 @@ function invalidateQueries(queryClient: QueryClient, name: string) {
 function SignalRListener() {
   const queryClient = useQueryClient();
   const dispatch = useDispatch();
+  const updateCommandQuery = useUpdateCommand();
 
   const connection = useRef<HubConnection | null>(null);
 
@@ -150,12 +151,17 @@ function SignalRListener() {
 
       case 'command': {
         if (body.action === 'sync') {
+          queryClient.invalidateQueries({ queryKey: ['/command'] });
           dispatch(fetchCommands());
           return;
         }
 
         const resource = body.resource as unknown as Command;
         const status = resource.status;
+
+        // react-query owns the list and the sidebar message; the redux feed gets the
+        // same update for unconverted pages and runs callbacks of redux-started commands.
+        updateCommandQuery(resource);
 
         // Both successful and failed commands need to be
         // completed, otherwise they spin until they time out.
@@ -248,7 +254,8 @@ function SignalRListener() {
         return;
 
       case 'system/task':
-        // The task list is on react-query (invalidated above). Commands are still redux.
+        // The task list is on react-query (invalidated above); refresh both command lists.
+        queryClient.invalidateQueries({ queryKey: ['/command'] });
         dispatch(fetchCommands());
         return;
 

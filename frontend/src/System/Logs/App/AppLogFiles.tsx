@@ -1,33 +1,27 @@
 import React, { useCallback } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
 import * as commandNames from 'Commands/commandNames';
-import { executeCommand } from 'Store/Actions/commandActions';
-import createCommandExecutingSelector from 'Store/Selectors/createCommandExecutingSelector';
+import { useCommandExecuting, useExecuteCommand } from 'Commands/useCommands';
 import LogFiles from '../LogFiles';
 import useLogFiles from '../useLogFiles';
 
 function AppLogFiles() {
-  const dispatch = useDispatch();
   const { data = [], isFetching, refetch } = useLogFiles();
 
-  const isDeleteFilesExecuting: boolean = useSelector(
-    createCommandExecutingSelector(commandNames.DELETE_LOG_FILES)
+  const isDeleteFilesExecuting: boolean = useCommandExecuting(
+    commandNames.DELETE_LOG_FILES
   );
+
+  const executeCommand = useExecuteCommand();
 
   const handleRefreshPress = useCallback(() => {
     refetch();
   }, [refetch]);
 
   const handleDeleteFilesPress = useCallback(() => {
-    dispatch(
-      executeCommand({
-        name: commandNames.DELETE_LOG_FILES,
-        commandFinished: () => {
-          refetch();
-        },
-      })
-    );
-  }, [dispatch, refetch]);
+    executeCommand({ name: commandNames.DELETE_LOG_FILES }, () => {
+      refetch();
+    });
+  }, [executeCommand, refetch]);
 
   return (
     <LogFiles
