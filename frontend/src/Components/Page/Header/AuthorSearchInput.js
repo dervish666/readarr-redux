@@ -65,7 +65,10 @@ class AuthorSearchInput extends Component {
   };
 
   getSectionSuggestions(section) {
-    return section.suggestions;
+    // Picking "Search for" clears the suggestions, which drops the existing items
+    // section, while react-autosuggest still holds the old highlighted section index
+    // and asks for a section that is gone. It used to throw and take the page down.
+    return section ? section.suggestions : [];
   }
 
   renderSectionTitle(section) {
