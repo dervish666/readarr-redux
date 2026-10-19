@@ -297,7 +297,8 @@ test('header search finds authors and books from the library lists', async ({ pa
   await expect(suggestions.filter({ hasText: books[0].title }).first()).toBeVisible();
 
   await input.fill(local.authorName);
-  const authorSuggestion = suggestions.filter({ hasText: local.authorName }).first();
+  // Book suggestions show their author's name too, so look among author suggestions only.
+  const authorSuggestion = page.locator('[class*="AuthorSearchResult-result"]').filter({ hasText: local.authorName }).first();
   await expect(authorSuggestion).toBeVisible();
   await authorSuggestion.click();
   await expect(page).toHaveURL(new RegExp(`/author/${local.titleSlug}$`));

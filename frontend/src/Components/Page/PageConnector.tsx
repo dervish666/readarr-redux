@@ -71,31 +71,49 @@ interface PageConnectorProps {
   children: ReactNode;
 }
 
+// Only a load that never succeeded takes the whole UI down. A background refetch
+// that fails after a good load (a SignalR invalidation during a restart, a blip)
+// keeps the last data and the page, as react-query keeps the data.
+function startupError(result: { error: unknown; dataUpdatedAt: number }) {
+  return result.error && !result.dataUpdatedAt ? (result.error as Error) : null;
+}
+
 function PageConnector({ children }: PageConnectorProps) {
   const dispatch = useDispatch();
   const location = useLocation();
   const [isLocalStorageSupported] = useState(testLocalStorage);
 
-  const { isFetched: isTranslationsFetched, error: translationsError } =
-    useTranslations();
+  const translations = useTranslations();
+  const { isFetched: isTranslationsFetched } = translations;
+  const translationsError = startupError(translations);
 
   // Primes the react-query command list for every page, as Sonarr's useAppPage does.
   useCommands();
 
   // Indexer flags label releases and files on every page; load them before any page.
-  const { isFetched: isIndexerFlagsFetched, error: indexerFlagsError } =
-    useIndexerFlags();
+  const indexerFlags = useIndexerFlags();
+  const { isFetched: isIndexerFlagsFetched } = indexerFlags;
+  const indexerFlagsError = startupError(indexerFlags);
 
   // The lists every page reads (authors, tags, custom filters, profiles) load before
   // any page renders, as the redux startup fetches did.
-  const { isFetched: isAuthorsFetched, error: authorError } = useAuthors();
-  const { isFetched: isTagsFetched, error: tagsError } = useTags();
-  const { isFetched: isCustomFiltersFetched, error: customFiltersError } =
-    useCustomFilters();
-  const { isFetched: isQualityProfilesFetched, error: qualityProfilesError } =
-    useQualityProfiles();
-  const { isFetched: isMetadataProfilesFetched, error: metadataProfilesError } =
-    useMetadataProfiles();
+  const authors = useAuthors();
+  const tags = useTags();
+  const customFilters = useCustomFilters();
+  const qualityProfiles = useQualityProfiles();
+  const metadataProfiles = useMetadataProfiles();
+
+  const { isFetched: isAuthorsFetched } = authors;
+  const { isFetched: isTagsFetched } = tags;
+  const { isFetched: isCustomFiltersFetched } = customFilters;
+  const { isFetched: isQualityProfilesFetched } = qualityProfiles;
+  const { isFetched: isMetadataProfilesFetched } = metadataProfiles;
+
+  const authorError = startupError(authors);
+  const tagsError = startupError(tags);
+  const customFiltersError = startupError(customFilters);
+  const qualityProfilesError = startupError(qualityProfiles);
+  const metadataProfilesError = startupError(metadataProfiles);
 
   const queryErrors = {
     authorError,
@@ -117,11 +135,9 @@ function PageConnector({ children }: PageConnectorProps) {
 
   // UI settings: react-query for the pages and the theme, plus the redux
   // state.settings.ui feed (fetched below) for RelativeDateCellConnector.
-  const {
-    data: uiSettings,
-    isFetched: isUiSettingsFetched,
-    error: uiSettingsQueryError,
-  } = useUiSettings();
+  const uiSettingsQuery = useUiSettings();
+  const { data: uiSettings, isFetched: isUiSettingsFetched } = uiSettingsQuery;
+  const uiSettingsQueryError = startupError(uiSettingsQuery);
   const enableColorImpairedMode = !!uiSettings.enableColorImpairedMode;
   const authenticationEnabled = useSelector((state: PageState) => {
     const status = state.system.status.item;

@@ -24,19 +24,28 @@ interface Series {
 }
 
 test('a failed series monitor toggle restores each book', async ({ page, problems }) => {
-  const [listed] = await api<Author[]>(page, '/author');
-  expect(listed, 'the library has no authors').toBeTruthy();
+  // The first of the first ten authors with a series of three or more books.
+  let found: { listed: Author; books: Book[]; series: Series } | undefined;
+
+  for (const listed of (await api<Author[]>(page, '/author')).slice(0, 10)) {
+    const books = await api<Book[]>(page, `/book?authorId=${listed.id}`);
+    const series = (await api<Series[]>(page, `/series?authorId=${listed.id}`))
+      .find((s) => s.links.length >= 3 && s.links.every((l) => books.some((b) => b.id === l.bookId)));
+
+    if (series) {
+      found = { listed, books, series };
+      break;
+    }
+  }
+
+  expect(found, 'no author among the first ten has a series of three or more books').toBeTruthy();
+  const { listed, books, series } = found!;
 
   // Series toggles are disabled while the author is unmonitored, so monitor it for
   // the test and put it back after.
   const author = await api<Record<string, unknown> & Author>(page, `/author/${listed.id}`);
 
-  const books = await api<Book[]>(page, `/book?authorId=${author.id}`);
-  const series = (await api<Series[]>(page, `/series?authorId=${author.id}`))
-    .find((s) => s.links.length >= 3 && s.links.every((l) => books.some((b) => b.id === l.bookId)));
-  expect(series, 'the author needs a series of three or more books').toBeTruthy();
-
-  const seriesBooks = series!.links.map((l) => books.find((b) => b.id === l.bookId)!);
+  const seriesBooks = series.links.map((l) => books.find((b) => b.id === l.bookId)!);
   const original = new Map(seriesBooks.map((b) => [b.id, b.monitored]));
 
   // Mixed: the first book monitored, the rest not. The series then reads as
@@ -60,7 +69,7 @@ test('a failed series monitor toggle restores each book', async ({ page, problem
     await page.getByRole('tab', { name: /^Series/ }).click();
 
     const panel = page.locator('[class*="AuthorDetailsSeries-bookType"]')
-      .filter({ has: page.locator('[class*="AuthorDetailsSeries-bookTypeLabel"]', { hasText: new RegExp(`^${series!.title}$`) }) })
+      .filter({ has: page.locator('[class*="AuthorDetailsSeries-bookTypeLabel"]', { hasText: new RegExp(`^${series.title}$`) }) })
       .first();
 
     const failed = page.waitForResponse((r) => r.url().includes('/api/v1/book/monitor') && r.status() === 500);
