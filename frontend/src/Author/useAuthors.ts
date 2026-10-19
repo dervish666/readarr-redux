@@ -579,8 +579,9 @@ export interface UpdateAuthorMonitorPayload {
     monitored?: boolean;
     books?: { id: number; monitored: boolean }[];
   }[];
+  // An empty object is read by the server as monitor "all".
   monitoringOptions?: {
-    monitor: AuthorMonitor;
+    monitor?: AuthorMonitor;
     booksToMonitor?: string[];
   };
   monitorNewItems?: NewItemMonitorType;
