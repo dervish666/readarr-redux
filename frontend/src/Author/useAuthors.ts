@@ -1,6 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
-import { useDispatch } from 'react-redux';
 import { Filter, FilterBuilderProp } from 'Filters/Filter';
 import useApiMutation from 'Helpers/Hooks/useApiMutation';
 import useApiQuery from 'Helpers/Hooks/useApiQuery';
@@ -9,7 +8,6 @@ import {
   filterBuilderValueTypes,
   filterTypePredicates,
 } from 'Helpers/Props';
-import { removeItem, updateItem } from 'Store/Actions/baseActions';
 import dateFilterPredicate from 'Utilities/Date/dateFilterPredicate';
 import apiRequest from 'Utilities/Fetch/apiRequest';
 import { ApiError } from 'Utilities/Fetch/fetchJson';
@@ -345,13 +343,11 @@ export const useMultipleAuthors = (authorIds: number[] = DEFAULT_IDS) => {
   }, [authorsMap, authorIds]);
 };
 
-// Writes authors into the react-query list and the redux authors feed that the
-// unconverted author, book, calendar and wanted pages still read. SignalR sends the
-// same change, but the feed must not wait on it (or miss it while disconnected).
-// Pass belongsTo to add an author a list lacks (add new); otherwise only merges.
+// Writes authors into the react-query list. SignalR sends the same change, but the
+// list must not wait on it (or miss it while disconnected). Pass belongsTo to add an
+// author a list lacks (add new); otherwise only merges.
 export const useUpdateAuthorCaches = () => {
   const queryClient = useQueryClient();
-  const dispatch = useDispatch();
 
   const updateAuthors = useCallback(
     (
@@ -359,12 +355,8 @@ export const useUpdateAuthorCaches = () => {
       belongsTo?: CachedListFilter<Author>
     ) => {
       updateCachedItems<Author>(queryClient, '/author', authors, belongsTo);
-
-      authors.forEach((author) => {
-        dispatch(updateItem({ section: 'authors', ...author }));
-      });
     },
-    [queryClient, dispatch]
+    [queryClient]
   );
 
   const removeAuthors = useCallback(
@@ -372,12 +364,8 @@ export const useUpdateAuthorCaches = () => {
       const ids = new Set(authorIds);
 
       removeCachedItems<Author>(queryClient, '/author', (a) => ids.has(a.id));
-
-      authorIds.forEach((id) => {
-        dispatch(removeItem({ section: 'authors', id }));
-      });
     },
-    [queryClient, dispatch]
+    [queryClient]
   );
 
   return { updateAuthors, removeAuthors };

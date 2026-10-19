@@ -1,9 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
-import { useDispatch } from 'react-redux';
 import useApiMutation from 'Helpers/Hooks/useApiMutation';
 import useApiQuery from 'Helpers/Hooks/useApiQuery';
-import { removeItem, updateItem } from 'Store/Actions/baseActions';
 import { CustomFilter } from './Filter';
 
 const DEFAULT_CUSTOM_FILTERS: CustomFilter[] = [];
@@ -33,13 +31,10 @@ export const useCustomFiltersList = (type: string) => {
   );
 };
 
-// After a custom filter change, update react-query and the redux customFilters feed
-// that author, book, bookshelf, calendar, wanted and release pages still read. The
-// feed gets the saved filter straight away, so a page that selects it right after the
-// save finds it.
+// After a custom filter change, update react-query. The list gets the saved filter
+// straight away, so a page that selects it right after the save finds it.
 const useSyncCustomFilters = () => {
   const queryClient = useQueryClient();
-  const dispatch = useDispatch();
 
   return useCallback(
     (change: { saved: CustomFilter } | { deletedId: number }) => {
@@ -61,16 +56,8 @@ const useSyncCustomFilters = () => {
       });
 
       queryClient.invalidateQueries({ queryKey: ['/customFilter'] });
-
-      if ('saved' in change) {
-        dispatch(updateItem({ section: 'customFilters', ...change.saved }));
-      } else {
-        dispatch(
-          removeItem({ section: 'customFilters', id: change.deletedId })
-        );
-      }
     },
-    [queryClient, dispatch]
+    [queryClient]
   );
 };
 

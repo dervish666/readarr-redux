@@ -3,21 +3,17 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useLocation } from 'react-router-dom';
 import { createSelector } from 'reselect';
 import useTranslations from 'App/useTranslations';
+import useAuthors from 'Author/useAuthors';
 import useCommands from 'Commands/useCommands';
+import useCustomFilters from 'Filters/useCustomFilters';
 import useIndexerFlags from 'Settings/Indexers/useIndexerFlags';
+import { useMetadataProfiles } from 'Settings/Profiles/Metadata/useMetadataProfiles';
+import { useQualityProfiles } from 'Settings/Profiles/Quality/useQualityProfiles';
 import { useUiSettings } from 'Settings/UI/useUiSettings';
 import { saveDimensions, setIsSidebarVisible } from 'Store/Actions/appActions';
-import { fetchAuthor } from 'Store/Actions/authorActions';
-import { fetchBooks } from 'Store/Actions/bookActions';
-import { fetchCommands } from 'Store/Actions/commandActions';
-import { fetchCustomFilters } from 'Store/Actions/customFilterActions';
-import {
-  fetchMetadataProfiles,
-  fetchQualityProfiles,
-  fetchUISettings,
-} from 'Store/Actions/settingsActions';
+import { fetchUISettings } from 'Store/Actions/settingsActions';
 import { fetchStatus } from 'Store/Actions/systemActions';
-import { fetchTags } from 'Store/Actions/tagActions';
+import useTags from 'Tags/useTags';
 import ErrorPage from './ErrorPage';
 import LoadingPage from './LoadingPage';
 import Page from './Page';
@@ -36,13 +32,8 @@ interface PageState {
     isDisconnected: boolean;
     dimensions: { isSmallScreen: boolean };
   };
-  authors: SectionState;
-  customFilters: SectionState;
-  tags: SectionState;
   settings: {
     ui: SectionState;
-    qualityProfiles: SectionState;
-    metadataProfiles: SectionState;
   };
   system: {
     status: SectionState & {
@@ -65,37 +56,13 @@ function testLocalStorage() {
 }
 
 const selectReduxPopulated = (state: PageState) =>
-  state.authors.isPopulated &&
-  state.customFilters.isPopulated &&
-  state.tags.isPopulated &&
-  state.settings.ui.isPopulated &&
-  state.settings.qualityProfiles.isPopulated &&
-  state.settings.metadataProfiles.isPopulated &&
-  state.system.status.isPopulated;
+  state.settings.ui.isPopulated && state.system.status.isPopulated;
 
 const selectReduxErrors = createSelector(
-  (state: PageState) => state.authors.error,
-  (state: PageState) => state.customFilters.error,
-  (state: PageState) => state.tags.error,
   (state: PageState) => state.settings.ui.error,
-  (state: PageState) => state.settings.qualityProfiles.error,
-  (state: PageState) => state.settings.metadataProfiles.error,
   (state: PageState) => state.system.status.error,
-  (
-    authorError,
-    customFiltersError,
-    tagsError,
+  (uiSettingsError, systemStatusError) => ({
     uiSettingsError,
-    qualityProfilesError,
-    metadataProfilesError,
-    systemStatusError
-  ) => ({
-    authorError,
-    customFiltersError,
-    tagsError,
-    uiSettingsError,
-    qualityProfilesError,
-    metadataProfilesError,
     systemStatusError,
   })
 );
@@ -119,6 +86,25 @@ function PageConnector({ children }: PageConnectorProps) {
   const { isFetched: isIndexerFlagsFetched, error: indexerFlagsError } =
     useIndexerFlags();
 
+  // The lists every page reads (authors, tags, custom filters, profiles) load before
+  // any page renders, as the redux startup fetches did.
+  const { isFetched: isAuthorsFetched, error: authorError } = useAuthors();
+  const { isFetched: isTagsFetched, error: tagsError } = useTags();
+  const { isFetched: isCustomFiltersFetched, error: customFiltersError } =
+    useCustomFilters();
+  const { isFetched: isQualityProfilesFetched, error: qualityProfilesError } =
+    useQualityProfiles();
+  const { isFetched: isMetadataProfilesFetched, error: metadataProfilesError } =
+    useMetadataProfiles();
+
+  const queryErrors = {
+    authorError,
+    tagsError,
+    customFiltersError,
+    qualityProfilesError,
+    metadataProfilesError,
+  };
+
   const isReduxPopulated = useSelector(selectReduxPopulated);
   const errors = useSelector(selectReduxErrors);
 
@@ -129,8 +115,8 @@ function PageConnector({ children }: PageConnectorProps) {
     (state: PageState) => state.app.dimensions.isSmallScreen
   );
 
-  // UI settings: react-query for converted pages and the theme, plus the redux
-  // state.settings.ui feed (fetched below) for the author, book and calendar pages.
+  // UI settings: react-query for the pages and the theme, plus the redux
+  // state.settings.ui feed (fetched below) for RelativeDateCellConnector.
   const {
     data: uiSettings,
     isFetched: isUiSettingsFetched,
@@ -147,6 +133,11 @@ function PageConnector({ children }: PageConnectorProps) {
 
   const isPopulated =
     isReduxPopulated &&
+    isAuthorsFetched &&
+    isTagsFetched &&
+    isCustomFiltersFetched &&
+    isQualityProfilesFetched &&
+    isMetadataProfilesFetched &&
     isTranslationsFetched &&
     isIndexerFlagsFetched &&
     isUiSettingsFetched;
@@ -154,19 +145,12 @@ function PageConnector({ children }: PageConnectorProps) {
     !!translationsError ||
     !!indexerFlagsError ||
     !!uiSettingsQueryError ||
+    Object.values(queryErrors).some((error) => !!error) ||
     Object.values(errors).some((error) => !!error);
 
   useEffect(() => {
-    dispatch(fetchAuthor());
-    dispatch(fetchBooks());
-    dispatch(fetchCustomFilters());
-    dispatch(fetchTags());
-    dispatch(fetchQualityProfiles());
-    dispatch(fetchMetadataProfiles());
     dispatch(fetchUISettings());
     dispatch(fetchStatus());
-    // Redux command feed for the pages not yet on react-query.
-    dispatch(fetchCommands());
   }, [dispatch]);
 
   const handleResize = useCallback(
@@ -194,6 +178,11 @@ function PageConnector({ children }: PageConnectorProps) {
         isLocalStorageSupported={isLocalStorageSupported}
         translationsError={translationsError ?? undefined}
         indexerFlagsError={indexerFlagsError ?? undefined}
+        authorError={authorError ?? undefined}
+        tagsError={tagsError ?? undefined}
+        customFiltersError={customFiltersError ?? undefined}
+        qualityProfilesError={qualityProfilesError ?? undefined}
+        metadataProfilesError={metadataProfilesError ?? undefined}
         {...errors}
         uiSettingsError={errors.uiSettingsError ?? uiSettingsQueryError}
       />

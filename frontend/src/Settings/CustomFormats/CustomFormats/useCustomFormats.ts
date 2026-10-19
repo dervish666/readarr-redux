@@ -1,6 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
-import { useDispatch } from 'react-redux';
 import ModelBase from 'App/ModelBase';
 import { useProviderSchema } from 'Settings/useProviderSchema';
 import {
@@ -8,7 +7,6 @@ import {
   useManageProviderSettings,
   useProviderSettings,
 } from 'Settings/useProviderSettings';
-import { fetchQualityProfiles } from 'Store/Actions/settingsActions';
 import Field from 'typings/Field';
 import translate from 'Utilities/String/translate';
 
@@ -72,17 +70,15 @@ export const useCustomFormat = (id: number | undefined) => {
 
 // The server adds a new format to every quality profile (score 0), drops a deleted
 // one from them, and offers each format's conditions as presets, so a change here
-// refreshes the profiles (react-query and the redux feed) and the condition schema.
+// refreshes the profiles and the condition schema.
 const useRefreshAfterCustomFormatChange = () => {
   const queryClient = useQueryClient();
-  const dispatch = useDispatch();
 
   return useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['/qualityprofile'] });
     queryClient.invalidateQueries({ queryKey: ['/qualityprofile/schema'] });
     queryClient.invalidateQueries({ queryKey: [`${PATH}/schema`] });
-    dispatch(fetchQualityProfiles());
-  }, [queryClient, dispatch]);
+  }, [queryClient]);
 };
 
 export const useDeleteCustomFormat = (id: number) => {

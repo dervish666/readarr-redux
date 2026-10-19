@@ -1,7 +1,6 @@
-import { useCallback, useMemo } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useMemo } from 'react';
 import ModelBase from 'App/ModelBase';
-import AppState from 'App/State/AppState';
+import useAuthors from 'Author/useAuthors';
 import useApiQuery from 'Helpers/Hooks/useApiQuery';
 import { useImportListsData } from 'Settings/ImportLists/ImportLists/useImportLists';
 import {
@@ -9,7 +8,6 @@ import {
   useManageProviderSettings,
   useProviderSettings,
 } from 'Settings/useProviderSettings';
-import { fetchMetadataProfiles } from 'Store/Actions/settingsActions';
 import translate from 'Utilities/String/translate';
 
 export interface MetadataProfileModel extends ModelBase {
@@ -49,15 +47,6 @@ export const useMetadataProfile = (id: number | undefined) => {
   const { data } = useMetadataProfiles();
 
   return id ? data.find((profile) => profile.id === id) : undefined;
-};
-
-// Author, book, add-new and import list pages still read the redux feed.
-const useRefreshMetadataProfilesFeed = () => {
-  const dispatch = useDispatch();
-
-  return useCallback(() => {
-    dispatch(fetchMetadataProfiles());
-  }, [dispatch]);
 };
 
 export const useMetadataProfileSchema = (enabled: boolean) => {
@@ -102,8 +91,7 @@ export const useManageMetadataProfile = (
   const manage = useManageProviderSettings<MetadataProfileModel>(
     id,
     defaultProfile,
-    PATH,
-    useRefreshMetadataProfilesFeed()
+    PATH
   );
 
   return {
@@ -114,11 +102,7 @@ export const useManageMetadataProfile = (
 };
 
 export const useDeleteMetadataProfile = (id: number) => {
-  const result = useDeleteProvider<MetadataProfileModel>(
-    id,
-    PATH,
-    useRefreshMetadataProfilesFeed()
-  );
+  const result = useDeleteProvider<MetadataProfileModel>(id, PATH);
 
   return {
     ...result,
@@ -126,19 +110,13 @@ export const useDeleteMetadataProfile = (id: number) => {
   };
 };
 
-// Authors are still a redux feed; import lists are on react-query.
 export const useMetadataProfileInUse = (id: number | undefined) => {
+  const { data: authors } = useAuthors();
   const importLists = useImportListsData();
 
-  const usedByAuthor = useSelector((state: AppState) => {
-    return (
-      !!id &&
-      state.authors.items.some((author) => author.metadataProfileId === id)
-    );
-  });
-
   return (
-    usedByAuthor ||
-    (!!id && importLists.some((list) => list.metadataProfileId === id))
+    !!id &&
+    (authors.some((author) => author.metadataProfileId === id) ||
+      importLists.some((list) => list.metadataProfileId === id))
   );
 };

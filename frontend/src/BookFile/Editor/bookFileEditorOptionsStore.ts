@@ -5,7 +5,7 @@ import translate from 'Utilities/String/translate';
 
 // The Files tab of the author and book pages (<instance>_book_file_editor_options).
 // Defaults are the old redux bookFiles ones (path ascending); saved redux settings are
-// not carried over. The unmapped files page keeps the redux bookFiles sort.
+// not carried over.
 
 export interface BookFileEditorOptions {
   columns: Column[];

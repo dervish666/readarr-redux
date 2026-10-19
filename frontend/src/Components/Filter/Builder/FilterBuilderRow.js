@@ -8,11 +8,11 @@ import BoolFilterBuilderRowValue from './BoolFilterBuilderRowValue';
 import DateFilterBuilderRowValue from './DateFilterBuilderRowValue';
 import FilterBuilderRowValueConnector from './FilterBuilderRowValueConnector';
 import IndexerFilterBuilderRowValue from './IndexerFilterBuilderRowValue';
-import MetadataProfileFilterBuilderRowValueConnector from './MetadataProfileFilterBuilderRowValueConnector';
+import MetadataProfileFilterBuilderRowValue from './MetadataProfileFilterBuilderRowValue';
 import ProtocolFilterBuilderRowValue from './ProtocolFilterBuilderRowValue';
-import QualityFilterBuilderRowValueConnector from './QualityFilterBuilderRowValueConnector';
-import QualityProfileFilterBuilderRowValueConnector from './QualityProfileFilterBuilderRowValueConnector';
-import TagFilterBuilderRowValueConnector from './TagFilterBuilderRowValueConnector';
+import QualityFilterBuilderRowValue from './QualityFilterBuilderRowValue';
+import QualityProfileFilterBuilderRowValue from './QualityProfileFilterBuilderRowValue';
+import TagFilterBuilderRowValue from './TagFilterBuilderRowValue';
 import styles from './FilterBuilderRow.css';
 
 function getselectedFilterBuilderProp(filterBuilderProps, name) {
@@ -61,22 +61,22 @@ function getRowValueConnector(selectedFilterBuilderProp) {
       return IndexerFilterBuilderRowValue;
 
     case filterBuilderValueTypes.METADATA_PROFILE:
-      return MetadataProfileFilterBuilderRowValueConnector;
+      return MetadataProfileFilterBuilderRowValue;
 
     case filterBuilderValueTypes.PROTOCOL:
       return ProtocolFilterBuilderRowValue;
 
     case filterBuilderValueTypes.QUALITY:
-      return QualityFilterBuilderRowValueConnector;
+      return QualityFilterBuilderRowValue;
 
     case filterBuilderValueTypes.QUALITY_PROFILE:
-      return QualityProfileFilterBuilderRowValueConnector;
+      return QualityProfileFilterBuilderRowValue;
 
     case filterBuilderValueTypes.AUTHOR_STATUS:
       return AuthorStatusFilterBuilderRowValue;
 
     case filterBuilderValueTypes.TAG:
-      return TagFilterBuilderRowValueConnector;
+      return TagFilterBuilderRowValue;
 
     default:
       return FilterBuilderRowValueConnector;

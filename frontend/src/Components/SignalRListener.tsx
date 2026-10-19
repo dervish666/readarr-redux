@@ -15,16 +15,6 @@ import { bookFileBelongsTo } from 'BookFile/useBookFiles';
 import Command from 'Commands/Command';
 import { useUpdateCommand } from 'Commands/useCommands';
 import { setAppValue, setVersion } from 'Store/Actions/appActions';
-import { fetchAuthor } from 'Store/Actions/authorActions';
-import { removeItem, updateItem } from 'Store/Actions/baseActions';
-import { deleteAuthorBooks } from 'Store/Actions/bookActions';
-import {
-  fetchCommands,
-  finishCommand,
-  updateCommand,
-} from 'Store/Actions/commandActions';
-import { fetchRootFolders } from 'Store/Actions/settingsActions';
-import { fetchTags } from 'Store/Actions/tagActions';
 import {
   removeCachedItem,
   removeCachedItems,
@@ -45,13 +35,44 @@ interface SignalRMessage {
   };
 }
 
-// The react-query side of the bridge. Each message marks the queries under these
-// /api/v1 path prefixes stale, so any react-query consumer refetches what changed.
-// Each Stage 2 and 3 PR that moves a domain over keeps (or sharpens) its entry here
-// and drops the redux dispatch below. queue/status, command, author, book, bookfile,
-// calendar and the wanted messages are absent on purpose: their messages carry the new
-// value, which the switch below writes into the cache (invalidating only for an action
-// it can't apply).
+// SignalR messages (v1 hub) and what each one does. Every domain message updates
+// react-query only; redux gets nothing but app state (connection flags, version).
+//
+// message          action                 effect
+// author           updated                merge into ['/author'] (a new author joins)
+//                  deleted                remove from ['/author']; drop its books from
+//                                         ['/book'] and ['/calendar'], its files from
+//                                         ['/bookfile']
+//                  other                  invalidate ['/author']
+// book             any                    invalidate ['/edition'] (v1 sends no edition
+//                                         message; a book change may move its editions)
+//                  updated                merge into ['/book'] (joins unfiltered and
+//                                         same-author lists) and shown ['/calendar'] rows
+//                  deleted                remove from ['/book'] and ['/calendar']
+//                  other                  invalidate ['/book'] and ['/calendar']
+// bookfile         updated                merge into ['/bookfile'] (joins lists for its
+//                                         author or book); repopulate bookFileUpdated
+//                  deleted                remove from ['/bookfile']; repopulate
+//                                         bookFileDeleted and bookFileUpdated
+//                  other                  invalidate ['/bookfile']
+// calendar         updated                merge into ['/calendar'] (the server sends
+//                                         'book' for calendar changes today)
+// command          sync                   invalidate ['/command']
+//                  other                  write into ['/command'], sidebar message,
+//                                         finished callbacks (useUpdateCommand)
+// health           any                    invalidate ['/health']
+// qualitydefinition any                   invalidate ['/qualitydefinition']
+// queue            any                    invalidate ['/queue'] (every paged key)
+// queue/details    any                    invalidate ['/queue/details']
+// queue/status     any                    write the counts into ['/queue/status']
+// rootfolder       any                    invalidate ['/rootFolder']
+// system/task      any                    invalidate ['/system/task'] and ['/command']
+// tag              any                    invalidate ['/tag'] and ['/tag/detail']
+// version          any                    redux app version (reload prompt)
+// wanted/cutoff,   updated                merge into shown ['/wanted/cutoff'] /
+// wanted/missing                          ['/wanted/missing'] page rows
+//
+// Reconnecting invalidates every query and repopulates the page.
 const QUERY_KEYS_BY_MESSAGE: Record<string, string[]> = {
   health: ['/health'],
   qualitydefinition: ['/qualitydefinition'],
@@ -120,8 +141,6 @@ function SignalRListener() {
 
     // Repopulate the page (if a repopulator is set) to ensure things
     // are in sync after reconnecting.
-    dispatch(fetchAuthor());
-    dispatch(fetchCommands());
     repopulatePage();
 
     // Anything react-query holds may have changed while the socket was down.
@@ -158,24 +177,10 @@ function SignalRListener() {
       case 'command': {
         if (body.action === 'sync') {
           queryClient.invalidateQueries({ queryKey: ['/command'] });
-          dispatch(fetchCommands());
           return;
         }
 
-        const resource = body.resource as unknown as Command;
-        const status = resource.status;
-
-        // react-query owns the list and the sidebar message; the redux feed gets the
-        // same update for unconverted pages and runs callbacks of redux-started commands.
-        updateCommandQuery(resource);
-
-        // Both successful and failed commands need to be
-        // completed, otherwise they spin until they time out.
-        if (status === 'completed' || status === 'failed') {
-          dispatch(finishCommand(resource));
-        } else {
-          dispatch(updateCommand(resource));
-        }
+        updateCommandQuery(body.resource as unknown as Command);
         return;
       }
 
@@ -192,11 +197,9 @@ function SignalRListener() {
           // Calendar lists only take changes to books they already show (a refresh
           // that adds books refetches the calendar when it ends).
           updateCachedItem<Book>(queryClient, '/calendar', book);
-          dispatch(updateItem({ section: 'books', ...body.resource }));
         } else if (body.action === 'deleted') {
           removeCachedItem<Book>(queryClient, '/book', book.id);
           removeCachedItem<Book>(queryClient, '/calendar', book.id);
-          dispatch(removeItem({ section: 'books', id: body.resource.id }));
         } else {
           queryClient.invalidateQueries({ queryKey: ['/book'] });
           queryClient.invalidateQueries({ queryKey: ['/calendar'] });
@@ -214,10 +217,8 @@ function SignalRListener() {
             bookFile,
             bookFileBelongsTo
           );
-          dispatch(updateItem({ section: 'bookFiles', ...body.resource }));
         } else if (body.action === 'deleted') {
           removeCachedItem<BookFile>(queryClient, '/bookfile', bookFile.id);
-          dispatch(removeItem({ section: 'bookFiles', id: body.resource.id }));
 
           repopulatePage('bookFileDeleted');
         } else {
@@ -239,7 +240,6 @@ function SignalRListener() {
         if (body.action === 'updated') {
           // The author list is unfiltered, so a new author is added to it.
           updateCachedItem<Author>(queryClient, '/author', author, () => true);
-          dispatch(updateItem({ section: 'authors', ...body.resource }));
         } else if (body.action === 'deleted') {
           removeCachedItem<Author>(queryClient, '/author', author.id);
           removeCachedItems<Book>(
@@ -257,8 +257,6 @@ function SignalRListener() {
             '/bookfile',
             (f) => f.authorId === author.id
           );
-          dispatch(removeItem({ section: 'authors', id: body.resource.id }));
-          dispatch(deleteAuthorBooks({ authorId: body.resource.id }));
         } else {
           queryClient.invalidateQueries({ queryKey: ['/author'] });
         }
@@ -301,21 +299,14 @@ function SignalRListener() {
         return;
 
       case 'system/task':
-        // The task list is on react-query (invalidated above); refresh both command lists.
+        // The task list is invalidated above; a task change may also start or end
+        // commands.
         queryClient.invalidateQueries({ queryKey: ['/command'] });
-        dispatch(fetchCommands());
         return;
 
       case 'rootfolder':
-        // Redux feed for the author editor, import lists and remote path mappings.
-        dispatch(fetchRootFolders());
-        return;
-
       case 'tag':
-        // Redux feed for the author, book and settings pages.
-        if (body.action === 'sync') {
-          dispatch(fetchTags());
-        }
+        // Invalidated above.
         return;
 
       default:

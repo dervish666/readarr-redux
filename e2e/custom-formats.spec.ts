@@ -1,12 +1,12 @@
 import { Locator, Page } from '@playwright/test';
 import { api, expect, openRoute, test } from './fixtures';
 import { apiKey, baseUrl } from './env';
-import { withQueryClient, withReduxStore } from './reactTree';
+import { withQueryClient } from './reactTree';
 
 // Settings > Custom Formats moved to react-query. The server adds every new format
 // to each quality profile (and drops a deleted one), so a save or delete must also
-// refresh the quality profiles: react-query for the profile editor's score list and
-// the redux feed the author/book pages read. Everything made here is deleted.
+// refresh the react-query quality profiles (the profile editor's score list).
+// Everything made here is deleted.
 
 interface NamedItem {
   id: number;
@@ -34,7 +34,7 @@ interface ExportedFormat {
 const PREFIX = 'e2e-g9';
 const REGEX = '\\be2e-g9-release\\b';
 
-// Moves within the app without a reload, so redux and react-query keep their state.
+// Moves within the app without a reload, so react-query keeps its state.
 async function clientNavigate(page: Page, route: string) {
   await page.evaluate((path) => {
     const urlBase = (window as unknown as { Readarr: { urlBase: string } }).Readarr.urlBase;
@@ -62,13 +62,6 @@ function formatCard(page: Page, name: string) {
 
 function specificationCards(modal: Locator) {
   return modal.locator('[class*="Specification-specification"]');
-}
-
-function reduxFormatNames(page: Page) {
-  return withReduxStore<string[]>(page, `
-    return store.getState().settings.qualityProfiles.items
-      .flatMap((p) => p.formatItems.map((f) => f.name));
-  `);
 }
 
 // The profile list is inactive while Custom Formats is open, so it is not refetched
@@ -175,10 +168,12 @@ test('custom formats: add one with a release title condition, see it in the prof
   const saved = (await api<(NamedItem & ExportedFormat)[]>(page, '/customformat')).find((f) => f.name === name);
   expect(saved?.specifications[0].fields).toEqual([expect.objectContaining({ name: 'value', value: REGEX })]);
 
-  // Both copies of the quality profiles learn about the new format.
-  await expect.poll(() => reduxFormatNames(page)).toContain(name);
-  const queryState = await queryProfilesState(page);
-  expect(queryState?.isInvalidated || queryState?.names.includes(name)).toBe(true);
+  // The cached quality profiles learn about the new format (or are marked stale).
+  await expect.poll(async () => {
+    const queryState = await queryProfilesState(page);
+
+    return !!(queryState?.isInvalidated || queryState?.names.includes(name));
+  }).toBe(true);
 
   await clientNavigate(page, '/settings/profiles');
   const [firstProfile] = (await api<QualityProfile[]>(page, '/qualityprofile')).sort((a, b) => a.name.localeCompare(b.name));
@@ -242,6 +237,10 @@ test('custom formats: add one with a release title condition, see it in the prof
   await deleteFormatViaUi(page, cloneName);
   await deleteFormatViaUi(page, name);
 
-  await expect.poll(() => reduxFormatNames(page)).not.toContain(name);
+  await expect.poll(async () => {
+    const queryState = await queryProfilesState(page);
+
+    return !!(queryState?.isInvalidated || !queryState?.names.includes(name));
+  }).toBe(true);
   expect((await api<NamedItem[]>(page, '/customformat')).filter((f) => f.name.startsWith(name))).toEqual([]);
 });

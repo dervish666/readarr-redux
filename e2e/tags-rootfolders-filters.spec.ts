@@ -4,14 +4,14 @@ import os from 'os';
 import path from 'path';
 import { api, expect, openRoute, test, waitForPage } from './fixtures';
 import { apiKey, baseUrl } from './env';
-import { withQueryClient, withReduxStore } from './reactTree';
+import { withQueryClient } from './reactTree';
 
-// Tags, root folders and custom filters moved to react-query, but author, book,
-// calendar and settings pages still read state.tags, state.settings.rootFolders and
-// state.customFilters from redux. These checks change things through the converted UI
-// and then look on both sides. SignalR tag/rootfolder messages also refresh the feeds,
-// so the UI checks mute them (muteSignalR) to prove the mutation itself does it; the
-// SignalR path has its own check.
+// Tags, root folders and custom filters live in react-query only (the redux tags,
+// rootFolders and customFilters feeds are gone). These checks change things through
+// the UI and then look at the react-query cache and at another page that reads it.
+// SignalR tag/rootfolder messages also refresh the lists, so the UI checks mute them
+// (muteSignalR) to prove the mutation itself does it; the SignalR path has its own
+// check.
 
 interface Tag {
   id: number;
@@ -81,19 +81,13 @@ async function muteSignalR(page: Page, names: string[]) {
   });
 }
 
-// Moves within the app without a reload, so redux and react-query keep their state.
+// Moves within the app without a reload, so react-query keeps its state.
 async function clientNavigate(page: Page, route: string) {
   await page.evaluate((path) => {
     const urlBase = (window as unknown as { Readarr: { urlBase: string } }).Readarr.urlBase;
     window.history.pushState({}, '', `${urlBase}${path}`);
     window.dispatchEvent(new PopStateEvent('popstate'));
   }, route);
-}
-
-function reduxTagLabels(page: Page) {
-  return withReduxStore<string[]>(page, `
-    return store.getState().tags.items.map((tag) => tag.label);
-  `);
 }
 
 function queryTagLabels(page: Page) {
@@ -103,10 +97,31 @@ function queryTagLabels(page: Page) {
   `);
 }
 
-function addAuthorRootFolder(page: Page) {
-  return withReduxStore<string | undefined>(page, `
-    return store.getState().search.authorDefaults.rootFolderPath;
+function queryNames(page: Page, path: string, field: 'name' | 'label') {
+  return withQueryClient<string[] | null>(page, `
+    const items = client.getQueryData(['${path}']);
+    return items ? items.map((item) => item.${field}) : null;
   `);
+}
+
+// The add author form's saved choices: the persisted zustand store
+// <instance>_add_author_options (Search/addNewOptionsStore.ts).
+function addAuthorOptionsKey(page: Page) {
+  return page.evaluate(() => {
+    const { instanceName } = (window as unknown as { Readarr: { instanceName: string } }).Readarr;
+
+    return `${instanceName.toLowerCase().replace(/ /g, '_')}_add_author_options`;
+  });
+}
+
+async function addAuthorRootFolder(page: Page) {
+  const key = await addAuthorOptionsKey(page);
+
+  return page.evaluate((storageKey) => {
+    const stored = JSON.parse(localStorage.getItem(storageKey) ?? '{}');
+
+    return stored.state?.rootFolderPath as string | undefined;
+  }, key);
 }
 
 async function deleteLeftovers(page: Page) {
@@ -148,7 +163,7 @@ test.afterEach(async ({ page }) => {
   }
 });
 
-test('tags: a tag made in a tag input reaches Settings > Tags and the redux feed, then deletes', async ({ page }) => {
+test('tags: a tag made in a tag input reaches Settings > Tags and the filter builder, then deletes', async ({ page }) => {
   const label = uniqueLabel('tag');
   const rootFolderWrites: string[] = [];
 
@@ -180,12 +195,11 @@ test('tags: a tag made in a tag input reaches Settings > Tags and the redux feed
   await expect(addModal).toHaveCount(0);
   expect(rootFolderWrites).toEqual([]);
 
-  // Both sides have it, with the SignalR tag message muted.
+  // The cached list has it, with the SignalR tag message muted.
   await expect.poll(() => queryTagLabels(page)).toContain(label);
-  await expect.poll(() => reduxTagLabels(page)).toContain(label);
 
-  // A redux-fed page sees it without a reload: the author index filter builder's tag
-  // value suggestions come from state.tags.
+  // Another page sees it without a reload: the author index filter builder's tag
+  // value suggestions come from the same list.
   await clientNavigate(page, '/authors');
   await page.locator('[class*="ToolbarMenuButton-menuButton"]', { hasText: 'Filter' }).click();
   await page.locator('[class*="MenuItem-menuItem"]', { hasText: 'Custom Filters' }).click();
@@ -224,11 +238,11 @@ test('tags: a tag made in a tag input reaches Settings > Tags and the redux feed
   await confirm.getByRole('button', { name: 'Delete' }).click();
 
   await expect(card).toHaveCount(0);
-  await expect.poll(() => reduxTagLabels(page)).not.toContain(label);
+  await expect.poll(() => queryTagLabels(page)).not.toContain(label);
   expect((await api<Tag[]>(page, '/tag')).map((t) => t.label)).not.toContain(label);
 });
 
-test('SignalR tag messages refresh react-query and the redux tags feed', async ({ page }) => {
+test('SignalR tag messages refresh the react-query tag list', async ({ page }) => {
   const label = uniqueLabel('signalr');
 
   await openRoute(page, '/settings/tags');
@@ -238,7 +252,6 @@ test('SignalR tag messages refresh react-query and the redux tags feed', async (
 
   const tag = await api<Tag>(page, '/tag', { method: 'POST', data: { label } });
 
-  await expect.poll(() => reduxTagLabels(page)).toContain(label);
   await expect.poll(() => queryTagLabels(page)).toContain(label);
   await expect(page.getByRole('button', { name: `Tag Details - ${label}` })).toBeVisible();
 
@@ -247,7 +260,7 @@ test('SignalR tag messages refresh react-query and the redux tags feed', async (
     headers: { 'X-Api-Key': apiKey }
   });
 
-  await expect.poll(() => reduxTagLabels(page)).not.toContain(label);
+  await expect.poll(() => queryTagLabels(page)).not.toContain(label);
   await expect(page.getByRole('button', { name: `Tag Details - ${label}` })).toHaveCount(0);
 });
 
@@ -315,10 +328,8 @@ test('root folders: pick a folder in the file browser, add it, see free space, d
   await expect(card).toContainText(folderName);
   await expect(card).toContainText(/Free Space\s*·\s*[\d.]+\s*(B|KiB|MiB|GiB|TiB)/);
 
-  // The redux feed has it too, with the SignalR rootfolder message muted.
-  await expect.poll(() => withReduxStore<string[]>(page, `
-    return store.getState().settings.rootFolders.items.map((r) => r.name);
-  `)).toContain(name);
+  // The cached list has it, with the SignalR rootfolder message muted.
+  await expect.poll(() => queryNames(page, '/rootFolder', 'name')).toContain(name);
 
   expect((await api<RootFolder[]>(page, '/rootFolder')).length).toBe(rootFoldersBefore.length + 1);
 
@@ -330,9 +341,7 @@ test('root folders: pick a folder in the file browser, add it, see free space, d
   await modal(page, 'Delete Root Folder').getByRole('button', { name: 'Delete' }).click();
 
   await expect(card).toHaveCount(0);
-  await expect.poll(() => withReduxStore<string[]>(page, `
-    return store.getState().settings.rootFolders.items.map((r) => r.name);
-  `)).not.toContain(name);
+  await expect.poll(() => queryNames(page, '/rootFolder', 'name')).not.toContain(name);
   expect((await api<RootFolder[]>(page, '/rootFolder')).map((r) => r.name)).not.toContain(name);
 });
 
@@ -350,9 +359,7 @@ test('custom filters: save and delete through the builder on the author index', 
 
   await openRoute(page, '/authors');
 
-  const reduxFilterLabels = () => withReduxStore<string[]>(page, `
-    return store.getState().customFilters.items.map((f) => f.label);
-  `);
+  const filterLabels = () => queryNames(page, '/customFilter', 'label');
 
   const openFilterMenu = async () => {
     await page.locator('[class*="ToolbarMenuButton-menuButton"]', { hasText: 'Filter' }).click();
@@ -375,8 +382,8 @@ test('custom filters: save and delete through the builder on the author index', 
   await builder.getByRole('button', { name: 'Save' }).click();
   await expect(builder).toHaveCount(0);
 
-  // The redux feed the unconverted pages read has it, and the index selected it.
-  await expect.poll(reduxFilterLabels).toContain(label);
+  // The cached list has it, and the index selected it.
+  await expect.poll(filterLabels).toContain(label);
   const saved = (await api<CustomFilter[]>(page, '/customFilter')).find((f) => f.label === label);
   expect(saved, 'the filter reached the API').toBeTruthy();
   await expect.poll(() => authorIndexFilterKey(page)).toBe(saved?.id);
@@ -390,7 +397,7 @@ test('custom filters: save and delete through the builder on the author index', 
   const row = list.locator('[class*="CustomFilter-customFilter"]', { hasText: label });
   await row.getByRole('button', { name: 'Remove filter' }).click();
   await expect(row).toHaveCount(0);
-  await expect.poll(reduxFilterLabels).not.toContain(label);
+  await expect.poll(filterLabels).not.toContain(label);
 
   // The selected filter is gone, so the page falls back to all authors.
   await expect.poll(() => authorIndexFilterKey(page)).toBe('all');
@@ -400,16 +407,17 @@ test('custom filters: save and delete through the builder on the author index', 
 });
 
 test('root folders: the add author root folder default survives a failed root folder load', async ({ page, problems }) => {
-  // The saved default lives in the redux-localstorage blob. Any path works: only the
+  // The saved default lives in the add author options store. Any path works: only the
   // failed load is under test, nothing is added.
   const savedPath = path.join(os.tmpdir(), `${PREFIX}-default-root`);
 
   await openRoute(page, '/add/search');
-  await page.evaluate((rootFolderPath) => {
-    const blob = JSON.parse(localStorage.getItem('readarr') ?? '{}');
-    blob.search = { ...blob.search, authorDefaults: { ...blob.search?.authorDefaults, rootFolderPath } };
-    localStorage.setItem('readarr', JSON.stringify(blob));
-  }, savedPath);
+  const key = await addAuthorOptionsKey(page);
+  await page.evaluate(({ storageKey, rootFolderPath }) => {
+    const stored = JSON.parse(localStorage.getItem(storageKey) ?? '{"state":{},"version":0}');
+    stored.state = { ...stored.state, rootFolderPath };
+    localStorage.setItem(storageKey, JSON.stringify(stored));
+  }, { storageKey: key, rootFolderPath: savedPath });
   await page.reload();
   await waitForPage(page);
   await expect.poll(() => addAuthorRootFolder(page)).toBe(savedPath);

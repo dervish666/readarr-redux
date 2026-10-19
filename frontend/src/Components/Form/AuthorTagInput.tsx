@@ -25,7 +25,7 @@ interface AuthorTagInputProps {
 }
 
 // The tag input for author tags (inputTypes.TAG). Tags come from react-query and new
-// ones are created through it; useAddTag also refreshes the redux tags feed.
+// ones are created through it.
 function AuthorTagInput({
   name,
   value,

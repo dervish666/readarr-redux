@@ -1,9 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
-import { useDispatch } from 'react-redux';
 import useApiMutation from 'Helpers/Hooks/useApiMutation';
 import useApiQuery from 'Helpers/Hooks/useApiQuery';
-import { fetchRootFolders } from 'Store/Actions/settingsActions';
 import RootFolder from 'typings/RootFolder';
 
 const DEFAULT_ROOT_FOLDERS: RootFolder[] = [];
@@ -33,16 +31,13 @@ export const useRootFolder = (id: number | undefined) => {
   };
 };
 
-// After a root folder change, refresh react-query and the redux rootFolders feed that
-// add-new, the author editor, import lists and remote path mappings still read.
+// After a root folder change, refetch the root folder list.
 export const useRefreshRootFolders = () => {
   const queryClient = useQueryClient();
-  const dispatch = useDispatch();
 
   return useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['/rootFolder'] });
-    dispatch(fetchRootFolders());
-  }, [queryClient, dispatch]);
+  }, [queryClient]);
 };
 
 export const useSaveRootFolder = (id: number | undefined) => {

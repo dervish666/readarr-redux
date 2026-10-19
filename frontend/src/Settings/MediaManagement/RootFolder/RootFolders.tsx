@@ -1,38 +1,22 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { useSelector } from 'react-redux';
-import ModelBase from 'App/ModelBase';
 import FieldSet from 'Components/FieldSet';
 import PageSectionContent from 'Components/Page/PageSectionContent';
 import AddCard from 'Components/SettingsCard/AddCard';
 import settingsCardStyles from 'Components/SettingsCard/SettingsCard.css';
 import useRootFolders from 'RootFolder/useRootFolders';
+import { useMetadataProfiles } from 'Settings/Profiles/Metadata/useMetadataProfiles';
+import { useQualityProfiles } from 'Settings/Profiles/Quality/useQualityProfiles';
 import translate from 'Utilities/String/translate';
 import EditRootFolderModal from './EditRootFolderModal';
 import RootFolder from './RootFolder';
-
-interface Profile extends ModelBase {
-  name: string;
-}
-
-// Quality and metadata profiles are still redux feeds.
-interface ProfilesState {
-  settings: {
-    qualityProfiles: { items: Profile[] };
-    metadataProfiles: { items: Profile[] };
-  };
-}
 
 function RootFolders() {
   const { data, isFetched, error } = useRootFolders();
   const [isAddRootFolderModalOpen, setIsAddRootFolderModalOpen] =
     useState(false);
 
-  const qualityProfiles = useSelector(
-    (state: ProfilesState) => state.settings.qualityProfiles.items
-  );
-  const metadataProfiles = useSelector(
-    (state: ProfilesState) => state.settings.metadataProfiles.items
-  );
+  const { data: qualityProfiles } = useQualityProfiles();
+  const { data: metadataProfiles } = useMetadataProfiles();
 
   const items = useMemo(
     () => [...data].sort((a, b) => a.name.localeCompare(b.name)),

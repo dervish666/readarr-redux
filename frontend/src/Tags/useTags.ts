@@ -1,6 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
-import { useDispatch } from 'react-redux';
 import ModelBase from 'App/ModelBase';
 import useApiMutation, {
   addOrUpdateQueryClientItem,
@@ -8,7 +7,6 @@ import useApiMutation, {
   ValidationFailures,
 } from 'Helpers/Hooks/useApiMutation';
 import useApiQuery from 'Helpers/Hooks/useApiQuery';
-import { fetchTags } from 'Store/Actions/tagActions';
 
 export interface Tag extends ModelBase {
   label: string;
@@ -47,17 +45,14 @@ export const useSortedTagList = () => {
   );
 };
 
-// After a tag change, refresh react-query (tags and tag details) and the redux tags
-// feed that author, book, calendar and settings pages still read.
+// After a tag change, refetch tags and tag details.
 export const useRefreshTags = () => {
   const queryClient = useQueryClient();
-  const dispatch = useDispatch();
 
   return useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['/tag'] });
     queryClient.invalidateQueries({ queryKey: ['/tag/detail'] });
-    dispatch(fetchTags());
-  }, [queryClient, dispatch]);
+  }, [queryClient]);
 };
 
 export const useAddTag = (onTagCreated?: (tag: Tag) => void) => {

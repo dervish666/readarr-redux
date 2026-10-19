@@ -1,8 +1,7 @@
-import React from 'react';
-import { useSelector } from 'react-redux';
+import React, { useMemo } from 'react';
+import { useMultipleAuthors } from 'Author/useAuthors';
 import { CommandBody } from 'Commands/Command';
 import TableRowCell from 'Components/Table/Cells/TableRowCell';
-import createMultiAuthorsSelector from 'Store/Selectors/createMultiAuthorsSelector';
 import translate from 'Utilities/String/translate';
 import styles from './QueuedTaskRowNameCell.css';
 
@@ -32,15 +31,20 @@ export default function QueuedTaskRowNameCell(
   props: QueuedTaskRowNameCellProps
 ) {
   const { commandName, body, clientUserAgent } = props;
-  const movieIds = [...(body.authorIds ?? [])];
+  const authorIds = useMemo(() => {
+    const ids = [...(body.authorIds ?? [])];
 
-  if (body.authorId) {
-    movieIds.push(body.authorId);
-  }
+    if (body.authorId) {
+      ids.push(body.authorId);
+    }
 
-  const authors = useSelector(createMultiAuthorsSelector(movieIds));
-  const sortedAuthors = authors.sort((a, b) =>
-    a.sortName.localeCompare(b.sortName)
+    return ids;
+  }, [body.authorIds, body.authorId]);
+
+  const authors = useMultipleAuthors(authorIds);
+  const sortedAuthors = useMemo(
+    () => [...authors].sort((a, b) => a.sortName.localeCompare(b.sortName)),
+    [authors]
   );
 
   return (

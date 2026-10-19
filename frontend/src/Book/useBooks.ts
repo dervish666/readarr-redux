@@ -1,9 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
-import { useDispatch } from 'react-redux';
 import useApiMutation from 'Helpers/Hooks/useApiMutation';
 import useApiQuery from 'Helpers/Hooks/useApiQuery';
-import { removeItem, updateItem } from 'Store/Actions/baseActions';
 import apiRequest from 'Utilities/Fetch/apiRequest';
 import { ApiError } from 'Utilities/Fetch/fetchJson';
 import { QueryParams } from 'Utilities/Fetch/getQueryString';
@@ -95,11 +93,10 @@ export const bookBelongsTo = (params: QueryParams | undefined, book: Book) => {
   );
 };
 
-// Writes books into every react-query book list and the redux books feed the
-// unconverted pages read. Pass belongsTo (bookBelongsTo) to add a new book.
+// Writes books into every cached react-query book list. Pass belongsTo
+// (bookBelongsTo) to add a new book.
 export const useUpdateBookCaches = () => {
   const queryClient = useQueryClient();
-  const dispatch = useDispatch();
 
   const updateBooks = useCallback(
     (
@@ -107,12 +104,8 @@ export const useUpdateBookCaches = () => {
       belongsTo?: CachedListFilter<Book>
     ) => {
       updateCachedItems<Book>(queryClient, '/book', books, belongsTo);
-
-      books.forEach((book) => {
-        dispatch(updateItem({ section: 'books', ...book }));
-      });
     },
-    [queryClient, dispatch]
+    [queryClient]
   );
 
   const removeBooks = useCallback(
@@ -120,12 +113,8 @@ export const useUpdateBookCaches = () => {
       const ids = new Set(bookIds);
 
       removeCachedItems<Book>(queryClient, '/book', (book) => ids.has(book.id));
-
-      bookIds.forEach((id) => {
-        dispatch(removeItem({ section: 'books', id }));
-      });
     },
-    [queryClient, dispatch]
+    [queryClient]
   );
 
   return { updateBooks, removeBooks };

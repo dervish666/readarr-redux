@@ -28,10 +28,10 @@ import PathInput from './PathInput';
 import ProviderOptionSelectInput from './ProviderOptionSelectInput';
 import QualityProfileSelectInput from './QualityProfileSelectInput';
 import RootFolderSelectInput from './RootFolderSelectInput';
-import TagSelectInputConnector from './TagSelectInputConnector';
+import TagSelectInput from './TagSelectInput';
 import TextArea from './TextArea';
 import TextInput from './TextInput';
-import TextTagInputConnector from './TextTagInputConnector';
+import TextTagInput from './TextTagInput';
 import UMaskInput from './UMaskInput';
 import styles from './FormInputGroup.css';
 
@@ -107,10 +107,10 @@ function getComponent(type) {
       return TextArea;
 
     case inputTypes.TEXT_TAG:
-      return TextTagInputConnector;
+      return TextTagInput;
 
     case inputTypes.TAG_SELECT:
-      return TagSelectInputConnector;
+      return TagSelectInput;
 
     case inputTypes.UMASK:
       return UMaskInput;

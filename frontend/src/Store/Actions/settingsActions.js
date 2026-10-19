@@ -1,16 +1,10 @@
 import { handleThunks } from 'Store/thunks';
 import createHandleActions from './Creators/createHandleActions';
-import metadataProfiles from './Settings/metadataProfiles';
-import qualityProfiles from './Settings/qualityProfiles';
-import rootFolders from './Settings/rootFolders';
 import ui from './Settings/ui';
 
-// Only the read-only feeds the Stage 3 pages (author, book, calendar and
-// friends) still read are left here. Every settings page is on react-query.
+// Only the UI settings feed is left here, read by RelativeDateCellConnector through
+// createUISettingsSelector. Everything else in settings is on react-query.
 
-export * from './Settings/metadataProfiles';
-export * from './Settings/qualityProfiles';
-export * from './Settings/rootFolders';
 export * from './Settings/ui';
 
 //
@@ -22,9 +16,6 @@ export const section = 'settings';
 // State
 
 export const defaultState = {
-  metadataProfiles: metadataProfiles.defaultState,
-  qualityProfiles: qualityProfiles.defaultState,
-  rootFolders: rootFolders.defaultState,
   ui: ui.defaultState
 };
 
@@ -32,9 +23,6 @@ export const defaultState = {
 // Action Handlers
 
 export const actionHandlers = handleThunks({
-  ...metadataProfiles.actionHandlers,
-  ...qualityProfiles.actionHandlers,
-  ...rootFolders.actionHandlers,
   ...ui.actionHandlers
 });
 
@@ -42,8 +30,5 @@ export const actionHandlers = handleThunks({
 // Reducers
 
 export const reducers = createHandleActions({
-  ...metadataProfiles.reducers,
-  ...qualityProfiles.reducers,
-  ...rootFolders.reducers,
   ...ui.reducers
 }, defaultState, section);
