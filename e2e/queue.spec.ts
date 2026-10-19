@@ -1,6 +1,7 @@
 import { Page, Request } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
+import { baseUrl } from './env';
 import { api, expect, openRoute, test } from './fixtures';
 
 // The local library's queue is empty, so these checks serve a fixture for the queue
@@ -128,6 +129,8 @@ test('queue fixture: Import anyway posts ignoreMatchThreshold', async ({ page })
   await expect.poll(() => posted).toEqual([{ ignoreMatchThreshold: true, replaceDestination: false }]);
 });
 
+const isLocalTarget = ['localhost', '127.0.0.1'].includes(new URL(baseUrl).hostname);
+
 // Live updates over real SignalR. RefreshMonitoredDownloads makes the backend publish
 // QueueUpdatedEvent even with no download clients, which broadcasts `queue` (the page
 // must refetch) and, after a 5 s debounce, `queue/status` with the server's real counts
@@ -146,12 +149,19 @@ test('queue: a real SignalR queue message refetches the page and updates the cou
   await expect(page.locator('tbody tr')).toHaveCount(2);
 
   const queueLink = page.locator('[class*="PageSidebarItem-link"]', { hasText: /^Queue/ });
-  await expect(queueLink.locator('[class*="PageSidebarItem-status"]')).toHaveText('2');
 
-  // Control: nothing refetches the queue on its own.
+  // The sidebar count can only leave the fixture's 2 through a queue/status message, since
+  // every /queue/status request is served the fixture. A server with download clients
+  // (staging) sends those on its own every minute, so the 2 is not asserted up front.
   const before = queueGets;
-  await page.waitForTimeout(3000);
-  expect(queueGets, 'the queue refetched with no SignalR message').toBe(before);
+
+  // Control, local only: nothing refetches the queue on its own. Staging's scheduled
+  // download refresh would send a real queue message during the window.
+  if (isLocalTarget) {
+    await expect(queueLink.locator('[class*="PageSidebarItem-status"]')).toHaveText('2');
+    await page.waitForTimeout(3000);
+    expect(queueGets, 'the queue refetched with no SignalR message').toBe(before);
+  }
 
   const real = await api<{ totalCount: number }>(page, '/queue/status');
   expect(real.totalCount, 'this check needs a server queue that differs from the fixture').not.toBe(2);
