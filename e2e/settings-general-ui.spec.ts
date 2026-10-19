@@ -382,8 +382,8 @@ test.describe('settings on react-query', () => {
       await expect(advancedButton(page)).toHaveText('Hide Advanced');
       expect(await storedFlag()).toBe(true);
 
-      // redux-localstorage drops the old path the next time it writes its blob, so the
-      // flag has to live under the new key from here on.
+      // The flag lives under the new key from here on (redux-localstorage, before
+      // stage 4c, dropped the old path the next time it wrote its blob).
       await page.reload();
       await expect(advancedButton(page)).toHaveText('Hide Advanced');
 

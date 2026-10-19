@@ -1,7 +1,6 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import DocumentTitle from 'react-document-title';
-import { Provider } from 'react-redux';
 import {
   createBrowserRouter,
   createRoutesFromElements,
@@ -9,7 +8,6 @@ import {
   Route,
   RouterProvider,
 } from 'react-router-dom';
-import { Store } from 'redux';
 import PageConnector from 'Components/Page/PageConnector';
 import ApplyTheme from './ApplyTheme';
 import { appRouteElements } from './AppRoutes';
@@ -36,17 +34,11 @@ const router = createBrowserRouter(
   { basename: window.Readarr.urlBase || undefined }
 );
 
-interface AppProps {
-  store: Store;
-}
-
-function App({ store }: AppProps) {
+function App() {
   return (
     <DocumentTitle title={window.Readarr.instanceName}>
       <QueryClientProvider client={queryClient}>
-        <Provider store={store}>
-          <RouterProvider router={router} />
-        </Provider>
+        <RouterProvider router={router} />
       </QueryClientProvider>
     </DocumentTitle>
   );
