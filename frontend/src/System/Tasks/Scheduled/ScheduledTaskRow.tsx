@@ -1,6 +1,5 @@
 import moment from 'moment';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSelector } from 'react-redux';
 import {
   isCommandExecuting,
   useCommand,
@@ -11,7 +10,7 @@ import TableRowCell from 'Components/Table/Cells/TableRowCell';
 import TableRow from 'Components/Table/TableRow';
 import usePrevious from 'Helpers/Hooks/usePrevious';
 import { icons } from 'Helpers/Props';
-import createUISettingsSelector from 'Store/Selectors/createUISettingsSelector';
+import { useUiSettingsValues } from 'Settings/UI/useUiSettings';
 import formatDate from 'Utilities/Date/formatDate';
 import formatDateTime from 'Utilities/Date/formatDateTime';
 import formatTimeSpan from 'Utilities/Date/formatTimeSpan';
@@ -41,7 +40,7 @@ function ScheduledTaskRow({
   const executeCommand = useExecuteCommand();
   const refreshTasks = useRefreshTasks();
   const { showRelativeDates, longDateFormat, shortDateFormat, timeFormat } =
-    useSelector(createUISettingsSelector());
+    useUiSettingsValues();
 
   const command = useCommand(taskName);
 

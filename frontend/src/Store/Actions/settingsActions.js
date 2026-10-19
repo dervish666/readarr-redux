@@ -1,26 +1,18 @@
-import { createAction } from 'redux-actions';
 import { handleThunks } from 'Store/thunks';
 import createHandleActions from './Creators/createHandleActions';
-import development from './Settings/development';
-import general from './Settings/general';
-import languages from './Settings/languages';
-import mediaManagement from './Settings/mediaManagement';
 import metadataProfiles from './Settings/metadataProfiles';
 import naming from './Settings/naming';
-import namingExamples from './Settings/namingExamples';
 import qualityProfiles from './Settings/qualityProfiles';
 import rootFolders from './Settings/rootFolders';
 import ui from './Settings/ui';
 
-export * from './Settings/general';
-export * from './Settings/languages';
+// Only the read-only feeds the Stage 3 pages (author, book, calendar, organize and
+// friends) still read are left here. Every settings page is on react-query.
+
 export * from './Settings/metadataProfiles';
-export * from './Settings/mediaManagement';
 export * from './Settings/naming';
-export * from './Settings/namingExamples';
 export * from './Settings/qualityProfiles';
 export * from './Settings/rootFolders';
-export * from './Settings/development';
 export * from './Settings/ui';
 
 //
@@ -32,47 +24,21 @@ export const section = 'settings';
 // State
 
 export const defaultState = {
-  advancedSettings: false,
-
-  general: general.defaultState,
-  languages: languages.defaultState,
   metadataProfiles: metadataProfiles.defaultState,
-  mediaManagement: mediaManagement.defaultState,
   naming: naming.defaultState,
-  namingExamples: namingExamples.defaultState,
   qualityProfiles: qualityProfiles.defaultState,
   rootFolders: rootFolders.defaultState,
-  development: development.defaultState,
   ui: ui.defaultState
 };
-
-export const persistState = [
-  'settings.advancedSettings'
-];
-
-//
-// Actions Types
-
-export const TOGGLE_ADVANCED_SETTINGS = 'settings/toggleAdvancedSettings';
-
-//
-// Action Creators
-
-export const toggleAdvancedSettings = createAction(TOGGLE_ADVANCED_SETTINGS);
 
 //
 // Action Handlers
 
 export const actionHandlers = handleThunks({
-  ...general.actionHandlers,
-  ...languages.actionHandlers,
   ...metadataProfiles.actionHandlers,
-  ...mediaManagement.actionHandlers,
   ...naming.actionHandlers,
-  ...namingExamples.actionHandlers,
   ...qualityProfiles.actionHandlers,
   ...rootFolders.actionHandlers,
-  ...development.actionHandlers,
   ...ui.actionHandlers
 });
 
@@ -80,20 +46,9 @@ export const actionHandlers = handleThunks({
 // Reducers
 
 export const reducers = createHandleActions({
-
-  [TOGGLE_ADVANCED_SETTINGS]: (state, { payload }) => {
-    return Object.assign({}, state, { advancedSettings: !state.advancedSettings });
-  },
-
-  ...general.reducers,
-  ...languages.reducers,
   ...metadataProfiles.reducers,
-  ...mediaManagement.reducers,
   ...naming.reducers,
-  ...namingExamples.reducers,
   ...qualityProfiles.reducers,
   ...rootFolders.reducers,
-  ...development.reducers,
   ...ui.reducers
-
 }, defaultState, section);

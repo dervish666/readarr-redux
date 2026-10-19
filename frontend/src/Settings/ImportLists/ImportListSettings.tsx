@@ -7,7 +7,7 @@ import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
 import SectionHeading from 'Components/SectionHeading';
 import { icons } from 'Helpers/Props';
 import settingsStyles from 'Settings/Settings.css';
-import SettingsToolbarConnector from 'Settings/SettingsToolbarConnector';
+import SettingsToolbar from 'Settings/SettingsToolbar';
 import translate from 'Utilities/String/translate';
 import ImportListExclusions from './ImportListExclusions/ImportListExclusions';
 import ImportLists from './ImportLists/ImportLists';
@@ -33,7 +33,7 @@ function ImportListSettings() {
 
   return (
     <PageContent title={translate('ImportListSettings')}>
-      <SettingsToolbarConnector
+      <SettingsToolbar
         showSave={false}
         additionalButtons={
           <>

@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useSelector } from 'react-redux';
 import AppState from 'App/State/AppState';
 import * as commandNames from 'Commands/commandNames';
 import { useCommandExecuting, useExecuteCommand } from 'Commands/useCommands';
@@ -14,10 +14,12 @@ import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import PageHeading from 'Components/Page/PageHeading';
 import { icons, kinds } from 'Helpers/Props';
-import { fetchGeneralSettings } from 'Store/Actions/settingsActions';
-import createUISettingsSelector from 'Store/Selectors/createUISettingsSelector';
+import {
+  UpdateMechanism,
+  useGeneralSettings,
+} from 'Settings/General/useGeneralSettings';
+import { useUiSettingsValues } from 'Settings/UI/useUiSettings';
 import { useSystemStatusData } from 'System/Status/useSystemStatus';
-import { UpdateMechanism } from 'typings/Settings/General';
 import formatDate from 'Utilities/Date/formatDate';
 import formatDateTime from 'Utilities/Date/formatDateTime';
 import translate from 'Utilities/String/translate';
@@ -30,9 +32,7 @@ const VERSION_REGEX = /\d+\.\d+\.\d+\.\d+/i;
 function Updates() {
   const currentVersion = useSelector((state: AppState) => state.app.version);
   const { packageUpdateMechanismMessage } = useSystemStatusData();
-  const { shortDateFormat, longDateFormat, timeFormat } = useSelector(
-    createUISettingsSelector()
-  );
+  const { shortDateFormat, longDateFormat, timeFormat } = useUiSettingsValues();
   const isInstallingUpdate = useCommandExecuting(
     commandNames.APPLICATION_UPDATE
   );
@@ -45,17 +45,17 @@ function Updates() {
     error: updatesError,
   } = useUpdates();
 
-  // General settings (the update mechanism) are still redux until Settings converts.
-  const generalSettings = useSelector(
-    (state: AppState) => state.settings.general
-  );
-  const generalSettingsError = generalSettings.error;
-  const updateMechanism = generalSettings.item.updateMechanism;
+  const {
+    data: generalSettings,
+    isFetched: isGeneralSettingsFetched,
+    isFetching: isGeneralSettingsFetching,
+    error: generalSettingsError,
+  } = useGeneralSettings();
+  const updateMechanism = generalSettings.updateMechanism;
 
-  const isFetching = isLoadingUpdates || generalSettings.isFetching;
-  const isPopulated = isUpdatesFetched && generalSettings.isPopulated;
+  const isFetching = isLoadingUpdates || isGeneralSettingsFetching;
+  const isPopulated = isUpdatesFetched && isGeneralSettingsFetched;
 
-  const dispatch = useDispatch();
   const [isMajorUpdateModalOpen, setIsMajorUpdateModalOpen] = useState(false);
   const hasError = !!(updatesError || generalSettingsError);
   const hasUpdates = isPopulated && !hasError && items.length > 0;
@@ -108,10 +108,6 @@ function Updates() {
   const handleCancelMajorVersionPress = useCallback(() => {
     setIsMajorUpdateModalOpen(false);
   }, [setIsMajorUpdateModalOpen]);
-
-  useEffect(() => {
-    dispatch(fetchGeneralSettings());
-  }, [dispatch]);
 
   return (
     <PageContent title={translate('Updates')}>

@@ -20,8 +20,8 @@ import Popover from 'Components/Tooltip/Popover';
 import usePrevious from 'Helpers/Hooks/usePrevious';
 import { icons, inputTypes, kinds, tooltipPositions } from 'Helpers/Props';
 import AdvancedSettingsButton from 'Settings/AdvancedSettingsButton';
+import { useShowAdvancedSettings } from 'Settings/advancedSettingsStore';
 import { useMetadataProfiles } from 'Settings/Profiles/Metadata/useMetadataProfiles';
-import useAdvancedSettings from 'Settings/useAdvancedSettings';
 import { SelectedSchema } from 'Settings/useProviderSchema';
 import formatShortTimeSpan from 'Utilities/Date/formatShortTimeSpan';
 import translate from 'Utilities/String/translate';
@@ -92,7 +92,7 @@ function EditImportListModalContent({
   onModalClose,
   onDeleteImportListPress,
 }: EditImportListModalContentProps) {
-  const [advancedSettings, toggleAdvancedSettings] = useAdvancedSettings();
+  const advancedSettings = useShowAdvancedSettings();
 
   // The metadata profile only matters once there is more than one to pick from.
   const { data: metadataProfiles } = useMetadataProfiles();
@@ -368,11 +368,7 @@ function EditImportListModalContent({
           </Button>
         ) : null}
 
-        <AdvancedSettingsButton
-          advancedSettings={advancedSettings}
-          showLabel={false}
-          onAdvancedSettingsPress={toggleAdvancedSettings}
-        />
+        <AdvancedSettingsButton showLabel={false} />
 
         <SpinnerErrorButton
           isSpinning={isTesting}

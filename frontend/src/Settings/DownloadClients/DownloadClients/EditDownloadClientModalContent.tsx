@@ -15,7 +15,7 @@ import ModalHeader from 'Components/Modal/ModalHeader';
 import usePrevious from 'Helpers/Hooks/usePrevious';
 import { inputTypes, kinds, sizes } from 'Helpers/Props';
 import AdvancedSettingsButton from 'Settings/AdvancedSettingsButton';
-import useAdvancedSettings from 'Settings/useAdvancedSettings';
+import { useShowAdvancedSettings } from 'Settings/advancedSettingsStore';
 import { SelectedSchema } from 'Settings/useProviderSchema';
 import translate from 'Utilities/String/translate';
 import {
@@ -46,7 +46,7 @@ function EditDownloadClientModalContent({
   onModalClose,
   onDeleteDownloadClientPress,
 }: EditDownloadClientModalContentProps) {
-  const [advancedSettings, toggleAdvancedSettings] = useAdvancedSettings();
+  const advancedSettings = useShowAdvancedSettings();
 
   const {
     item,
@@ -237,11 +237,7 @@ function EditDownloadClientModalContent({
           </Button>
         ) : null}
 
-        <AdvancedSettingsButton
-          advancedSettings={advancedSettings}
-          showLabel={false}
-          onAdvancedSettingsPress={toggleAdvancedSettings}
-        />
+        <AdvancedSettingsButton showLabel={false} />
 
         <SpinnerErrorButton
           isSpinning={isTesting}

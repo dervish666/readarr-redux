@@ -1,14 +1,17 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
 import useApiMutation from 'Helpers/Hooks/useApiMutation';
-import useApiQuery from 'Helpers/Hooks/useApiQuery';
+import useApiQuery, { QueryOptions } from 'Helpers/Hooks/useApiQuery';
 import { usePendingChangesStore } from 'Helpers/Hooks/usePendingChangesStore';
 import selectSettings from 'Utilities/selectSettings';
 
-// Single-item config resources (/config/indexer, /config/downloadclient, ...),
-// edited on a page with a toolbar Save.
-export const useSettings = <T extends object>(path: string) => {
-  const result = useApiQuery<T>({ path });
+// Single-item config resources (/config/indexer, /config/ui, ...), edited on a page
+// with a toolbar Save.
+export const useSettings = <T extends object>(
+  path: string,
+  queryOptions?: QueryOptions<T>['queryOptions']
+) => {
+  const result = useApiQuery<T>({ path, queryOptions });
 
   return {
     ...result,
@@ -16,9 +19,10 @@ export const useSettings = <T extends object>(path: string) => {
   };
 };
 
+// onSaved gets the saved resource, so a hook can copy it into a redux feed.
 export const useSaveSettings = <T extends object>(
   path: string,
-  onSuccess?: () => void
+  onSaved?: (updatedSettings: T) => void
 ) => {
   const queryClient = useQueryClient();
 
@@ -28,7 +32,7 @@ export const useSaveSettings = <T extends object>(
     mutationOptions: {
       onSuccess: (updatedSettings: T) => {
         queryClient.setQueryData<T>([path], updatedSettings);
-        onSuccess?.();
+        onSaved?.(updatedSettings);
       },
     },
   });
@@ -40,16 +44,25 @@ export const useSaveSettings = <T extends object>(
   };
 };
 
-export const useManageSettings = <T extends object>(path: string) => {
-  const { data, isFetching, isFetched, error } = useSettings<T>(path);
+export const useManageSettings = <T extends object>(
+  path: string,
+  onSaved?: (updatedSettings: T) => void
+) => {
+  const { data, isFetching, isFetched, error, refetch } = useSettings<T>(path);
   const { pendingChanges, setPendingChange, clearPendingChanges } =
     usePendingChangesStore<T>({});
 
-  const { save, isSaving, saveError } = useSaveSettings<T>(
-    path,
-    clearPendingChanges
+  const handleSaved = useCallback(
+    (updatedSettings: T) => {
+      clearPendingChanges();
+      onSaved?.(updatedSettings);
+    },
+    [clearPendingChanges, onSaved]
   );
 
+  const { save, isSaving, saveError } = useSaveSettings<T>(path, handleSaved);
+
+  // Only the changes that differ from the saved values count as pending.
   const changedValues = useMemo(() => {
     const changed: Partial<T> = {};
 
@@ -79,9 +92,11 @@ export const useManageSettings = <T extends object>(path: string) => {
 
   return {
     ...settings,
+    pendingChanges: changedValues,
     updateSetting,
     saveSettings,
     clearPendingChanges,
+    refetch,
     isFetching,
     isFetched,
     isSaving,

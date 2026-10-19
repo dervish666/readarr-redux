@@ -6,7 +6,7 @@ import PageContentBody from 'Components/Page/PageContentBody';
 import PageHeading from 'Components/Page/PageHeading';
 import SectionHeading from 'Components/SectionHeading';
 import settingsStyles from 'Settings/Settings.css';
-import SettingsToolbarConnector from 'Settings/SettingsToolbarConnector';
+import SettingsToolbar from 'Settings/SettingsToolbar';
 import translate from 'Utilities/String/translate';
 import DelayProfiles from './Delay/DelayProfiles';
 import MetadataProfiles from './Metadata/MetadataProfiles';
@@ -19,7 +19,7 @@ import ReleaseProfiles from './Release/ReleaseProfiles';
 function Profiles() {
   return (
     <PageContent title={translate('Profiles')}>
-      <SettingsToolbarConnector showSave={false} />
+      <SettingsToolbar showSave={false} />
 
       <PageContentBody>
         <DndProvider options={HTML5toTouch}>

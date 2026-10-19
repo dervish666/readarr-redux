@@ -6,9 +6,9 @@ import PageToolbarButton from 'Components/Page/Toolbar/PageToolbarButton';
 import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
 import SectionHeading from 'Components/SectionHeading';
 import { icons } from 'Helpers/Props';
+import { useShowAdvancedSettings } from 'Settings/advancedSettingsStore';
 import settingsStyles from 'Settings/Settings.css';
-import SettingsToolbarConnector from 'Settings/SettingsToolbarConnector';
-import useAdvancedSettings from 'Settings/useAdvancedSettings';
+import SettingsToolbar from 'Settings/SettingsToolbar';
 import translate from 'Utilities/String/translate';
 import DownloadClients from './DownloadClients/DownloadClients';
 import ManageDownloadClientsModal from './DownloadClients/Manage/ManageDownloadClientsModal';
@@ -18,7 +18,7 @@ import { useManageDownloadClientSettings } from './Options/useDownloadClientSett
 import RemotePathMappings from './RemotePathMappings/RemotePathMappings';
 
 function DownloadClientSettings() {
-  const [advancedSettings] = useAdvancedSettings();
+  const advancedSettings = useShowAdvancedSettings();
   const {
     testAllDownloadClients,
     isTestingAllDownloadClients,
@@ -51,7 +51,7 @@ function DownloadClientSettings() {
 
   return (
     <PageContent title={translate('DownloadClientSettings')}>
-      <SettingsToolbarConnector
+      <SettingsToolbar
         isSaving={isSaving}
         hasPendingChanges={hasPendingChanges}
         additionalButtons={

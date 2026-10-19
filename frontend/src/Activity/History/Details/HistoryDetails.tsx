@@ -1,5 +1,4 @@
 import React from 'react';
-import { useSelector } from 'react-redux';
 import DescriptionList from 'Components/DescriptionList/DescriptionList';
 import DescriptionListItem from 'Components/DescriptionList/DescriptionListItem';
 import DescriptionListItemDescription from 'Components/DescriptionList/DescriptionListItemDescription';
@@ -7,7 +6,7 @@ import DescriptionListItemTitle from 'Components/DescriptionList/DescriptionList
 import Icon from 'Components/Icon';
 import Link from 'Components/Link/Link';
 import { icons } from 'Helpers/Props';
-import createUISettingsSelector from 'Store/Selectors/createUISettingsSelector';
+import { useUiSettingsValues } from 'Settings/UI/useUiSettings';
 import { HistoryData, HistoryEventType } from 'typings/History';
 import formatDateTime from 'Utilities/Date/formatDateTime';
 import formatAge from 'Utilities/Number/formatAge';
@@ -90,9 +89,7 @@ interface HistoryDetailsProps {
 
 // Shared with the author history popover, which still passes redux rows.
 function HistoryDetails({ eventType, sourceTitle, data }: HistoryDetailsProps) {
-  const { shortDateFormat, timeFormat } = useSelector(
-    createUISettingsSelector()
-  );
+  const { shortDateFormat, timeFormat } = useUiSettingsValues();
 
   if (eventType === 'grabbed' || eventType === 'downloadImported') {
     const {

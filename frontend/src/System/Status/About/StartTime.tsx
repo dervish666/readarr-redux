@@ -1,7 +1,6 @@
 import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
-import { useSelector } from 'react-redux';
-import createUISettingsSelector from 'Store/Selectors/createUISettingsSelector';
+import { useUiSettingsValues } from 'Settings/UI/useUiSettings';
 import formatDateTime from 'Utilities/Date/formatDateTime';
 import formatTimeSpan from 'Utilities/Date/formatTimeSpan';
 
@@ -10,9 +9,7 @@ interface StartTimeProps {
 }
 
 function StartTime({ startTime }: StartTimeProps) {
-  const { timeFormat, longDateFormat } = useSelector(
-    createUISettingsSelector()
-  );
+  const { timeFormat, longDateFormat } = useUiSettingsValues();
   const [time, setTime] = useState(Date.now());
 
   const { formattedStartTime, uptime } = useMemo(() => {

@@ -14,7 +14,7 @@ import ModalHeader from 'Components/Modal/ModalHeader';
 import { usePendingChangesStore } from 'Helpers/Hooks/usePendingChangesStore';
 import { usePendingFieldsStore } from 'Helpers/Hooks/usePendingFieldsStore';
 import { inputTypes, kinds } from 'Helpers/Props';
-import useAdvancedSettings from 'Settings/useAdvancedSettings';
+import { useShowAdvancedSettings } from 'Settings/advancedSettingsStore';
 import { PendingField, PendingSection } from 'typings/pending';
 import selectSettings from 'Utilities/selectSettings';
 import translate from 'Utilities/String/translate';
@@ -50,7 +50,7 @@ function EditSpecificationModalContent({
   onDeleteSpecificationPress,
   onModalClose,
 }: EditSpecificationModalContentProps) {
-  const [advancedSettings] = useAdvancedSettings();
+  const advancedSettings = useShowAdvancedSettings();
 
   const { pendingChanges, setPendingChange } =
     usePendingChangesStore<CustomFormatSpecification>({});

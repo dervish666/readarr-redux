@@ -1,8 +1,11 @@
-import { createAction } from 'redux-actions';
 import createFetchHandler from 'Store/Actions/Creators/createFetchHandler';
-import createSaveHandler from 'Store/Actions/Creators/createSaveHandler';
-import createSetSettingValueReducer from 'Store/Actions/Creators/Reducers/createSetSettingValueReducer';
 import { createThunk } from 'Store/thunks';
+
+// Read-only feed until Stage 3: author, book, calendar, interactive search and the
+// relative date cells read state.settings.ui (via createUISettingsSelector) and
+// calendarActions reads firstDayOfWeek. Settings > UI, the calendar options modal,
+// the theme and the converted pages use react-query (Settings/UI/useUiSettings);
+// every save copies the saved settings into this section with `update`.
 
 //
 // Variables
@@ -13,20 +16,11 @@ const section = 'settings.ui';
 // Actions Types
 
 export const FETCH_UI_SETTINGS = 'settings/ui/fetchUiSettings';
-export const SET_UI_SETTINGS_VALUE = 'SET_UI_SETTINGS_VALUE';
-export const SAVE_UI_SETTINGS = 'SAVE_UI_SETTINGS';
 
 //
 // Action Creators
 
 export const fetchUISettings = createThunk(FETCH_UI_SETTINGS);
-export const saveUISettings = createThunk(SAVE_UI_SETTINGS);
-export const setUISettingsValue = createAction(SET_UI_SETTINGS_VALUE, (payload) => {
-  return {
-    section,
-    ...payload
-  };
-});
 
 //
 // Details
@@ -40,9 +34,6 @@ export default {
     isFetching: false,
     isPopulated: false,
     error: null,
-    pendingChanges: {},
-    isSaving: false,
-    saveError: null,
     item: {}
   },
 
@@ -50,15 +41,11 @@ export default {
   // Action Handlers
 
   actionHandlers: {
-    [FETCH_UI_SETTINGS]: createFetchHandler(section, '/config/ui'),
-    [SAVE_UI_SETTINGS]: createSaveHandler(section, '/config/ui')
+    [FETCH_UI_SETTINGS]: createFetchHandler(section, '/config/ui')
   },
 
   //
   // Reducers
 
-  reducers: {
-    [SET_UI_SETTINGS_VALUE]: createSetSettingValueReducer(section)
-  }
-
+  reducers: {}
 };

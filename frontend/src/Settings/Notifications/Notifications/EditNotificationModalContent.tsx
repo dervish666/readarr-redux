@@ -14,7 +14,7 @@ import ModalHeader from 'Components/Modal/ModalHeader';
 import usePrevious from 'Helpers/Hooks/usePrevious';
 import { inputTypes, kinds } from 'Helpers/Props';
 import AdvancedSettingsButton from 'Settings/AdvancedSettingsButton';
-import useAdvancedSettings from 'Settings/useAdvancedSettings';
+import { useShowAdvancedSettings } from 'Settings/advancedSettingsStore';
 import { SelectedSchema } from 'Settings/useProviderSchema';
 import translate from 'Utilities/String/translate';
 import { NotificationModel, useManageConnection } from '../useConnections';
@@ -43,7 +43,7 @@ function EditNotificationModalContent({
   onModalClose,
   onDeleteNotificationPress,
 }: EditNotificationModalContentProps) {
-  const [advancedSettings, toggleAdvancedSettings] = useAdvancedSettings();
+  const advancedSettings = useShowAdvancedSettings();
 
   const {
     item,
@@ -168,11 +168,7 @@ function EditNotificationModalContent({
           </Button>
         ) : null}
 
-        <AdvancedSettingsButton
-          advancedSettings={advancedSettings}
-          showLabel={false}
-          onAdvancedSettingsPress={toggleAdvancedSettings}
-        />
+        <AdvancedSettingsButton showLabel={false} />
 
         <SpinnerErrorButton
           isSpinning={isTesting}

@@ -1,5 +1,4 @@
 import React, { useCallback, useState } from 'react';
-import { useSelector } from 'react-redux';
 import AuthorNameLink from 'Author/AuthorNameLink';
 import BookFormats from 'Book/BookFormats';
 import BookQuality from 'Book/BookQuality';
@@ -20,7 +19,7 @@ import Popover from 'Components/Tooltip/Popover';
 import Tooltip from 'Components/Tooltip/Tooltip';
 import { icons, kinds, sizes, tooltipPositions } from 'Helpers/Props';
 import InteractiveImportModal from 'InteractiveImport/InteractiveImportModal';
-import createUISettingsSelector from 'Store/Selectors/createUISettingsSelector';
+import { useUiSettingsValues } from 'Settings/UI/useUiSettings';
 import { SelectStateInputProps } from 'typings/props';
 import Queue from 'typings/Queue';
 import formatBytes from 'Utilities/Number/formatBytes';
@@ -83,9 +82,8 @@ function QueueRow(props: QueueRowProps) {
     onQueueRowModalOpenOrClose,
   } = props;
 
-  const { showRelativeDates, shortDateFormat, timeFormat } = useSelector(
-    createUISettingsSelector()
-  );
+  const { showRelativeDates, shortDateFormat, timeFormat } =
+    useUiSettingsValues();
 
   const { removeQueueItem, isRemoving } = useRemoveQueueItem(id);
   const { grabQueueItem, isGrabbing, grabError } = useGrabQueueItem(id);

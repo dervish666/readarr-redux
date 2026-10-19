@@ -5,13 +5,13 @@ import { createSelector } from 'reselect';
 import useTranslations from 'App/useTranslations';
 import useCommands from 'Commands/useCommands';
 import useIndexerFlags from 'Settings/Indexers/useIndexerFlags';
+import { useUiSettings } from 'Settings/UI/useUiSettings';
 import { saveDimensions, setIsSidebarVisible } from 'Store/Actions/appActions';
 import { fetchAuthor } from 'Store/Actions/authorActions';
 import { fetchBooks } from 'Store/Actions/bookActions';
 import { fetchCommands } from 'Store/Actions/commandActions';
 import { fetchCustomFilters } from 'Store/Actions/customFilterActions';
 import {
-  fetchLanguages,
   fetchMetadataProfiles,
   fetchQualityProfiles,
   fetchUISettings,
@@ -40,8 +40,7 @@ interface PageState {
   customFilters: SectionState;
   tags: SectionState;
   settings: {
-    ui: SectionState & { item: { enableColorImpairedMode?: boolean } };
-    languages: SectionState;
+    ui: SectionState;
     qualityProfiles: SectionState;
     metadataProfiles: SectionState;
   };
@@ -70,7 +69,6 @@ const selectReduxPopulated = (state: PageState) =>
   state.customFilters.isPopulated &&
   state.tags.isPopulated &&
   state.settings.ui.isPopulated &&
-  state.settings.languages.isPopulated &&
   state.settings.qualityProfiles.isPopulated &&
   state.settings.metadataProfiles.isPopulated &&
   state.system.status.isPopulated;
@@ -80,7 +78,6 @@ const selectReduxErrors = createSelector(
   (state: PageState) => state.customFilters.error,
   (state: PageState) => state.tags.error,
   (state: PageState) => state.settings.ui.error,
-  (state: PageState) => state.settings.languages.error,
   (state: PageState) => state.settings.qualityProfiles.error,
   (state: PageState) => state.settings.metadataProfiles.error,
   (state: PageState) => state.system.status.error,
@@ -89,7 +86,6 @@ const selectReduxErrors = createSelector(
     customFiltersError,
     tagsError,
     uiSettingsError,
-    languagesError,
     qualityProfilesError,
     metadataProfilesError,
     systemStatusError
@@ -98,7 +94,6 @@ const selectReduxErrors = createSelector(
     customFiltersError,
     tagsError,
     uiSettingsError,
-    languagesError,
     qualityProfilesError,
     metadataProfilesError,
     systemStatusError,
@@ -133,9 +128,15 @@ function PageConnector({ children }: PageConnectorProps) {
   const isSmallScreen = useSelector(
     (state: PageState) => state.app.dimensions.isSmallScreen
   );
-  const enableColorImpairedMode = useSelector(
-    (state: PageState) => !!state.settings.ui.item.enableColorImpairedMode
-  );
+
+  // UI settings: react-query for converted pages and the theme, plus the redux
+  // state.settings.ui feed (fetched below) for the author, book and calendar pages.
+  const {
+    data: uiSettings,
+    isFetched: isUiSettingsFetched,
+    error: uiSettingsQueryError,
+  } = useUiSettings();
+  const enableColorImpairedMode = !!uiSettings.enableColorImpairedMode;
   const authenticationEnabled = useSelector((state: PageState) => {
     const status = state.system.status.item;
 
@@ -145,10 +146,14 @@ function PageConnector({ children }: PageConnectorProps) {
   });
 
   const isPopulated =
-    isReduxPopulated && isTranslationsFetched && isIndexerFlagsFetched;
+    isReduxPopulated &&
+    isTranslationsFetched &&
+    isIndexerFlagsFetched &&
+    isUiSettingsFetched;
   const hasError =
     !!translationsError ||
     !!indexerFlagsError ||
+    !!uiSettingsQueryError ||
     Object.values(errors).some((error) => !!error);
 
   useEffect(() => {
@@ -156,7 +161,6 @@ function PageConnector({ children }: PageConnectorProps) {
     dispatch(fetchBooks());
     dispatch(fetchCustomFilters());
     dispatch(fetchTags());
-    dispatch(fetchLanguages());
     dispatch(fetchQualityProfiles());
     dispatch(fetchMetadataProfiles());
     dispatch(fetchUISettings());
@@ -191,6 +195,7 @@ function PageConnector({ children }: PageConnectorProps) {
         translationsError={translationsError ?? undefined}
         indexerFlagsError={indexerFlagsError ?? undefined}
         {...errors}
+        uiSettingsError={errors.uiSettingsError ?? uiSettingsQueryError}
       />
     );
   }

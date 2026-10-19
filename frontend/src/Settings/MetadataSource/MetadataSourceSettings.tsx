@@ -11,7 +11,7 @@ import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import PageHeading from 'Components/Page/PageHeading';
 import { inputTypes, kinds } from 'Helpers/Props';
-import SettingsToolbarConnector from 'Settings/SettingsToolbarConnector';
+import SettingsToolbar from 'Settings/SettingsToolbar';
 import translate from 'Utilities/String/translate';
 import {
   MetadataSourceProbe,
@@ -84,7 +84,7 @@ function MetadataSourceSettings() {
 
   return (
     <PageContent title={translate('MetadataSource')}>
-      <SettingsToolbarConnector
+      <SettingsToolbar
         isSaving={isSaving}
         hasPendingChanges={hasPendingChanges}
         onSavePress={saveSettings}

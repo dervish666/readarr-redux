@@ -6,9 +6,9 @@ import PageToolbarButton from 'Components/Page/Toolbar/PageToolbarButton';
 import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
 import SectionHeading from 'Components/SectionHeading';
 import { icons } from 'Helpers/Props';
+import { useShowAdvancedSettings } from 'Settings/advancedSettingsStore';
 import settingsStyles from 'Settings/Settings.css';
-import SettingsToolbarConnector from 'Settings/SettingsToolbarConnector';
-import useAdvancedSettings from 'Settings/useAdvancedSettings';
+import SettingsToolbar from 'Settings/SettingsToolbar';
 import translate from 'Utilities/String/translate';
 import Indexers from './Indexers/Indexers';
 import ManageIndexersModal from './Indexers/Manage/ManageIndexersModal';
@@ -17,7 +17,7 @@ import { useManageIndexerSettings } from './Options/useIndexerSettings';
 import { useTestAllIndexers } from './useIndexers';
 
 function IndexerSettings() {
-  const [advancedSettings] = useAdvancedSettings();
+  const advancedSettings = useShowAdvancedSettings();
   const { testAllIndexers, isTestingAllIndexers, testAllResults } =
     useTestAllIndexers();
 
@@ -45,7 +45,7 @@ function IndexerSettings() {
 
   return (
     <PageContent title={translate('IndexerSettings')}>
-      <SettingsToolbarConnector
+      <SettingsToolbar
         isSaving={isSaving}
         hasPendingChanges={hasPendingChanges}
         additionalButtons={

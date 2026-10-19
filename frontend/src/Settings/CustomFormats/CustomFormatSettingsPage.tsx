@@ -4,14 +4,14 @@ import PageContentBody from 'Components/Page/PageContentBody';
 import PageHeading from 'Components/Page/PageHeading';
 import SectionHeading from 'Components/SectionHeading';
 import settingsStyles from 'Settings/Settings.css';
-import SettingsToolbarConnector from 'Settings/SettingsToolbarConnector';
+import SettingsToolbar from 'Settings/SettingsToolbar';
 import translate from 'Utilities/String/translate';
 import CustomFormats from './CustomFormats/CustomFormats';
 
 function CustomFormatSettingsPage() {
   return (
     <PageContent title={translate('CustomFormatSettings')}>
-      <SettingsToolbarConnector showSave={false} />
+      <SettingsToolbar showSave={false} />
 
       <PageContentBody>
         <PageHeading

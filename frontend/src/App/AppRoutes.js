@@ -14,12 +14,12 @@ import NotFound from 'Components/NotFound';
 import Switch from 'Components/Router/Switch';
 import AddNewItemConnector from 'Search/AddNewItemConnector';
 import CustomFormatSettingsPage from 'Settings/CustomFormats/CustomFormatSettingsPage';
-import DevelopmentSettingsConnector from 'Settings/Development/DevelopmentSettingsConnector';
+import DevelopmentSettings from 'Settings/Development/DevelopmentSettings';
 import DownloadClientSettings from 'Settings/DownloadClients/DownloadClientSettings';
-import GeneralSettingsConnector from 'Settings/General/GeneralSettingsConnector';
+import GeneralSettings from 'Settings/General/GeneralSettings';
 import ImportListSettings from 'Settings/ImportLists/ImportListSettings';
 import IndexerSettings from 'Settings/Indexers/IndexerSettings';
-import MediaManagementConnector from 'Settings/MediaManagement/MediaManagementConnector';
+import MediaManagement from 'Settings/MediaManagement/MediaManagement';
 import MetadataSettings from 'Settings/Metadata/MetadataSettings';
 import MetadataSourceSettings from 'Settings/MetadataSource/MetadataSourceSettings';
 import NotificationSettings from 'Settings/Notifications/NotificationSettings';
@@ -27,7 +27,7 @@ import Profiles from 'Settings/Profiles/Profiles';
 import Quality from 'Settings/Quality/Quality';
 import Settings from 'Settings/Settings';
 import TagSettings from 'Settings/Tags/TagSettings';
-import UISettingsConnector from 'Settings/UI/UISettingsConnector';
+import UISettings from 'Settings/UI/UISettings';
 import Backups from 'System/Backup/Backups';
 import LogsTable from 'System/Events/LogsTable';
 import Logs from 'System/Logs/Logs';
@@ -164,7 +164,7 @@ function AppRoutes(props) {
 
       <Route
         path="/settings/mediamanagement"
-        component={MediaManagementConnector}
+        component={MediaManagement}
       />
 
       <Route
@@ -219,17 +219,17 @@ function AppRoutes(props) {
 
       <Route
         path="/settings/general"
-        component={GeneralSettingsConnector}
+        component={GeneralSettings}
       />
 
       <Route
         path="/settings/ui"
-        component={UISettingsConnector}
+        component={UISettings}
       />
 
       <Route
         path="/settings/development"
-        component={DevelopmentSettingsConnector}
+        component={DevelopmentSettings}
       />
 
       {/*

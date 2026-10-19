@@ -28,6 +28,7 @@ import {
   tooltipPositions,
 } from 'Helpers/Props';
 import { useRootFolder, useSaveRootFolder } from 'RootFolder/useRootFolders';
+import { useShowAdvancedSettings } from 'Settings/advancedSettingsStore';
 import { ValidationFailure } from 'typings/pending';
 import RootFolder from 'typings/RootFolder';
 import { ApiError } from 'Utilities/Fetch/fetchJson';
@@ -127,10 +128,9 @@ function getFieldSettings(
   };
 }
 
-// Advanced settings and metadata profiles are still redux.
+// Metadata profiles are still a redux feed.
 interface EditRootFolderState {
   settings: {
-    advancedSettings: boolean;
     metadataProfiles: { items: unknown[] };
   };
 }
@@ -152,9 +152,7 @@ function EditRootFolderModalContent({
   const { saveRootFolder, isSaving, saveError } = useSaveRootFolder(id);
   const [changes, setChanges] = useState<Changes>({});
 
-  const advancedSettings = useSelector(
-    (state: EditRootFolderState) => state.settings.advancedSettings
-  );
+  const advancedSettings = useShowAdvancedSettings();
   const showMetadataProfile = useSelector(
     (state: EditRootFolderState) =>
       state.settings.metadataProfiles.items.length > 1

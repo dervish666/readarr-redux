@@ -10,7 +10,7 @@ import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
 import SectionHeading from 'Components/SectionHeading';
 import usePrevious from 'Helpers/Hooks/usePrevious';
 import { icons } from 'Helpers/Props';
-import SettingsToolbarConnector from 'Settings/SettingsToolbarConnector';
+import SettingsToolbar from 'Settings/SettingsToolbar';
 import translate from 'Utilities/String/translate';
 import QualityDefinitions from './Definition/QualityDefinitions';
 import { useManageQualityDefinitions } from './Definition/useQualityDefinitions';
@@ -72,7 +72,7 @@ function Quality() {
 
   return (
     <PageContent title={translate('QualitySettings')}>
-      <SettingsToolbarConnector
+      <SettingsToolbar
         isSaving={isSaving}
         hasPendingChanges={hasPendingChanges}
         additionalButtons={
