@@ -11,7 +11,7 @@ namespace Readarr.Http.Frontend.Mappers
     {
         private readonly IDiskProvider _diskProvider;
         private readonly Lazy<ICacheBreakerProvider> _cacheBreakProviderFactory;
-        private static readonly Regex ReplaceRegex = new Regex(@"(?:(?<attribute>href|src)=\"")(?<path>.*?(?<extension>css|js|png|ico|ics|svg|json))(?:\"")(?:\s(?<nohash>data-no-hash))?", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex ReplaceRegex = new Regex(@"(?:(?<attribute>href|src)=\"")(?<path>.*?\.(?<extension>css|js|ts|png|ico|ics|svg|json))(?:\"")(?:\s(?<nohash>data-no-hash))?", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         private string _generatedContent;
 
@@ -26,6 +26,11 @@ namespace Readarr.Http.Frontend.Mappers
 
         protected string HtmlPath;
         protected string UrlBase;
+
+        protected virtual string ReadHtml()
+        {
+            return _diskProvider.ReadAllText(HtmlPath);
+        }
 
         protected override Stream GetContentStream(string filePath)
         {
@@ -46,7 +51,7 @@ namespace Readarr.Http.Frontend.Mappers
                 return _generatedContent;
             }
 
-            var text = _diskProvider.ReadAllText(HtmlPath);
+            var text = ReadHtml();
             var cacheBreakProvider = _cacheBreakProviderFactory.Value;
 
             text = ReplaceRegex.Replace(text, match =>

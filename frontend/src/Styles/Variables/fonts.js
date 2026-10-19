@@ -1,7 +1,7 @@
 // Mirror values in Styles/Variables/variables.css so var(--foo) at runtime
 // matches $foo at build time.
 
-module.exports = {
+export default {
   // Families
   defaultFontFamily: '"Inter", ui-sans-serif, system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif',
   editorialFontFamily: '"Fraunces", "Iowan Old Style", Georgia, serif',

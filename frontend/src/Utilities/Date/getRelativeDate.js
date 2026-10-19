@@ -5,6 +5,12 @@ import isToday from 'Utilities/Date/isToday';
 import isTomorrow from 'Utilities/Date/isTomorrow';
 import isYesterday from 'Utilities/Date/isYesterday';
 
+/**
+ * @param {string} date
+ * @param {string} shortDateFormat
+ * @param {boolean} showRelativeDates
+ * @param {{ timeFormat?: string, includeSeconds?: boolean, timeForToday?: boolean }} [options]
+ */
 function getRelativeDate(date, shortDateFormat, showRelativeDates, { timeFormat, includeSeconds = false, timeForToday = false } = {}) {
   if (!date) {
     return null;

@@ -45,7 +45,7 @@ function BookSearchCell({
   }, []);
 
   return (
-    <TableRowCell className={styles.BookSearchCell}>
+    <TableRowCell className={styles.bookSearchCell}>
       <SpinnerIconButton
         name={icons.SEARCH}
         aria-label={translate('AutomaticSearch')}
