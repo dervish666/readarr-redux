@@ -161,16 +161,17 @@ test('bookshelf: Update Selected posts the BookshelfResource fields', async ({ p
 
   const post = () => page.waitForRequest((r) => r.method() === 'POST' && apiPath(r) === '/bookshelf');
 
-  // Author monitoring only: no monitoringOptions, which the server would read as
-  // "monitor all books".
+  // Author monitoring only: an empty monitoringOptions goes too, which the server
+  // reads as "all", so monitoring the author monitors all their books.
   await select();
-  await footer.locator('select[name="monitored"]').selectOption('unmonitored');
+  await footer.locator('select[name="monitored"]').selectOption('monitored');
 
   let request = post();
   await footer.getByRole('button', { name: 'Update Selected' }).click();
 
   expect((await request).postDataJSON()).toStrictEqual({
-    authors: [{ id: author.id, monitored: false }]
+    authors: [{ id: author.id, monitored: true }],
+    monitoringOptions: {}
   });
 
   // A save clears the selection and the footer.

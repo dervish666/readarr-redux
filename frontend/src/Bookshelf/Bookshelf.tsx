@@ -205,16 +205,16 @@ function Bookshelf() {
     [items, sortKey]
   );
 
-  // POST /bookshelf, v1 BookshelfResource. monitoringOptions only goes when an
-  // option was picked: the server reads an empty one as "all" and would monitor
-  // every book of the selected authors.
+  // POST /bookshelf, v1 BookshelfResource, the same body the redux bookshelf sent.
+  // monitoringOptions always goes, empty when no books option was picked; the
+  // server reads an empty one as "all", so monitoring an author monitors every book.
   const handleUpdateSelectedPress = useCallback(
     ({ monitored, monitor, monitorNewItems }: BookshelfChanges) => {
       updateAuthorMonitor({
         authors: selectedAuthorIds.map((id) =>
           monitored == null ? { id } : { id, monitored }
         ),
-        ...(monitor ? { monitoringOptions: { monitor } } : {}),
+        monitoringOptions: monitor ? { monitor } : {},
         ...(monitorNewItems ? { monitorNewItems } : {}),
       });
     },
