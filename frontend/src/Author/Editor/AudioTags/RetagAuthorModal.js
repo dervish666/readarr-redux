@@ -25,6 +25,7 @@ function RetagAuthorModal(props) {
 
 RetagAuthorModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
+  authorIds: PropTypes.arrayOf(PropTypes.number).isRequired,
   onModalClose: PropTypes.func.isRequired
 };
 

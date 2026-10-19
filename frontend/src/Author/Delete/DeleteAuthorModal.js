@@ -27,6 +27,7 @@ function DeleteAuthorModal(props) {
 
 DeleteAuthorModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
+  authorId: PropTypes.number.isRequired,
   onModalClose: PropTypes.func.isRequired
 };
 

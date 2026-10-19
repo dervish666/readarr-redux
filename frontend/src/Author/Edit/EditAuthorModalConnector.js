@@ -32,6 +32,9 @@ class EditAuthorModalConnector extends Component {
 }
 
 EditAuthorModalConnector.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  authorId: PropTypes.number.isRequired,
+  onDeleteAuthorPress: PropTypes.func,
   onModalClose: PropTypes.func.isRequired,
   clearPendingChanges: PropTypes.func.isRequired
 };

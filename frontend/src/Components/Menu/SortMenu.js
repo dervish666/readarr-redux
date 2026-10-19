@@ -30,7 +30,8 @@ function SortMenu(props) {
 SortMenu.propTypes = {
   className: PropTypes.string,
   children: PropTypes.node.isRequired,
-  isDisabled: PropTypes.bool.isRequired
+  isDisabled: PropTypes.bool.isRequired,
+  alignMenu: PropTypes.string
 };
 
 SortMenu.defaultProps = {

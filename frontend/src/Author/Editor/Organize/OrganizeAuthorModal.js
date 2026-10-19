@@ -25,6 +25,7 @@ function OrganizeAuthorModal(props) {
 
 OrganizeAuthorModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
+  authorIds: PropTypes.arrayOf(PropTypes.number).isRequired,
   onModalClose: PropTypes.func.isRequired
 };
 

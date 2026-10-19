@@ -336,7 +336,16 @@ test('root folders: pick a folder in the file browser, add it, see free space, d
   expect((await api<RootFolder[]>(page, '/rootFolder')).map((r) => r.name)).not.toContain(name);
 });
 
-test('custom filters: save and delete through the builder on a redux-fed page', async ({ page }) => {
+// The author index keeps its options in a persisted zustand store
+// (<instance>_author_index_options), not in redux.
+const authorIndexFilterKey = (page: Page) => page.evaluate(() => {
+  const key = Object.keys(localStorage).find((k) => k.endsWith('_author_index_options'));
+  const stored = key ? JSON.parse(localStorage.getItem(key) ?? '{}') : {};
+
+  return stored.state?.selectedFilterKey as string | number | undefined;
+});
+
+test('custom filters: save and delete through the builder on the author index', async ({ page }) => {
   const label = uniqueLabel('filter');
 
   await openRoute(page, '/authors');
@@ -366,13 +375,11 @@ test('custom filters: save and delete through the builder on a redux-fed page', 
   await builder.getByRole('button', { name: 'Save' }).click();
   await expect(builder).toHaveCount(0);
 
-  // The redux feed the author index reads has it, and the page selected it.
+  // The redux feed the unconverted pages read has it, and the index selected it.
   await expect.poll(reduxFilterLabels).toContain(label);
   const saved = (await api<CustomFilter[]>(page, '/customFilter')).find((f) => f.label === label);
   expect(saved, 'the filter reached the API').toBeTruthy();
-  expect(await withReduxStore<string | number>(page, `
-    return store.getState().authorIndex.selectedFilterKey;
-  `)).toBe(saved?.id);
+  await expect.poll(() => authorIndexFilterKey(page)).toBe(saved?.id);
 
   await openFilterMenu();
   await expect(page.locator('[class*="MenuItem-menuItem"]', { hasText: label })).toBeVisible();
@@ -386,9 +393,7 @@ test('custom filters: save and delete through the builder on a redux-fed page', 
   await expect.poll(reduxFilterLabels).not.toContain(label);
 
   // The selected filter is gone, so the page falls back to all authors.
-  expect(await withReduxStore<string | number>(page, `
-    return store.getState().authorIndex.selectedFilterKey;
-  `)).toBe('all');
+  await expect.poll(() => authorIndexFilterKey(page)).toBe('all');
 
   await list.getByRole('button', { name: 'Close' }).click();
   expect((await api<CustomFilter[]>(page, '/customFilter')).map((f) => f.label)).not.toContain(label);

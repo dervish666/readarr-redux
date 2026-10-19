@@ -5,7 +5,7 @@ import Blocklist from 'Activity/Blocklist/Blocklist';
 import History from 'Activity/History/History';
 import Queue from 'Activity/Queue/Queue';
 import AuthorDetailsPageConnector from 'Author/Details/AuthorDetailsPageConnector';
-import AuthorIndexConnector from 'Author/Index/AuthorIndexConnector';
+import AuthorIndex from 'Author/Index/AuthorIndex';
 import BookDetailsPageConnector from 'Book/Details/BookDetailsPageConnector';
 import BookIndexConnector from 'Book/Index/BookIndexConnector';
 import BookshelfConnector from 'Bookshelf/BookshelfConnector';
@@ -53,7 +53,7 @@ function AppRoutes(props) {
       <Route
         exact={true}
         path="/"
-        component={AuthorIndexConnector}
+        component={AuthorIndex}
       />
 
       {
@@ -75,7 +75,7 @@ function AppRoutes(props) {
 
       <Route
         path="/authors"
-        component={AuthorIndexConnector}
+        component={AuthorIndex}
       />
 
       <Route

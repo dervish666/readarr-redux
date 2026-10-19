@@ -34,12 +34,6 @@
   flex: 0 0 180px;
 }
 
-.bookCount {
-  composes: headerCell from '~Components/Table/VirtualTableHeaderCell.css';
-
-  flex: 0 0 100px;
-}
-
 .bookProgress,
 .latestBook {
   composes: headerCell from '~Components/Table/VirtualTableHeaderCell.css';
@@ -75,12 +69,6 @@
   composes: headerCell from '~Components/Table/VirtualTableHeaderCell.css';
 
   flex: 1 0 60px;
-}
-
-.useSceneNumbering {
-  composes: headerCell from '~Components/Table/VirtualTableHeaderCell.css';
-
-  flex: 0 0 145px;
 }
 
 .actions {
