@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import Book from 'Book/Book';
-import BookSearchCellConnector from 'Book/BookSearchCellConnector';
+import BookSearchCell from 'Book/BookSearchCell';
 import BookTitleLink from 'Book/BookTitleLink';
 import IndexerFlags from 'Book/IndexerFlags';
 import BookFile from 'BookFile/BookFile';
@@ -56,7 +56,6 @@ function BookRow({
 }: BookRowProps) {
   const {
     id,
-    authorId,
     monitored,
     releaseDate,
     title,
@@ -195,10 +194,9 @@ function BookRow({
 
         if (name === 'actions') {
           return (
-            <BookSearchCellConnector
+            <BookSearchCell
               key={name}
               bookId={id}
-              authorId={authorId}
               bookTitle={title}
               authorName={authorName}
             />

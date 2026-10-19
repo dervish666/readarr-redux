@@ -12,7 +12,6 @@ import * as editions from './editionActions';
 import * as interactiveImportActions from './interactiveImportActions';
 import * as oAuth from './oAuthActions';
 import * as organizePreview from './organizePreviewActions';
-import * as releases from './releaseActions';
 import * as retagPreview from './retagPreviewActions';
 import * as settings from './settingsActions';
 import * as system from './systemActions';
@@ -33,7 +32,6 @@ export default [
   interactiveImportActions,
   oAuth,
   organizePreview,
-  releases,
   retagPreview,
   settings,
   system,

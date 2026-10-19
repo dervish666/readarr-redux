@@ -8,7 +8,6 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { useDispatch } from 'react-redux';
 import { Tab, TabList, TabPanel, Tabs } from 'react-tabs';
 import AuthorDetailsLinks from 'Author/Details/AuthorDetailsLinks';
 import AuthorHistoryTable from 'Author/History/AuthorHistoryTable';
@@ -40,15 +39,12 @@ import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
 import Tooltip from 'Components/Tooltip/Tooltip';
 import usePrevious from 'Helpers/Hooks/usePrevious';
 import { icons, kinds, tooltipPositions } from 'Helpers/Props';
-import InteractiveSearchFilterMenuConnector from 'InteractiveSearch/InteractiveSearchFilterMenuConnector';
-import InteractiveSearchTable from 'InteractiveSearch/InteractiveSearchTable';
+import InteractiveSearch from 'InteractiveSearch/InteractiveSearch';
+import InteractiveSearchFilterMenu from 'InteractiveSearch/InteractiveSearchFilterMenu';
+import { useKeepReleases } from 'InteractiveSearch/useReleases';
 import OrganizePreviewModalConnector from 'Organize/OrganizePreviewModalConnector';
 import RetagPreviewModalConnector from 'Retag/RetagPreviewModalConnector';
 import { useUiSettingsValues } from 'Settings/UI/useUiSettings';
-import {
-  cancelFetchReleases,
-  clearReleases,
-} from 'Store/Actions/releaseActions';
 import formatBytes from 'Utilities/Number/formatBytes';
 import {
   registerPagePopulator,
@@ -79,7 +75,6 @@ interface BookDetailsProps {
 }
 
 function BookDetails({ bookId, initialBook }: BookDetailsProps) {
-  const dispatch = useDispatch();
   const executeCommand = useExecuteCommand();
   const { shortDateFormat } = useUiSettingsValues();
 
@@ -176,13 +171,10 @@ function BookDetails({ bookId, initialBook }: BookDetailsProps) {
     }
   }, [isRefreshing, wasRefreshing, isRenaming, wasRenaming, populate]);
 
-  // The Search tab is still the JS interactive search on the redux releases feed.
-  useEffect(() => {
-    return () => {
-      dispatch(cancelFetchReleases());
-      dispatch(clearReleases());
-    };
-  }, [bookId, dispatch]);
+  // The Search tab's releases stay while the page shows this book.
+  const searchPayload = useMemo(() => ({ bookId }), [bookId]);
+
+  useKeepReleases(searchPayload);
 
   // The overview shown is the monitored edition's, as the redux page showed it.
   const overview = useMemo(() => {
@@ -544,7 +536,7 @@ function BookDetails({ bookId, initialBook }: BookDetailsProps) {
 
               {selectedTabIndex === SEARCH_TAB_INDEX ? (
                 <div className={styles.filterIcon}>
-                  <InteractiveSearchFilterMenuConnector type="book" />
+                  <InteractiveSearchFilterMenu searchPayload={searchPayload} />
                 </div>
               ) : null}
             </TabList>
@@ -554,7 +546,7 @@ function BookDetails({ bookId, initialBook }: BookDetailsProps) {
             </TabPanel>
 
             <TabPanel>
-              <InteractiveSearchTable bookId={bookId} type="book" />
+              <InteractiveSearch searchPayload={searchPayload} />
             </TabPanel>
 
             <TabPanel>

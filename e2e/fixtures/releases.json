@@ -1,0 +1,138 @@
+[
+  {
+    "guid": "e2e-release-990001",
+    "quality": {
+      "quality": {
+        "id": 3,
+        "name": "EPUB"
+      },
+      "revision": {
+        "version": 1,
+        "real": 0,
+        "isRepack": false
+      }
+    },
+    "qualityWeight": 300,
+    "age": 3,
+    "ageHours": 74.5,
+    "ageMinutes": 4470.2,
+    "size": 2097152,
+    "indexerId": 990001,
+    "indexer": "E2E Indexer",
+    "releaseGroup": "E2E",
+    "releaseHash": "",
+    "title": "Terry Pratchett - Wings (EPUB) e2e",
+    "discography": false,
+    "sceneSource": false,
+    "authorName": "Terry Pratchett",
+    "bookTitle": "Wings",
+    "approved": true,
+    "temporarilyRejected": false,
+    "rejected": false,
+    "rejections": [],
+    "publishDate": "2026-10-16T08:00:00Z",
+    "commentUrl": "",
+    "downloadUrl": "https://indexer.invalid/download/990001",
+    "infoUrl": "https://indexer.invalid/details/990001",
+    "downloadAllowed": true,
+    "releaseWeight": 1,
+    "customFormats": [],
+    "customFormatScore": 0,
+    "protocol": "usenet",
+    "indexerFlags": 0,
+    "id": 0
+  },
+  {
+    "guid": "e2e-release-990002",
+    "quality": {
+      "quality": {
+        "id": 2,
+        "name": "MOBI"
+      },
+      "revision": {
+        "version": 1,
+        "real": 0,
+        "isRepack": false
+      }
+    },
+    "qualityWeight": 200,
+    "age": 3,
+    "ageHours": 74.5,
+    "ageMinutes": 4470.2,
+    "size": 4194304,
+    "indexerId": 990001,
+    "indexer": "E2E Indexer",
+    "releaseGroup": "E2E",
+    "releaseHash": "",
+    "title": "Terry Pratchett - Mort (MOBI) e2e",
+    "discography": true,
+    "sceneSource": false,
+    "authorName": "Terry Pratchett",
+    "bookTitle": "Wings",
+    "approved": true,
+    "temporarilyRejected": false,
+    "rejected": false,
+    "rejections": [],
+    "publishDate": "2026-10-16T08:00:00Z",
+    "commentUrl": "",
+    "downloadUrl": "https://indexer.invalid/download/990002",
+    "infoUrl": "https://indexer.invalid/details/990002",
+    "downloadAllowed": true,
+    "releaseWeight": 2,
+    "customFormats": [],
+    "customFormatScore": 0,
+    "protocol": "torrent",
+    "indexerFlags": 1,
+    "id": 0,
+    "seeders": 12,
+    "leechers": 3,
+    "magnetUrl": "",
+    "infoHash": ""
+  },
+  {
+    "guid": "e2e-release-990003",
+    "quality": {
+      "quality": {
+        "id": 3,
+        "name": "EPUB"
+      },
+      "revision": {
+        "version": 1,
+        "real": 0,
+        "isRepack": false
+      }
+    },
+    "qualityWeight": 300,
+    "age": 3,
+    "ageHours": 74.5,
+    "ageMinutes": 4470.2,
+    "size": 2097152,
+    "indexerId": 990001,
+    "indexer": "E2E Indexer",
+    "releaseGroup": "E2E",
+    "releaseHash": "",
+    "title": "Aardvark Unknown Release e2e",
+    "discography": false,
+    "sceneSource": false,
+    "authorName": "Aardvark",
+    "bookTitle": "Unknown",
+    "approved": false,
+    "temporarilyRejected": false,
+    "rejected": true,
+    "rejections": [
+      "Unknown Author",
+      "Quality for release is not wanted in the profile"
+    ],
+    "publishDate": "2026-10-16T08:00:00Z",
+    "commentUrl": "",
+    "downloadUrl": "https://indexer.invalid/download/990003",
+    "infoUrl": "https://indexer.invalid/details/990003",
+    "downloadAllowed": false,
+    "releaseWeight": 3,
+    "customFormats": [],
+    "customFormatScore": 0,
+    "protocol": "usenet",
+    "indexerFlags": 0,
+    "id": 0
+  }
+]

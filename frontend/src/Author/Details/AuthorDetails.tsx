@@ -51,18 +51,15 @@ import usePrevious from 'Helpers/Hooks/usePrevious';
 import useSelectState from 'Helpers/Hooks/useSelectState';
 import { align, icons, kinds, tooltipPositions } from 'Helpers/Props';
 import InteractiveImportModal from 'InteractiveImport/InteractiveImportModal';
-import InteractiveSearchFilterMenuConnector from 'InteractiveSearch/InteractiveSearchFilterMenuConnector';
-import InteractiveSearchTable from 'InteractiveSearch/InteractiveSearchTable';
+import InteractiveSearch from 'InteractiveSearch/InteractiveSearch';
+import InteractiveSearchFilterMenu from 'InteractiveSearch/InteractiveSearchFilterMenu';
+import { useKeepReleases } from 'InteractiveSearch/useReleases';
 import OrganizePreviewModalConnector from 'Organize/OrganizePreviewModalConnector';
 import RetagPreviewModalConnector from 'Retag/RetagPreviewModalConnector';
 import useAuthorSeries from 'Series/useAuthorSeries';
 import { useMetadataProfile } from 'Settings/Profiles/Metadata/useMetadataProfiles';
 import QualityProfileName from 'Settings/Profiles/Quality/QualityProfileName';
 import { clearBookFiles, fetchBookFiles } from 'Store/Actions/bookFileActions';
-import {
-  cancelFetchReleases,
-  clearReleases,
-} from 'Store/Actions/releaseActions';
 import { SelectStateInputProps } from 'typings/props';
 import { ApiError } from 'Utilities/Fetch/fetchJson';
 import formatBytes from 'Utilities/Number/formatBytes';
@@ -250,8 +247,7 @@ function AuthorDetails({ authorId }: AuthorDetailsProps) {
   const wasRenaming = usePrevious(isRenaming);
 
   // The book editor's JS delete modal (Book/Editor/Delete) lists the selected books'
-  // files from the redux bookFiles feed, and the Search tab is still the JS table on
-  // the redux releases feed, so the page keeps fetching and clearing those for them.
+  // files from the redux bookFiles feed, so the page keeps fetching and clearing it.
   const populate = useCallback(() => {
     refetchBooks();
     refetchBookFiles();
@@ -263,11 +259,14 @@ function AuthorDetails({ authorId }: AuthorDetailsProps) {
     dispatch(fetchBookFiles({ authorId }));
 
     return () => {
-      dispatch(cancelFetchReleases());
       dispatch(clearBookFiles());
-      dispatch(clearReleases());
     };
   }, [authorId, dispatch]);
+
+  // The Search tab's releases stay while the page shows this author.
+  const searchPayload = useMemo(() => ({ authorId }), [authorId]);
+
+  useKeepReleases(searchPayload);
 
   useEffect(() => {
     registerPagePopulator(populate);
@@ -885,7 +884,9 @@ function AuthorDetails({ authorId }: AuthorDetailsProps) {
 
                 {selectedTabIndex === SEARCH_TAB_INDEX ? (
                   <div className={styles.filterIcon}>
-                    <InteractiveSearchFilterMenuConnector type="author" />
+                    <InteractiveSearchFilterMenu
+                      searchPayload={searchPayload}
+                    />
                   </div>
                 ) : null}
               </TabList>
@@ -929,7 +930,7 @@ function AuthorDetails({ authorId }: AuthorDetailsProps) {
               </TabPanel>
 
               <TabPanel>
-                <InteractiveSearchTable type="author" authorId={authorId} />
+                <InteractiveSearch searchPayload={searchPayload} />
               </TabPanel>
 
               <TabPanel>

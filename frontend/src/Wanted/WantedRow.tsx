@@ -2,7 +2,7 @@ import React from 'react';
 import AuthorNameLink from 'Author/AuthorNameLink';
 import { useAuthor } from 'Author/useAuthors';
 import Book from 'Book/Book';
-import BookSearchCellConnector from 'Book/BookSearchCellConnector';
+import BookSearchCell from 'Book/BookSearchCell';
 import BookTitleLink from 'Book/BookTitleLink';
 import RelativeDateCellConnector from 'Components/Table/Cells/RelativeDateCellConnector';
 import TableRowCell from 'Components/Table/Cells/TableRowCell';
@@ -90,13 +90,11 @@ function WantedRow({
 
         if (name === 'actions') {
           return (
-            <BookSearchCellConnector
+            <BookSearchCell
               key={name}
               bookId={id}
-              authorId={author.id}
               bookTitle={title}
               authorName={author.authorName}
-              showOpenAuthorButton={true}
             />
           );
         }
