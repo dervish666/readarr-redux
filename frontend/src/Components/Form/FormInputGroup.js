@@ -1,21 +1,22 @@
+import classNames from 'classnames';
 import PropTypes from 'prop-types';
 import React from 'react';
 import Link from 'Components/Link/Link';
 import { inputTypes, kinds } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
+import AuthorTagInput from './AuthorTagInput';
 // import translate from 'Utilities/String/translate';
 import AutoCompleteInput from './AutoCompleteInput';
 import BookEditionSelectInputConnector from './BookEditionSelectInputConnector';
-import BookshelfInputConnector from './BookshelfInputConnector';
+import BookshelfInput from './BookshelfInput';
 import CaptchaInputConnector from './CaptchaInputConnector';
 import CheckInput from './CheckInput';
-import DeviceInputConnector from './DeviceInputConnector';
-import DownloadClientSelectInputConnector from './DownloadClientSelectInputConnector';
+import DeviceInput from './DeviceInput';
+import DownloadClientSelectInput from './DownloadClientSelectInput';
 import EnhancedSelectInput from './EnhancedSelectInput';
-import EnhancedSelectInputConnector from './EnhancedSelectInputConnector';
 import FormInputHelpText from './FormInputHelpText';
 import IndexerFlagsSelectInput from './IndexerFlagsSelectInput';
-import IndexerSelectInputConnector from './IndexerSelectInputConnector';
+import IndexerSelectInput from './IndexerSelectInput';
 import KeyValueListInput from './KeyValueListInput';
 import MetadataProfileSelectInputConnector from './MetadataProfileSelectInputConnector';
 import MonitorBooksSelectInput from './MonitorBooksSelectInput';
@@ -23,10 +24,10 @@ import MonitorNewItemsSelectInput from './MonitorNewItemsSelectInput';
 import NumberInput from './NumberInput';
 import OAuthInputConnector from './OAuthInputConnector';
 import PasswordInput from './PasswordInput';
-import PathInputConnector from './PathInputConnector';
+import PathInput from './PathInput';
+import ProviderOptionSelectInput from './ProviderOptionSelectInput';
 import QualityProfileSelectInputConnector from './QualityProfileSelectInputConnector';
-import RootFolderSelectInputConnector from './RootFolderSelectInputConnector';
-import TagInputConnector from './TagInputConnector';
+import RootFolderSelectInput from './RootFolderSelectInput';
 import TagSelectInputConnector from './TagSelectInputConnector';
 import TextArea from './TextArea';
 import TextInput from './TextInput';
@@ -46,10 +47,10 @@ function getComponent(type) {
       return CheckInput;
 
     case inputTypes.DEVICE:
-      return DeviceInputConnector;
+      return DeviceInput;
 
     case inputTypes.BOOKSHELF:
-      return BookshelfInputConnector;
+      return BookshelfInput;
 
     case inputTypes.KEY_VALUE_LIST:
       return KeyValueListInput;
@@ -70,7 +71,7 @@ function getComponent(type) {
       return PasswordInput;
 
     case inputTypes.PATH:
-      return PathInputConnector;
+      return PathInput;
 
     case inputTypes.QUALITY_PROFILE_SELECT:
       return QualityProfileSelectInputConnector;
@@ -82,25 +83,25 @@ function getComponent(type) {
       return BookEditionSelectInputConnector;
 
     case inputTypes.INDEXER_SELECT:
-      return IndexerSelectInputConnector;
+      return IndexerSelectInput;
 
     case inputTypes.INDEXER_FLAGS_SELECT:
       return IndexerFlagsSelectInput;
 
     case inputTypes.DOWNLOAD_CLIENT_SELECT:
-      return DownloadClientSelectInputConnector;
+      return DownloadClientSelectInput;
 
     case inputTypes.ROOT_FOLDER_SELECT:
-      return RootFolderSelectInputConnector;
+      return RootFolderSelectInput;
 
     case inputTypes.SELECT:
       return EnhancedSelectInput;
 
     case inputTypes.DYNAMIC_SELECT:
-      return EnhancedSelectInputConnector;
+      return ProviderOptionSelectInput;
 
     case inputTypes.TAG:
-      return TagInputConnector;
+      return AuthorTagInput;
 
     case inputTypes.TEXT_AREA:
       return TextArea;
@@ -147,7 +148,14 @@ function FormInputGroup(props) {
 
   return (
     <div className={containerClassName}>
-      <div className={className}>
+      <div
+        className={classNames(
+          className,
+          hasButton && styles.hasButtons,
+          hasButton && hasError && styles.hasError,
+          hasButton && hasWarning && styles.hasWarning
+        )}
+      >
         <div className={styles.inputContainer}>
           <InputComponent
             className={inputClassName}

@@ -202,7 +202,12 @@ export const actionHandlers = handleThunks({
         }));
       });
 
+    // Settings pages on react-query pass no section; the button shows the error itself.
     promise.done(() => {
+      if (!actionSection) {
+        return;
+      }
+
       // Clear any previously set save error.
       dispatch(set({
         section: actionSection,
@@ -219,7 +224,7 @@ export const actionHandlers = handleThunks({
         })
       ];
 
-      if (xhr.status === 400) {
+      if (xhr.status === 400 && actionSection) {
         // Set a save error so the UI can display validation errors to the user.
         actions.splice(0, 0, set({
           section: actionSection,

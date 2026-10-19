@@ -15,6 +15,7 @@ interface Author extends ModelBase {
   status: AuthorStatus;
   tags: number[];
   authorName: string;
+  titleSlug: string;
   isSaving?: boolean;
 }
 

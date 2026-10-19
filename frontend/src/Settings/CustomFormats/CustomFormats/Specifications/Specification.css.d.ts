@@ -2,11 +2,12 @@
 // Please do not change this file!
 interface CssExports {
   'cloneButton': string;
-  'customFormat': string;
   'labels': string;
   'name': string;
   'nameContainer': string;
-  'tooltipLabel': string;
+  'overlay': string;
+  'rightCluster': string;
+  'specification': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

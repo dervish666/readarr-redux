@@ -1,12 +1,8 @@
-import ModelBase from 'App/ModelBase';
-import AppSectionState, {
-  AppSectionDeleteState,
-} from 'App/State/AppSectionState';
+import AppSectionState from 'App/State/AppSectionState';
+import { Tag } from 'Tags/useTags';
 
-export interface Tag extends ModelBase {
-  label: string;
-}
+export type { Tag };
 
-interface TagsAppState extends AppSectionState<Tag>, AppSectionDeleteState {}
+type TagsAppState = AppSectionState<Tag>;
 
 export default TagsAppState;

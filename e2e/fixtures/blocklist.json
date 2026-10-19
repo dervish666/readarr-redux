@@ -1,0 +1,88 @@
+{
+  "page": 1,
+  "pageSize": 20,
+  "sortKey": "date",
+  "sortDirection": "descending",
+  "totalRecords": 2,
+  "records": [
+    {
+      "id": 990401,
+      "authorId": 990101,
+      "bookIds": [
+        990201
+      ],
+      "sourceTitle": "Fixture.Author-Fixture.Book.Blocked.One.epub",
+      "quality": {
+        "quality": {
+          "id": 3,
+          "name": "EPUB"
+        },
+        "revision": {
+          "version": 1,
+          "real": 0,
+          "isRepack": false
+        }
+      },
+      "customFormats": [],
+      "date": "2026-10-18T12:00:00Z",
+      "protocol": "torrent",
+      "indexer": "Fixture Indexer",
+      "message": "Fixture blocklist reason",
+      "author": {
+        "id": 990101,
+        "authorName": "Fixture Author",
+        "sortName": "author, fixture",
+        "titleSlug": "fixture-author",
+        "status": "continuing",
+        "monitored": true,
+        "path": "/books/Fixture Author",
+        "qualityProfileId": 1,
+        "metadataProfileId": 1,
+        "rootFolderPath": "/books",
+        "genres": [],
+        "tags": [],
+        "added": "2026-01-01T00:00:00Z",
+        "overview": ""
+      }
+    },
+    {
+      "id": 990402,
+      "authorId": 990101,
+      "bookIds": [
+        990202
+      ],
+      "sourceTitle": "Fixture.Author-Fixture.Book.Blocked.Two.epub",
+      "quality": {
+        "quality": {
+          "id": 3,
+          "name": "EPUB"
+        },
+        "revision": {
+          "version": 1,
+          "real": 0,
+          "isRepack": false
+        }
+      },
+      "customFormats": [],
+      "date": "2026-10-17T12:00:00Z",
+      "protocol": "usenet",
+      "indexer": "Fixture Usenet Indexer",
+      "author": {
+        "id": 990101,
+        "authorName": "Fixture Author",
+        "sortName": "author, fixture",
+        "titleSlug": "fixture-author",
+        "status": "continuing",
+        "monitored": true,
+        "path": "/books/Fixture Author",
+        "qualityProfileId": 1,
+        "metadataProfileId": 1,
+        "rootFolderPath": "/books",
+        "genres": [],
+        "tags": [],
+        "added": "2026-01-01T00:00:00Z",
+        "overview": ""
+      }
+    }
+  ]
+}

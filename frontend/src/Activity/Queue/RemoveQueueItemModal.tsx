@@ -10,23 +10,17 @@ import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
 import { inputTypes, kinds, sizes } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
+import { QueueRemovalOptions } from './useQueue';
 import styles from './RemoveQueueItemModal.css';
-
-interface RemovePressProps {
-  remove: boolean;
-  changeCategory: boolean;
-  blocklist: boolean;
-  skipRedownload: boolean;
-}
 
 interface RemoveQueueItemModalProps {
   isOpen: boolean;
-  sourceTitle: string;
+  sourceTitle?: string;
   canChangeCategory: boolean;
   canIgnore: boolean;
   isPending: boolean;
   selectedCount?: number;
-  onRemovePress(props: RemovePressProps): void;
+  onRemovePress(props: QueueRemovalOptions): void;
   onModalClose: () => void;
 }
 
@@ -39,7 +33,7 @@ type BlocklistMethod =
 function RemoveQueueItemModal(props: RemoveQueueItemModalProps) {
   const {
     isOpen,
-    sourceTitle,
+    sourceTitle = '',
     canIgnore,
     canChangeCategory,
     isPending,
@@ -118,6 +112,7 @@ function RemoveQueueItemModal(props: RemoveQueueItemModalProps) {
       {
         key: 'blocklistAndSearch',
         value: translate('BlocklistAndSearch'),
+        isDisabled: isPending,
         hint: multipleSelected
           ? translate('BlocklistAndSearchMultipleHint')
           : translate('BlocklistAndSearchHint'),
@@ -130,7 +125,7 @@ function RemoveQueueItemModal(props: RemoveQueueItemModalProps) {
           : translate('BlocklistOnlyHint'),
       },
     ];
-  }, [multipleSelected]);
+  }, [isPending, multipleSelected]);
 
   const handleRemovalMethodChange = useCallback(
     ({ value }: { value: RemovalMethod }) => {
@@ -177,7 +172,7 @@ function RemoveQueueItemModal(props: RemoveQueueItemModalProps) {
         <ModalHeader>{title}</ModalHeader>
 
         <ModalBody>
-          <div className={styles.message}>{message}</div>
+          <p className={styles.intro}>{message}</p>
 
           {isPending ? null : (
             <FormGroup>

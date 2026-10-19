@@ -2,6 +2,8 @@
 // Please do not change this file!
 interface CssExports {
   'downloadClients': string;
+  'group': string;
+  'groupHeading': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

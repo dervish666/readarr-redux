@@ -1,44 +1,15 @@
+import { CustomFilter } from 'Filters/Filter';
+import AppSectionListState from './AppSectionState';
 import AuthorsAppState from './AuthorsAppState';
 import CommandAppState from './CommandAppState';
 import SettingsAppState from './SettingsAppState';
 import SystemAppState from './SystemAppState';
 import TagsAppState from './TagsAppState';
 
-interface FilterBuilderPropOption {
-  id: string;
-  name: string;
-}
-
-export interface FilterBuilderProp<T> {
-  name: string;
-  label: string;
-  type: string;
-  valueType?: string;
-  optionsSelector?: (items: T[]) => FilterBuilderPropOption[];
-}
-
-export interface PropertyFilter {
-  key: string;
-  value: boolean | string | number | string[] | number[];
-  type: string;
-}
-
-export interface Filter {
-  key: string;
-  label: string;
-  filers: PropertyFilter[];
-}
-
-export interface CustomFilter {
-  id: number;
-  type: string;
-  label: string;
-  filers: PropertyFilter[];
-}
-
 export interface AppSectionState {
   isConnected: boolean;
   isReconnecting: boolean;
+  isRestarting: boolean;
   version: string;
   prevVersion?: string;
   dimensions: {
@@ -52,6 +23,7 @@ interface AppState {
   app: AppSectionState;
   authors: AuthorsAppState;
   commands: CommandAppState;
+  customFilters: AppSectionListState<CustomFilter>;
   settings: SettingsAppState;
   system: SystemAppState;
   tags: TagsAppState;

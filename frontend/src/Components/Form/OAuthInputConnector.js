@@ -80,7 +80,7 @@ OAuthInputConnector.propTypes = {
   result: PropTypes.object,
   provider: PropTypes.string.isRequired,
   providerData: PropTypes.object.isRequired,
-  section: PropTypes.string.isRequired,
+  section: PropTypes.string,
   onChange: PropTypes.func.isRequired,
   startOAuth: PropTypes.func.isRequired,
   resetOAuth: PropTypes.func.isRequired

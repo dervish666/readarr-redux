@@ -1,6 +1,8 @@
 .importListExclusion {
   display: flex;
   align-items: stretch;
+  gap: 16px;
+
   margin-bottom: 10px;
   height: 30px;
   border-bottom: 1px solid var(--borderColor);
@@ -14,7 +16,9 @@
 }
 
 .foreignId {
-  flex: 0 0 100px;
+  @add-mixin truncate;
+
+  flex: 0 1 200px;
 }
 
 .actions {

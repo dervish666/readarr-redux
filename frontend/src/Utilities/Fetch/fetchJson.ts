@@ -85,7 +85,10 @@ async function fetchJson<T, TData>({
     return {} as T;
   }
 
-  return response.json() as T;
+  // Some v1 actions (DELETE /queue/{id}) answer 200 with no body.
+  const text = await response.text();
+
+  return (text ? JSON.parse(text) : {}) as T;
 }
 
 export default fetchJson;

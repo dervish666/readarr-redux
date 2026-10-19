@@ -5,23 +5,22 @@ import {
 } from '@microsoft/signalr';
 import { QueryClient, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import ModelBase from 'App/ModelBase';
-import AppState from 'App/State/AppState';
 import Command from 'Commands/Command';
+import { useUpdateCommand } from 'Commands/useCommands';
 import { setAppValue, setVersion } from 'Store/Actions/appActions';
 import { fetchAuthor } from 'Store/Actions/authorActions';
-import { removeItem, update, updateItem } from 'Store/Actions/baseActions';
+import { removeItem, updateItem } from 'Store/Actions/baseActions';
 import { deleteAuthorBooks } from 'Store/Actions/bookActions';
 import {
   fetchCommands,
   finishCommand,
   updateCommand,
 } from 'Store/Actions/commandActions';
-import { fetchQueue, fetchQueueDetails } from 'Store/Actions/queueActions';
-import { fetchQualityDefinitions } from 'Store/Actions/settingsActions';
-import { fetchHealth } from 'Store/Actions/systemActions';
-import { fetchTagDetails, fetchTags } from 'Store/Actions/tagActions';
+import { fetchQueueDetails } from 'Store/Actions/queueActions';
+import { fetchRootFolders } from 'Store/Actions/settingsActions';
+import { fetchTags } from 'Store/Actions/tagActions';
 import { repopulatePage } from 'Utilities/pagePopulator';
 import SignalRLogger from 'Utilities/SignalRLogger';
 
@@ -38,22 +37,21 @@ interface SignalRMessage {
 
 // The react-query side of the bridge. Each message marks the queries under these
 // /api/v1 path prefixes stale, so any react-query consumer refetches what changed.
-// Nothing reads these through react-query yet; each Stage 2 and 3 PR that moves a
-// domain over keeps (or sharpens) its entry here and drops the redux dispatch below.
+// Each Stage 2 and 3 PR that moves a domain over keeps (or sharpens) its entry here
+// and drops the redux dispatch below. queue/status and command are absent on purpose:
+// their messages carry the new value, which the switch below writes into the cache.
 const QUERY_KEYS_BY_MESSAGE: Record<string, string[]> = {
   author: ['/author'],
   book: ['/book'],
   bookfile: ['/bookfile'],
   calendar: ['/calendar'],
-  command: ['/command'],
   health: ['/health'],
   qualitydefinition: ['/qualitydefinition'],
   queue: ['/queue'],
   'queue/details': ['/queue/details'],
-  'queue/status': ['/queue/status'],
-  rootfolder: ['/rootfolder'],
+  rootfolder: ['/rootFolder'],
   'system/task': ['/system/task'],
-  tag: ['/tag'],
+  tag: ['/tag', '/tag/detail'],
   'wanted/cutoff': ['/wanted/cutoff'],
   'wanted/missing': ['/wanted/missing'],
 };
@@ -69,16 +67,7 @@ function invalidateQueries(queryClient: QueryClient, name: string) {
 function SignalRListener() {
   const queryClient = useQueryClient();
   const dispatch = useDispatch();
-
-  const isQueuePopulated = useSelector(
-    (state: AppState) =>
-      (state as unknown as { queue: { paged: { isPopulated: boolean } } }).queue
-        .paged.isPopulated
-  );
-
-  // Handlers below are created once, so they read the latest value through a ref.
-  const isQueuePopulatedRef = useRef(isQueuePopulated);
-  isQueuePopulatedRef.current = isQueuePopulated;
+  const updateCommandQuery = useUpdateCommand();
 
   const connection = useRef<HubConnection | null>(null);
 
@@ -162,12 +151,17 @@ function SignalRListener() {
 
       case 'command': {
         if (body.action === 'sync') {
+          queryClient.invalidateQueries({ queryKey: ['/command'] });
           dispatch(fetchCommands());
           return;
         }
 
         const resource = body.resource as unknown as Command;
         const status = resource.status;
+
+        // react-query owns the list and the sidebar message; the redux feed gets the
+        // same update for unconverted pages and runs callbacks of redux-started commands.
+        updateCommandQuery(resource);
 
         // Both successful and failed commands need to be
         // completed, otherwise they spin until they time out.
@@ -201,7 +195,7 @@ function SignalRListener() {
         return;
 
       case 'health':
-        dispatch(fetchHealth());
+        // The sidebar badge and Status page are on react-query; invalidateQueries above refetches.
         return;
 
       case 'author':
@@ -214,21 +208,21 @@ function SignalRListener() {
         return;
 
       case 'qualitydefinition':
-        dispatch(fetchQualityDefinitions());
+        // Settings > Quality is on react-query; invalidateQueries above refetches it.
         return;
 
       case 'queue':
-        if (isQueuePopulatedRef.current) {
-          dispatch(fetchQueue());
-        }
+        // The queue page is on react-query; invalidateQueries above refetches it.
         return;
 
       case 'queue/details':
+        // Kept redux feed: author, calendar and wanted read state.queue.details.
         dispatch(fetchQueueDetails());
         return;
 
       case 'queue/status':
-        dispatch(update({ section: 'queue.status', data: body.resource }));
+        // The message carries the new counts, so write them straight into the cache.
+        queryClient.setQueryData(['/queue/status'], body.resource);
         return;
 
       case 'version':
@@ -260,25 +254,20 @@ function SignalRListener() {
         return;
 
       case 'system/task':
+        // The task list is on react-query (invalidated above); refresh both command lists.
+        queryClient.invalidateQueries({ queryKey: ['/command'] });
         dispatch(fetchCommands());
         return;
 
       case 'rootfolder':
-        if (body.action === 'updated') {
-          dispatch(
-            updateItem({
-              section: 'settings.rootFolders',
-              updateOnly: true,
-              ...body.resource,
-            })
-          );
-        }
+        // Redux feed for add-new, the author editor, import lists and remote path mappings.
+        dispatch(fetchRootFolders());
         return;
 
       case 'tag':
+        // Redux feed for the author, book, calendar and settings pages.
         if (body.action === 'sync') {
           dispatch(fetchTags());
-          dispatch(fetchTagDetails());
         }
         return;
 

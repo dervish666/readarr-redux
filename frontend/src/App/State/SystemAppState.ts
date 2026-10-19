@@ -1,12 +1,10 @@
 import SystemStatus from 'typings/SystemStatus';
-import Update from 'typings/Update';
-import AppSectionState, { AppSectionItemState } from './AppSectionState';
+import { AppSectionItemState } from './AppSectionState';
 
 export type SystemStatusAppState = AppSectionItemState<SystemStatus>;
-export type UpdateAppState = AppSectionState<Update>;
 
+// Only the status feed is left in redux; the System pages use react-query.
 interface SystemAppState {
-  updates: UpdateAppState;
   status: SystemStatusAppState;
 }
 

@@ -1,26 +1,9 @@
-import createAjaxRequest from 'Utilities/createAjaxRequest';
-
-function getTranslations() {
-  return createAjaxRequest({
-    global: false,
-    dataType: 'json',
-    url: '/localization',
-  }).request;
-}
-
 let translations: Record<string, string> = {};
 
-export async function fetchTranslations(): Promise<boolean> {
-  return new Promise(async (resolve) => {
-    try {
-      const data = await getTranslations();
-      translations = data.Strings;
-
-      resolve(true);
-    } catch (error) {
-      resolve(false);
-    }
-  });
+// Filled by App/useTranslations once /localization loads; PageConnector holds the
+// app on the loading page until then.
+export function setTranslations(translationData: Record<string, string>) {
+  translations = translationData;
 }
 
 export default function translate(

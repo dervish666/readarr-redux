@@ -1,9 +1,9 @@
 import PropTypes from 'prop-types';
 import React from 'react';
 import { Redirect, Route } from 'react-router-dom';
-import BlocklistConnector from 'Activity/Blocklist/BlocklistConnector';
-import HistoryConnector from 'Activity/History/HistoryConnector';
-import QueueConnector from 'Activity/Queue/QueueConnector';
+import Blocklist from 'Activity/Blocklist/Blocklist';
+import History from 'Activity/History/History';
+import Queue from 'Activity/Queue/Queue';
 import AuthorDetailsPageConnector from 'Author/Details/AuthorDetailsPageConnector';
 import AuthorIndexConnector from 'Author/Index/AuthorIndexConnector';
 import BookDetailsPageConnector from 'Book/Details/BookDetailsPageConnector';
@@ -13,23 +13,23 @@ import CalendarPageConnector from 'Calendar/CalendarPageConnector';
 import NotFound from 'Components/NotFound';
 import Switch from 'Components/Router/Switch';
 import AddNewItemConnector from 'Search/AddNewItemConnector';
-import CustomFormatSettingsConnector from 'Settings/CustomFormats/CustomFormatSettingsConnector';
-import DevelopmentSettingsConnector from 'Settings/Development/DevelopmentSettingsConnector';
-import DownloadClientSettingsConnector from 'Settings/DownloadClients/DownloadClientSettingsConnector';
-import GeneralSettingsConnector from 'Settings/General/GeneralSettingsConnector';
-import ImportListSettingsConnector from 'Settings/ImportLists/ImportListSettingsConnector';
-import IndexerSettingsConnector from 'Settings/Indexers/IndexerSettingsConnector';
-import MediaManagementConnector from 'Settings/MediaManagement/MediaManagementConnector';
+import CustomFormatSettingsPage from 'Settings/CustomFormats/CustomFormatSettingsPage';
+import DevelopmentSettings from 'Settings/Development/DevelopmentSettings';
+import DownloadClientSettings from 'Settings/DownloadClients/DownloadClientSettings';
+import GeneralSettings from 'Settings/General/GeneralSettings';
+import ImportListSettings from 'Settings/ImportLists/ImportListSettings';
+import IndexerSettings from 'Settings/Indexers/IndexerSettings';
+import MediaManagement from 'Settings/MediaManagement/MediaManagement';
 import MetadataSettings from 'Settings/Metadata/MetadataSettings';
-import MetadataSourceSettingsConnector from 'Settings/MetadataSource/MetadataSourceSettingsConnector';
+import MetadataSourceSettings from 'Settings/MetadataSource/MetadataSourceSettings';
 import NotificationSettings from 'Settings/Notifications/NotificationSettings';
 import Profiles from 'Settings/Profiles/Profiles';
-import QualityConnector from 'Settings/Quality/QualityConnector';
+import Quality from 'Settings/Quality/Quality';
 import Settings from 'Settings/Settings';
 import TagSettings from 'Settings/Tags/TagSettings';
-import UISettingsConnector from 'Settings/UI/UISettingsConnector';
-import BackupsConnector from 'System/Backup/BackupsConnector';
-import LogsTableConnector from 'System/Events/LogsTableConnector';
+import UISettings from 'Settings/UI/UISettings';
+import Backups from 'System/Backup/Backups';
+import LogsTable from 'System/Events/LogsTable';
 import Logs from 'System/Logs/Logs';
 import Status from 'System/Status/Status';
 import Tasks from 'System/Tasks/Tasks';
@@ -125,17 +125,17 @@ function AppRoutes(props) {
 
       <Route
         path="/activity/history"
-        component={HistoryConnector}
+        component={History}
       />
 
       <Route
         path="/activity/queue"
-        component={QueueConnector}
+        component={Queue}
       />
 
       <Route
         path="/activity/blocklist"
-        component={BlocklistConnector}
+        component={Blocklist}
       />
 
       {/*
@@ -164,7 +164,7 @@ function AppRoutes(props) {
 
       <Route
         path="/settings/mediamanagement"
-        component={MediaManagementConnector}
+        component={MediaManagement}
       />
 
       <Route
@@ -174,27 +174,27 @@ function AppRoutes(props) {
 
       <Route
         path="/settings/quality"
-        component={QualityConnector}
+        component={Quality}
       />
 
       <Route
         path="/settings/customformats"
-        component={CustomFormatSettingsConnector}
+        component={CustomFormatSettingsPage}
       />
 
       <Route
         path="/settings/indexers"
-        component={IndexerSettingsConnector}
+        component={IndexerSettings}
       />
 
       <Route
         path="/settings/downloadclients"
-        component={DownloadClientSettingsConnector}
+        component={DownloadClientSettings}
       />
 
       <Route
         path="/settings/importlists"
-        component={ImportListSettingsConnector}
+        component={ImportListSettings}
       />
 
       <Route
@@ -209,7 +209,7 @@ function AppRoutes(props) {
 
       <Route
         path="/settings/metadatasource"
-        component={MetadataSourceSettingsConnector}
+        component={MetadataSourceSettings}
       />
 
       <Route
@@ -219,17 +219,17 @@ function AppRoutes(props) {
 
       <Route
         path="/settings/general"
-        component={GeneralSettingsConnector}
+        component={GeneralSettings}
       />
 
       <Route
         path="/settings/ui"
-        component={UISettingsConnector}
+        component={UISettings}
       />
 
       <Route
         path="/settings/development"
-        component={DevelopmentSettingsConnector}
+        component={DevelopmentSettings}
       />
 
       {/*
@@ -248,7 +248,7 @@ function AppRoutes(props) {
 
       <Route
         path="/system/backup"
-        component={BackupsConnector}
+        component={Backups}
       />
 
       <Route
@@ -258,7 +258,7 @@ function AppRoutes(props) {
 
       <Route
         path="/system/events"
-        component={LogsTableConnector}
+        component={LogsTable}
       />
 
       <Route

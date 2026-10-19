@@ -16,6 +16,7 @@ READARR_URL=http://localhost:8787 READARR_API_KEY=... yarn smoke
 | `READARR_SCREENSHOT_DIR` | no | Baseline screenshots; defaults to `_output/e2e/screenshots` |
 | `READARR_ALLOW_MISSING_COVERS` | no | `1` ignores 404s on `/MediaCover/` images only, for a copy of the database without the cover cache. Every other 4xx still fails |
 | `READARR_BROWSER_CHANNEL` | no | Playwright browser channel, for example `chrome`. On macOS the bundled Chromium is blocked from LAN hosts by Local Network privacy; installed Chrome is not |
+| `READARR_ROOTFOLDER_TEST_PATH` | no | An existing, writable server folder the root folder check may add and then delete. Unset, it runs only against localhost/127.0.0.1 (using a folder it makes under the OS temp directory); on any other host the check only opens the add modal and file browser and writes nothing |
 
 The library needs at least one author with books. Reports, traces and screenshots land in `_output/e2e/`.
 

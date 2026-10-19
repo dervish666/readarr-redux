@@ -1,6 +1,4 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { ImportListAppState } from 'App/State/SettingsAppState';
 import Alert from 'Components/Alert';
 import Button from 'Components/Link/Button';
 import SpinnerButton from 'Components/Link/SpinnerButton';
@@ -15,10 +13,10 @@ import TableBody from 'Components/Table/TableBody';
 import useSelectState from 'Helpers/Hooks/useSelectState';
 import { kinds } from 'Helpers/Props';
 import {
-  bulkDeleteImportLists,
-  bulkEditImportLists,
-} from 'Store/Actions/settingsActions';
-import createClientSideCollectionSelector from 'Store/Selectors/createClientSideCollectionSelector';
+  useBulkDeleteImportLists,
+  useBulkEditImportLists,
+  useSortedImportLists,
+} from 'Settings/ImportLists/ImportLists/useImportLists';
 import { SelectStateInputProps } from 'typings/props';
 import getErrorMessage from 'Utilities/Object/getErrorMessage';
 import translate from 'Utilities/String/translate';
@@ -88,16 +86,14 @@ function ManageImportListsModalContent(
   const { onModalClose } = props;
 
   const {
+    data: items,
     isFetching,
-    isPopulated,
-    isDeleting,
-    isSaving,
+    isFetched: isPopulated,
     error,
-    items,
-  }: ImportListAppState = useSelector(
-    createClientSideCollectionSelector('settings.importLists')
-  );
-  const dispatch = useDispatch();
+  } = useSortedImportLists();
+
+  const { bulkDeleteImportLists, isDeleting } = useBulkDeleteImportLists();
+  const { bulkEditImportLists, isSaving } = useBulkEditImportLists();
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -131,22 +127,20 @@ function ManageImportListsModalContent(
   }, [setIsEditModalOpen]);
 
   const onConfirmDelete = useCallback(() => {
-    dispatch(bulkDeleteImportLists({ ids: selectedIds }));
+    bulkDeleteImportLists({ ids: selectedIds });
     setIsDeleteModalOpen(false);
-  }, [selectedIds, dispatch]);
+  }, [selectedIds, bulkDeleteImportLists]);
 
   const onSavePress = useCallback(
     (payload: object) => {
       setIsEditModalOpen(false);
 
-      dispatch(
-        bulkEditImportLists({
-          ids: selectedIds,
-          ...payload,
-        })
-      );
+      bulkEditImportLists({
+        ids: selectedIds,
+        ...payload,
+      });
     },
-    [selectedIds, dispatch]
+    [selectedIds, bulkEditImportLists]
   );
 
   const onTagsPress = useCallback(() => {
@@ -162,15 +156,13 @@ function ManageImportListsModalContent(
       setIsSavingTags(true);
       setIsTagsModalOpen(false);
 
-      dispatch(
-        bulkEditImportLists({
-          ids: selectedIds,
-          tags,
-          applyTags,
-        })
-      );
+      bulkEditImportLists({
+        ids: selectedIds,
+        tags,
+        applyTags,
+      });
     },
-    [selectedIds, dispatch]
+    [selectedIds, bulkEditImportLists]
   );
 
   const onSelectAllChange = useCallback(

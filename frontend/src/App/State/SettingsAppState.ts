@@ -1,47 +1,30 @@
 import AppSectionState, {
-  AppSectionDeleteState,
   AppSectionItemState,
-  AppSectionSaveState,
+  AppSectionSchemaState,
 } from 'App/State/AppSectionState';
-import DownloadClient from 'typings/DownloadClient';
-import ImportList from 'typings/ImportList';
-import Indexer from 'typings/Indexer';
-import IndexerFlag from 'typings/IndexerFlag';
-import Notification from 'typings/Notification';
-import General from 'typings/Settings/General';
-import UiSettings from 'typings/Settings/UiSettings';
+import { NamingSettingsModel } from 'Settings/MediaManagement/Naming/useNamingSettings';
+import { MetadataProfileModel } from 'Settings/Profiles/Metadata/useMetadataProfiles';
+import { QualityProfileModel } from 'Settings/Profiles/Quality/useQualityProfiles';
+import { UiSettingsModel } from 'Settings/UI/useUiSettings';
+import RootFolder from 'typings/RootFolder';
 
-export interface DownloadClientAppState
-  extends AppSectionState<DownloadClient>,
-    AppSectionDeleteState,
-    AppSectionSaveState {}
+// Read-only redux feeds for the pages still on redux until Stage 3. Settings pages
+// edit these through react-query and refresh the feed after every change.
+export interface QualityProfilesAppState
+  extends AppSectionState<QualityProfileModel>,
+    AppSectionSchemaState<QualityProfileModel['items'][number]> {}
 
-export type GeneralAppState = AppSectionItemState<General>;
+export type MetadataProfilesAppState = AppSectionState<MetadataProfileModel>;
 
-export interface ImportListAppState
-  extends AppSectionState<ImportList>,
-    AppSectionDeleteState,
-    AppSectionSaveState {}
+export type NamingSettingsAppState = AppSectionItemState<NamingSettingsModel>;
 
-export interface IndexerAppState
-  extends AppSectionState<Indexer>,
-    AppSectionDeleteState,
-    AppSectionSaveState {}
-
-export interface NotificationAppState
-  extends AppSectionState<Notification>,
-    AppSectionDeleteState {}
-
-export type IndexerFlagSettingsAppState = AppSectionState<IndexerFlag>;
-export type UiSettingsAppState = AppSectionState<UiSettings>;
+export type UiSettingsAppState = AppSectionItemState<UiSettingsModel>;
 
 interface SettingsAppState {
-  downloadClients: DownloadClientAppState;
-  general: GeneralAppState;
-  importLists: ImportListAppState;
-  indexerFlags: IndexerFlagSettingsAppState;
-  indexers: IndexerAppState;
-  notifications: NotificationAppState;
+  metadataProfiles: MetadataProfilesAppState;
+  naming: NamingSettingsAppState;
+  qualityProfiles: QualityProfilesAppState;
+  rootFolders: AppSectionState<RootFolder>;
   ui: UiSettingsAppState;
 }
 

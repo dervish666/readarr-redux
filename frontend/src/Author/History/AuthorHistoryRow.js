@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
-import HistoryDetailsConnector from 'Activity/History/Details/HistoryDetailsConnector';
+import HistoryDetails from 'Activity/History/Details/HistoryDetails';
 import HistoryEventTypeCell from 'Activity/History/HistoryEventTypeCell';
 import BookFormats from 'Book/BookFormats';
 import BookQuality from 'Book/BookQuality';
@@ -131,7 +131,7 @@ class AuthorHistoryRow extends Component {
             }
             title={getTitle(eventType)}
             body={
-              <HistoryDetailsConnector
+              <HistoryDetails
                 eventType={eventType}
                 sourceTitle={sourceTitle}
                 data={data}

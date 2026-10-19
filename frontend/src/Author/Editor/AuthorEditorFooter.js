@@ -5,7 +5,7 @@ import MoveAuthorModal from 'Author/MoveAuthor/MoveAuthorModal';
 import MetadataProfileSelectInputConnector from 'Components/Form/MetadataProfileSelectInputConnector';
 import MonitorNewItemsSelectInput from 'Components/Form/MonitorNewItemsSelectInput';
 import QualityProfileSelectInputConnector from 'Components/Form/QualityProfileSelectInputConnector';
-import RootFolderSelectInputConnector from 'Components/Form/RootFolderSelectInputConnector';
+import RootFolderSelectInput from 'Components/Form/RootFolderSelectInput';
 import SelectInput from 'Components/Form/SelectInput';
 import SpinnerButton from 'Components/Link/SpinnerButton';
 import PageContentFooter from 'Components/Page/PageContentFooter';
@@ -253,7 +253,7 @@ class AuthorEditorFooter extends Component {
                 isSaving={isSaving && rootFolderPath !== NO_CHANGE}
               />
 
-              <RootFolderSelectInputConnector
+              <RootFolderSelectInput
                 name="rootFolderPath"
                 value={rootFolderPath}
                 includeNoChange={true}

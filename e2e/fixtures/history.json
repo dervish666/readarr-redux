@@ -1,0 +1,173 @@
+{
+  "page": 1,
+  "pageSize": 20,
+  "sortKey": "date",
+  "sortDirection": "descending",
+  "totalRecords": 3,
+  "records": [
+    {
+      "id": 990301,
+      "bookId": 990201,
+      "authorId": 990101,
+      "sourceTitle": "Fixture.Author-Fixture.Book.Grabbed.epub",
+      "quality": {
+        "quality": {
+          "id": 3,
+          "name": "EPUB"
+        },
+        "revision": {
+          "version": 1,
+          "real": 0,
+          "isRepack": false
+        }
+      },
+      "customFormats": [],
+      "customFormatScore": 0,
+      "qualityCutoffNotMet": false,
+      "date": "2026-10-18T12:00:00Z",
+      "downloadId": "FIXTURE-GRABBED",
+      "eventType": "grabbed",
+      "data": {
+        "indexer": "Fixture Indexer",
+        "releaseGroup": "FIXGRP",
+        "nzbInfoUrl": "https://example.invalid/fixture",
+        "downloadClient": "Fixture Client",
+        "downloadClientName": "Fixture Client",
+        "downloadId": "FIXTURE-GRABBED",
+        "age": "3",
+        "ageHours": "72.5",
+        "ageMinutes": "4350",
+        "publishedDate": "2026-10-15T09:30:00Z",
+        "protocol": "2",
+        "size": "10485760"
+      },
+      "book": {
+        "id": 990201,
+        "authorId": 990101,
+        "title": "Fixture Book Grabbed",
+        "titleSlug": "fixture-book-grabbed",
+        "disambiguation": "",
+        "monitored": true
+      },
+      "author": {
+        "id": 990101,
+        "authorName": "Fixture Author",
+        "sortName": "author, fixture",
+        "titleSlug": "fixture-author",
+        "status": "continuing",
+        "monitored": true,
+        "path": "/books/Fixture Author",
+        "qualityProfileId": 1,
+        "metadataProfileId": 1,
+        "rootFolderPath": "/books",
+        "genres": [],
+        "tags": [],
+        "added": "2026-01-01T00:00:00Z",
+        "overview": ""
+      }
+    },
+    {
+      "id": 990302,
+      "bookId": 990202,
+      "authorId": 990101,
+      "sourceTitle": "Fixture.Author-Fixture.Book.Imported.epub",
+      "quality": {
+        "quality": {
+          "id": 3,
+          "name": "EPUB"
+        },
+        "revision": {
+          "version": 1,
+          "real": 0,
+          "isRepack": false
+        }
+      },
+      "customFormats": [],
+      "customFormatScore": 0,
+      "qualityCutoffNotMet": false,
+      "date": "2026-10-17T12:00:00Z",
+      "downloadId": "FIXTURE-IMPORTED",
+      "eventType": "bookFileImported",
+      "data": {
+        "droppedPath": "/downloads/Fixture.Book.Imported/fixture.epub",
+        "importedPath": "/books/Fixture Author/Fixture Book Imported/fixture.epub",
+        "downloadClient": "Fixture Client"
+      },
+      "book": {
+        "id": 990202,
+        "authorId": 990101,
+        "title": "Fixture Book Imported",
+        "titleSlug": "fixture-book-imported",
+        "disambiguation": "",
+        "monitored": true
+      },
+      "author": {
+        "id": 990101,
+        "authorName": "Fixture Author",
+        "sortName": "author, fixture",
+        "titleSlug": "fixture-author",
+        "status": "continuing",
+        "monitored": true,
+        "path": "/books/Fixture Author",
+        "qualityProfileId": 1,
+        "metadataProfileId": 1,
+        "rootFolderPath": "/books",
+        "genres": [],
+        "tags": [],
+        "added": "2026-01-01T00:00:00Z",
+        "overview": ""
+      }
+    },
+    {
+      "id": 990303,
+      "bookId": 990203,
+      "authorId": 990101,
+      "sourceTitle": "Fixture.Author-Fixture.Book.Failed.epub",
+      "quality": {
+        "quality": {
+          "id": 3,
+          "name": "EPUB"
+        },
+        "revision": {
+          "version": 1,
+          "real": 0,
+          "isRepack": false
+        }
+      },
+      "customFormats": [],
+      "customFormatScore": 0,
+      "qualityCutoffNotMet": false,
+      "date": "2026-10-16T12:00:00Z",
+      "downloadId": "FIXTURE-FAILED",
+      "eventType": "downloadFailed",
+      "data": {
+        "indexer": "Fixture Indexer",
+        "message": "Fixture download failed"
+      },
+      "book": {
+        "id": 990203,
+        "authorId": 990101,
+        "title": "Fixture Book Failed",
+        "titleSlug": "fixture-book-failed",
+        "disambiguation": "",
+        "monitored": true
+      },
+      "author": {
+        "id": 990101,
+        "authorName": "Fixture Author",
+        "sortName": "author, fixture",
+        "titleSlug": "fixture-author",
+        "status": "continuing",
+        "monitored": true,
+        "path": "/books/Fixture Author",
+        "qualityProfileId": 1,
+        "metadataProfileId": 1,
+        "rootFolderPath": "/books",
+        "genres": [],
+        "tags": [],
+        "added": "2026-01-01T00:00:00Z",
+        "overview": ""
+      }
+    }
+  ]
+}
