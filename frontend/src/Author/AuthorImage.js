@@ -123,8 +123,13 @@ class AuthorImage extends Component {
       blurBackground
     } = this.props;
 
+    // The blurred copy sits behind the cover, filling the letterbox that object-fit: contain
+    // leaves. Both are positioned so the cover, later in the DOM, paints on top.
     const blurStyle = {
       ...style,
+      position: 'absolute',
+      top: 0,
+      left: 0,
       objectFit: 'fill',
       filter: 'blur(8px)',
       WebkitFilter: 'blur(8px)'
@@ -187,7 +192,7 @@ class AuthorImage extends Component {
 
         <img
           className={className}
-          style={style}
+          style={blurBackground ? { ...style, position: 'relative' } : style}
           src={isLoaded ? url : placeholder}
           onError={this.onError}
           onLoad={this.onLoad}
