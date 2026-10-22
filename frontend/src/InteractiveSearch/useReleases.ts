@@ -234,6 +234,7 @@ const RELEASE_QUERY_OPTIONS = {
   staleTime: THIRTY_MINUTES,
   gcTime: THIRTY_MINUTES,
   refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
   retry: false,
 };
 

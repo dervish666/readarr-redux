@@ -58,7 +58,7 @@ function HealthItemLink({ source }: HealthItemLinkProps) {
           name={icons.AUTHOR_CONTINUING}
           title={translate('AuthorEditor')}
           aria-label={translate('AuthorEditor')}
-          to="/authoreditor"
+          to="/authors"
         />
       );
     case 'UpdateCheck':
