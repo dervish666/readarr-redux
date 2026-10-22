@@ -410,9 +410,24 @@ namespace NzbDrone.Core.Test.MediaFiles
                 .Setup(s => s.MoveBookFile(It.Is<BookFile>(f => f.Part == 2), It.IsAny<LocalBook>()))
                 .Throws(new IOException("There is not enough space on the disk."));
 
+            Mocker.GetMock<IMediaFileService>()
+                .Setup(s => s.Add(It.IsAny<BookFile>()))
+                .Returns<BookFile>(f =>
+                {
+                    database.Add(f);
+                    return f;
+                });
+
+            var oldPart2 = database.Single(x => x.Part == 2).Path;
+
             Subject.Import(decisions, true);
 
             disk.Values.Where(x => x == "old").Should().HaveCount(3);
+
+            // Old part 2 went back on its own path, so it is in the library again; parts 1 and 3 have their new files
+            disk[oldPart2].Should().Be("old");
+            database.Where(x => x.Path == oldPart2).Should().ContainSingle();
+            database.Should().HaveCount(3);
 
             Mocker.GetMock<IRecycleBinProvider>()
                 .Verify(v => v.DeleteFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());

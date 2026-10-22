@@ -18,6 +18,7 @@ namespace NzbDrone.Core.MediaFiles
         void RemoveSetAsideFiles(IEnumerable<SetAsideBookFile> files);
         List<SetAsideBookFile> RestoreSetAsideFiles(IEnumerable<SetAsideBookFile> files);
         List<SetAsideBookFile> RollBack(IEnumerable<BookFileMoveResult> results);
+        void RestoreRows(IEnumerable<BookFile> rows);
     }
 
     public class UpgradeMediaFileService : IUpgradeMediaFiles
@@ -308,12 +309,16 @@ namespace NzbDrone.Core.MediaFiles
 
             var kept = RestoreSetAsideFiles(list.SelectMany(x => x.SetAsideFiles));
 
-            var rows = list.SelectMany(x => x.OldFiles)
-                .Concat(list.Where(x => x.DisplacedFile != null).Select(x => x.DisplacedFile))
-                .DistinctBy(x => x.Path)
-                .ToList();
+            RestoreRows(list.SelectMany(x => x.OldFiles)
+                .Concat(list.Where(x => x.DisplacedFile != null).Select(x => x.DisplacedFile)));
 
-            foreach (var row in rows)
+            return kept;
+        }
+
+        // Adds back the library rows UpgradeBookFile deleted, for the old files that are on disk again
+        public void RestoreRows(IEnumerable<BookFile> rows)
+        {
+            foreach (var row in rows.DistinctBy(x => x.Path).ToList())
             {
                 if (!_diskProvider.FileExists(row.Path) || _mediaFileService.GetFileWithPath(row.Path) != null)
                 {
@@ -331,8 +336,6 @@ namespace NzbDrone.Core.MediaFiles
                     _logger.Error(e, "Couldn't put the library entry for {0} back, rescan its author to pick the file up again", row.Path);
                 }
             }
-
-            return kept;
         }
 
         public List<SetAsideBookFile> RestoreSetAsideFiles(IEnumerable<SetAsideBookFile> files)
