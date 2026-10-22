@@ -30,7 +30,7 @@ namespace NzbDrone.Core.MediaCover
 
             // Covers come from the metadata source and the file extension from its URL. Only the web
             // formats covers actually use are decoded or encoded, so a hostile cover can't reach the
-            // TIFF codec (GHSA-wmxv-xphr-5c9g, GHSA-j9gm-c75j-xc9q, GHSA-jjfr-hcj7-qf5w, unfixed on 3.x).
+            // less used codecs, TIFF's among them, where ImageSharp's advisories have tended to land.
             var configuration = new SixLabors.ImageSharp.Configuration(
                 new JpegConfigurationModule(),
                 new PngConfigurationModule(),
