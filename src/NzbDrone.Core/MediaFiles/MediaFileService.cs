@@ -128,14 +128,15 @@ namespace NzbDrone.Core.MediaFiles
             List<IFileInfo> unwanted = null;
             if (filter == FilterFilesType.Known)
             {
-                // An unmapped file is retried even when unchanged, so a rescan after a matching fix can map it
+                // Unchanged unmapped files are skipped too. This filter runs with Add New Authors on (the scheduled rescan and
+                // the folder watcher), so retrying them would add back every author or book deleted without its files. An
+                // author's Refresh & Scan (the Matched filter, no new authors) is what retries them.
                 unwanted = combined
                     .Where(x => x.DiskFile.Length == x.DbFile.Size &&
-                           Math.Abs((x.DiskFile.LastWriteTimeUtc - x.DbFile.Modified.ToUniversalTime()).TotalSeconds) <= 1 &&
-                           !IsUnmapped(x.DbFile))
+                           Math.Abs((x.DiskFile.LastWriteTimeUtc - x.DbFile.Modified.ToUniversalTime()).TotalSeconds) <= 1)
                     .Select(x => x.DiskFile)
                     .ToList();
-                _logger.Trace($"{unwanted.Count} unchanged mapped files");
+                _logger.Trace($"{unwanted.Count} unchanged existing files");
             }
             else if (filter == FilterFilesType.Matched)
             {
@@ -198,12 +199,6 @@ namespace NzbDrone.Core.MediaFiles
         public List<BookFile> GetFilesByEdition(int editionId)
         {
             return _mediaFileRepository.GetFilesByEdition(editionId);
-        }
-
-        // GetFileWithPath left-joins the edition, so an unmapped file comes back with it loaded as null
-        private static bool IsUnmapped(BookFile file)
-        {
-            return file.Edition != null && file.Edition.IsLoaded && file.Edition.Value == null;
         }
 
         public List<BookFile> GetUnmappedFiles()
