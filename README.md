@@ -32,10 +32,23 @@ docker run -d --name readarr \
   -v /path/to/config:/config \
   -v /path/to/books:/books \
   -v /path/to/downloads:/downloads \
-  ghcr.io/dervish666/readarr:latest
+  dervish666/readarr-redux:latest
 ```
 
-The image is a drop-in for the linuxserver.io one: `config.xml` and `readarr.db` sit at the root of `/config`, the app listens on 8787, and `PUID`, `PGID` and `UMASK` work the same way. Tags are `latest`, `develop` and `0.5.0.<build>`. The in-app updater is off; update by pulling a newer image.
+The same images are on Docker Hub (`dervish666/readarr-redux`) and GHCR (`ghcr.io/dervish666/readarr`), for linux/amd64 and linux/arm64.
+
+The image is a drop-in for the linuxserver.io one: `config.xml` and `readarr.db` sit at the root of `/config`, the app listens on 8787, and `PUID`, `PGID` and `UMASK` work the same way. The in-app updater is off; update by pulling a newer image.
+
+| Tag | What it is |
+| --- | --- |
+| `latest` | The newest release |
+| `1.2.3`, `1.2` | A release, and the newest release in its line |
+| `develop` | Every merge to the development branch. Expect rough edges |
+| `0.5.0.<build>` | One specific build |
+
+### Unraid
+
+Search Community Applications for **readarr-redux**. The template is [distribution/unraid/readarr-redux.xml](distribution/unraid/readarr-redux.xml): set the Books and Downloads paths to the same paths your download client's container uses, and leave PUID 99 and PGID 100 unless you know you need otherwise. To move over from the linuxserver or hotio Readarr container, stop it and copy its appdata folder to `/mnt/user/appdata/readarr-redux` first, so the old container keeps an untouched copy.
 
 ## Moving from upstream Readarr
 
@@ -75,7 +88,7 @@ To run with no login on purpose, set `<AuthenticationNoneConfirmed>True</Authent
 
 ## Building from source
 
-You need the .NET 10 SDK, Node 20.19 or later and Yarn 1.
+You need the .NET 10 SDK, Node 22.12 or later (CI uses Node 24) and Yarn 1.
 
 ```
 yarn install --frozen-lockfile
@@ -86,7 +99,7 @@ dotnet _output/net10.0/Readarr.dll -nobrowser -data=/tmp/readarr-dev
 
 Then open http://localhost:8787. Restore needs no private feeds; the packages that only existed on Servarr's feeds are vendored in [src/Libraries/nuget](src/Libraries/nuget/README.md). [CONTRIBUTING.md](CONTRIBUTING.md) has the test commands.
 
-ImageSharp stays on 3.1.12 for now. Once it moves to 4.x, a Release build needs `SIXLABORS_LICENSE_KEY` set to the full contents of a Six Labors licence file; CI reads it from the repository secret of that name.
+A Release build (including `docker build`) needs `SIXLABORS_LICENSE_KEY` set to the full contents of a Six Labors licence file, because ImageSharp 4 refuses to build in Release without one. Debug builds only warn. CI reads the key from the repository secret of that name. Pull requests from forks get no secrets, so their backend CI job fails at the licence check; the maintainer checks those builds.
 
 The [upstream wiki](https://wiki.servarr.com/readarr) still describes most settings correctly.
 

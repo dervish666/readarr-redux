@@ -4,7 +4,7 @@ Bug reports, fixes and pull requests are welcome. For questions and setup help, 
 
 ## Building and testing
 
-You need the .NET 10 SDK, Node 20.19 or later and Yarn 1.
+You need the .NET 10 SDK, Node 22.12 or later (CI uses Node 24) and Yarn 1. Debug builds need nothing else; a Release build also needs a Six Labors licence key (see the README).
 
 ```
 yarn install --frozen-lockfile
@@ -24,6 +24,15 @@ Always build the solution, not a single project. Warnings are errors, and StyleC
 - Start the commit subject with `New:` or `Fixed:` when users will notice the change.
 - Say in the PR if it adds a database migration. Migrations must work on SQLite and Postgres.
 - Add new UI strings to `src/NzbDrone.Core/Localization/Core/en.json` only. Weblate isn't connected to this fork, so the other languages stay as they were.
+
+## Releases (maintainer)
+
+1. Move the CHANGELOG's Unreleased section under a heading for the new version and merge that to `develop`.
+2. Tag the merge commit `vX.Y.Z` (a major version below 10) and push the tag. Use `vX.Y.Z-rc.N` for a pre-release.
+3. CI builds the tag as version `X.Y.Z.<run number>`, publishes `X.Y.Z`, `X.Y` and `latest` to GHCR and Docker Hub (a pre-release gets only its own tag), updates the Docker Hub description from `distribution/docker/README.md`, and opens a draft GitHub release with the Linux tarballs.
+4. Write the release notes from the CHANGELOG and publish the draft.
+
+Docker Hub publishing needs the `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` repository secrets (an access token with Read & Write scope). Without them CI publishes to GHCR only. The `DOCKERHUB_IMAGE` repository variable overrides the image name, `dervish666/readarr-redux` by default.
 
 ## Licence
 
