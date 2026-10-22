@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using Microsoft.AspNetCore.Http;
 using NLog;
 using NzbDrone.Core.Authentication;
@@ -96,24 +97,50 @@ namespace Readarr.Http.Authentication
             _authLogger.Info("Auth-Invalidated ip {0}", context.GetRemoteIP());
         }
 
+        // The username comes from the request. A line break in it could forge an Auth-Failure line for someone else's
+        // address and get them banned by fail2ban, so control characters are escaped.
+        private static string SafeForLog(string username)
+        {
+            if (username == null)
+            {
+                return null;
+            }
+
+            var builder = new StringBuilder(username.Length);
+
+            foreach (var c in username)
+            {
+                if (char.IsControl(c))
+                {
+                    builder.Append($"\\u{(int)c:x4}");
+                }
+                else
+                {
+                    builder.Append(c);
+                }
+            }
+
+            return builder.ToString();
+        }
+
         private void LogFailure(HttpRequest context, string username)
         {
-            _authLogger.Warn("Auth-Failure ip {0} username '{1}'", context.GetRemoteIP(), username);
+            _authLogger.Warn("Auth-Failure ip {0} username '{1}'", context.GetRemoteIP(), SafeForLog(username));
         }
 
         private void LogThrottled(HttpRequest context, string username, TimeSpan retryDelay)
         {
-            _authLogger.Warn("Auth-Throttled ip {0} username '{1}' retry in {2:0}s", context.GetRemoteIP(), username, Math.Ceiling(retryDelay.TotalSeconds));
+            _authLogger.Warn("Auth-Throttled ip {0} username '{1}' retry in {2:0}s", context.GetRemoteIP(), SafeForLog(username), Math.Ceiling(retryDelay.TotalSeconds));
         }
 
         private void LogSuccess(HttpRequest context, string username)
         {
-            _authLogger.Info("Auth-Success ip {0} username '{1}'", context.GetRemoteIP(), username);
+            _authLogger.Info("Auth-Success ip {0} username '{1}'", context.GetRemoteIP(), SafeForLog(username));
         }
 
         private void LogLogout(HttpRequest context, string username)
         {
-            _authLogger.Info("Auth-Logout ip {0} username '{1}'", context.GetRemoteIP(), username);
+            _authLogger.Info("Auth-Logout ip {0} username '{1}'", context.GetRemoteIP(), SafeForLog(username));
         }
     }
 }

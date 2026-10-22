@@ -52,7 +52,8 @@ function Link(props: LinkProps) {
   let el = component;
 
   if (to) {
-    if (/\w+?:\/\//.test(to)) {
+    // Anchored, so a javascript:// link from metadata never becomes an href
+    if (/^https?:\/\//i.test(to)) {
       el = 'a';
       linkProps.href = to;
       linkProps.target = target || '_blank';

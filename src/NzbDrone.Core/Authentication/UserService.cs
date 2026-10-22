@@ -23,8 +23,11 @@ namespace NzbDrone.Core.Authentication
     {
         // OWASP's current figure for PBKDF2-HMAC-SHA512 (Sonarr still uses 10,000)
         private const int ITERATIONS = 220000;
+
         private const int SALT_SIZE = 128 / 8;
         private const int NUMBER_OF_BYTES = 256 / 8;
+
+        private static readonly byte[] DummySalt = RandomNumberGenerator.GetBytes(SALT_SIZE);
 
         private readonly IUserRepository _repo;
         private readonly IAppFolderInfo _appFolderInfo;
@@ -130,6 +133,8 @@ namespace NzbDrone.Core.Authentication
 
                 if (user == null)
                 {
+                    // Spend the same time as a real check, so the response time doesn't tell a wrong username from a wrong password
+                    GetHashedPassword(password, DummySalt, ITERATIONS);
                     return null;
                 }
 
