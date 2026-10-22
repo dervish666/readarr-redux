@@ -164,6 +164,32 @@ namespace NzbDrone.Core.Test.MusicTests.BookRepositoryTests
             result.Should().BeEquivalentTo(_books.Skip(2).Take(1), BookComparerOptions);
         }
 
+        [Test]
+        public void get_last_books_should_return_the_latest_book_when_an_older_one_has_a_lower_id()
+        {
+            var older = new Book { Title = "Older", ForeignBookId = "10", TitleSlug = "10", CleanTitle = "older", AuthorMetadataId = _author.AuthorMetadataId, ReleaseDate = DateTime.UtcNow.AddYears(-2) };
+            var latest = new Book { Title = "Latest", ForeignBookId = "11", TitleSlug = "11", CleanTitle = "latest", AuthorMetadataId = _author.AuthorMetadataId, ReleaseDate = DateTime.UtcNow.AddDays(-1) };
+            _bookRepo.Insert(older);
+            _bookRepo.Insert(latest);
+
+            var result = _bookRepo.GetLastBooks(new[] { _author.AuthorMetadataId });
+
+            result.Should().ContainSingle().Which.Id.Should().Be(latest.Id);
+        }
+
+        [Test]
+        public void get_next_books_should_return_the_soonest_book_when_a_later_one_has_a_lower_id()
+        {
+            var later = new Book { Title = "Later", ForeignBookId = "10", TitleSlug = "10", CleanTitle = "later", AuthorMetadataId = _author.AuthorMetadataId, ReleaseDate = DateTime.UtcNow.AddYears(2) };
+            var soonest = new Book { Title = "Soonest", ForeignBookId = "11", TitleSlug = "11", CleanTitle = "soonest", AuthorMetadataId = _author.AuthorMetadataId, ReleaseDate = DateTime.UtcNow.AddDays(1) };
+            _bookRepo.Insert(later);
+            _bookRepo.Insert(soonest);
+
+            var result = _bookRepo.GetNextBooks(new[] { _author.AuthorMetadataId });
+
+            result.Should().ContainSingle().Which.Id.Should().Be(soonest.Id);
+        }
+
         private EquivalencyAssertionOptions<Book> BookComparerOptions(EquivalencyAssertionOptions<Book> opts) => opts.ComparingByMembers<Book>()
                 .Excluding(ctx => ctx.SelectedMemberInfo.MemberType.IsGenericType && ctx.SelectedMemberInfo.MemberType.GetGenericTypeDefinition() == typeof(LazyLoaded<>))
                 .Excluding(x => x.AuthorId)
