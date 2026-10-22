@@ -417,6 +417,11 @@ namespace NzbDrone.Core.Download.Clients.QBittorrent
 
                 return response.Content;
             }
+            catch (DownloadClientException)
+            {
+                // From the re-login: keep it an authentication or unavailable error, not a generic connection one
+                throw;
+            }
             catch (HttpException ex)
             {
                 throw new DownloadClientException("Failed to connect to qBittorrent, check your settings.", ex);
