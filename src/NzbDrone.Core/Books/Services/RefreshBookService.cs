@@ -113,6 +113,13 @@ namespace NzbDrone.Core.Books
 
             var book = remote.SingleOrDefault(x => x.ForeignBookId == local.ForeignBookId);
 
+            // Still in the author's works list but left out by the metadata profile or an import list exclusion: the
+            // user doesn't want it, so it goes the way of a book the source no longer has, with no lookup of its own
+            if (book == null && InWorksList(data, local))
+            {
+                return result;
+            }
+
             // Metadata sources can truncate an author's works list, so a book missing from it may still exist.
             // Look the book up itself: only a not-found from that lookup leaves the entity null for deletion,
             // and any other error propagates so the book is kept.
@@ -144,6 +151,19 @@ namespace NzbDrone.Core.Books
             }
 
             return result;
+        }
+
+        // The author's whole works list, before the metadata profile and exclusions filter it
+        private static IEnumerable<string> WorksListIds(Author data)
+        {
+            var books = data?.Books?.IsLoaded == true ? data.Books.Value : null;
+
+            return books?.Select(x => x.ForeignBookId) ?? Enumerable.Empty<string>();
+        }
+
+        private static bool InWorksList(Author data, Book local)
+        {
+            return WorksListIds(data).Contains(local.ForeignBookId);
         }
 
         // True to go ahead with deleting a book the metadata no longer has. The first time, the book is kept, and only
@@ -511,6 +531,7 @@ namespace NzbDrone.Core.Books
         {
             var updated = false;
             var remoteIds = remoteBooks.Select(x => x.ForeignBookId).ToHashSet();
+            remoteIds.UnionWith(WorksListIds(remoteData));
             var failedLookups = 0;
             var rejectedWorks = 0;
             var skippedLookups = 0;
