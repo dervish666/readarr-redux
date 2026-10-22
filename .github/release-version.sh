@@ -1,7 +1,13 @@
 #!/bin/sh
-# Prints READARRVERSION for a release tag build: v1.2.3 (or v1.2.3-rc.1) becomes 1.2.3.<run number>.
-# The app needs four numeric parts, Major below 10 and Revision at or below 10000 (see src/Directory.Build.props).
+# Prints READARRVERSION for CI: 0.5.0.<run number>, or for a release tag v1.2.3 (or v1.2.3-rc.1) 1.2.3.<run number>.
+# The app needs four numeric parts, Major below 10 and Revision at or below 10000 (RuntimeInfo treats anything
+# else as a development build), which the run number stays below for a long while.
 set -e
+
+case "$GITHUB_REF" in
+    refs/tags/v*) ;;
+    *) echo "READARRVERSION=0.5.0.$GITHUB_RUN_NUMBER"; exit 0 ;;
+esac
 
 tag="${GITHUB_REF_NAME#v}"
 version="${tag%%-*}"
