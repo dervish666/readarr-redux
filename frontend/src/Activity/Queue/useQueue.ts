@@ -187,9 +187,11 @@ export const useImportDestinations = (id: number) => {
   return useApiQuery<QueueImportDestination[]>({
     path: `/queue/${id}/destinations`,
     queryOptions: {
-      // Always read the disk afresh when the modal opens.
+      // Always read the disk afresh when the modal opens, but not again on every window focus: each read
+      // identifies the whole download, tags and all.
       gcTime: 0,
       staleTime: 0,
+      refetchOnWindowFocus: false,
     },
   });
 };

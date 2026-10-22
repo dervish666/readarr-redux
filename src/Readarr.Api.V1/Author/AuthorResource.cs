@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
-using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.MediaCover;
 using Readarr.Http.REST;
@@ -84,7 +83,7 @@ namespace Readarr.Api.V1.Author
                 Overview = model.Metadata.Value.Overview,
                 Disambiguation = model.Metadata.Value.Disambiguation,
 
-                Images = model.Metadata.Value.Images.JsonClone(),
+                Images = model.Metadata.Value.Images?.Select(x => x.Clone()).ToList(),
 
                 Path = model.Path,
                 QualityProfileId = model.QualityProfileId,

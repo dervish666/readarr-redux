@@ -278,6 +278,21 @@ export const FILTER_BUILDER: FilterBuilderProp<Author>[] = [
 
 const DEFAULT_AUTHORS: Author[] = [];
 
+// One map per list, shared by every component: each row that shows an author calls useAuthors, and building the
+// map per component on every author update stalls the page in a big library.
+const authorsMaps = new WeakMap<Author[], Map<number, Author>>();
+
+const getAuthorsMap = (authors: Author[]) => {
+  let map = authorsMaps.get(authors);
+
+  if (!map) {
+    map = new Map<number, Author>(authors.map((a) => [a.id, a]));
+    authorsMaps.set(authors, map);
+  }
+
+  return map;
+};
+
 const useAuthors = () => {
   const { data, ...result } = useApiQuery<Author[]>({
     path: '/author',
@@ -288,9 +303,9 @@ const useAuthors = () => {
     },
   });
 
-  const authorsMap = useMemo(() => {
-    return new Map<number, Author>((data ?? []).map((a) => [a.id, a]));
-  }, [data]);
+  const authorsMap = getAuthorsMap(
+    (data as Author[] | undefined) ?? DEFAULT_AUTHORS
+  );
 
   return {
     ...result,

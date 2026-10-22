@@ -120,10 +120,12 @@ namespace NzbDrone.Core.MediaCover
                         mediaCover.Url = _configFileProvider.UrlBase + @"/MediaCover/" + entityId + "/" + mediaCover.CoverType.ToString().ToLower() + GetExtension(mediaCover.CoverType, mediaCover.Extension);
                     }
 
-                    if (_diskProvider.FileExists(filePath))
+                    // One stat per cover: the book index runs this for every cover in the library
+                    var fileInfo = _diskProvider.GetFileInfo(filePath);
+
+                    if (fileInfo.Exists)
                     {
-                        var lastWrite = _diskProvider.FileGetLastWrite(filePath);
-                        mediaCover.Url += "?lastWrite=" + lastWrite.Ticks;
+                        mediaCover.Url += "?lastWrite=" + fileInfo.LastWriteTimeUtc.Ticks;
                     }
                 }
             }
