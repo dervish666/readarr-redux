@@ -46,16 +46,16 @@ namespace NzbDrone.Core.Books
             var now = DateTime.UtcNow;
 
             var inner = Builder()
-                .Select("MIN(\"Books\".\"Id\") as id, MAX(\"Books\".\"ReleaseDate\") as date")
+                .Select("\"Books\".\"AuthorMetadataId\" as authormetadataid, MAX(\"Books\".\"ReleaseDate\") as date")
                 .Where<Book>(x => authorMetadataIds.Contains(x.AuthorMetadataId) && x.ReleaseDate < now)
                 .GroupBy<Book>(x => x.AuthorMetadataId)
                 .AddSelectTemplate(typeof(Book));
 
             var outer = Builder()
-                .Join($"({inner.RawSql}) ids on ids.id = \"Books\".\"Id\" and ids.date = \"Books\".\"ReleaseDate\"")
+                .Join($"({inner.RawSql}) ids on ids.authormetadataid = \"Books\".\"AuthorMetadataId\" and ids.date = \"Books\".\"ReleaseDate\"")
                 .AddParameters(inner.Parameters);
 
-            return Query(outer);
+            return OnePerAuthor(Query(outer));
         }
 
         public List<Book> GetNextBooks(IEnumerable<int> authorMetadataIds)
@@ -63,16 +63,23 @@ namespace NzbDrone.Core.Books
             var now = DateTime.UtcNow;
 
             var inner = Builder()
-                .Select("MIN(\"Books\".\"Id\") as id, MIN(\"Books\".\"ReleaseDate\") as date")
+                .Select("\"Books\".\"AuthorMetadataId\" as authormetadataid, MIN(\"Books\".\"ReleaseDate\") as date")
                 .Where<Book>(x => authorMetadataIds.Contains(x.AuthorMetadataId) && x.ReleaseDate > now)
                 .GroupBy<Book>(x => x.AuthorMetadataId)
                 .AddSelectTemplate(typeof(Book));
 
             var outer = Builder()
-                .Join($"({inner.RawSql}) ids on ids.id = \"Books\".\"Id\" and ids.date = \"Books\".\"ReleaseDate\"")
+                .Join($"({inner.RawSql}) ids on ids.authormetadataid = \"Books\".\"AuthorMetadataId\" and ids.date = \"Books\".\"ReleaseDate\"")
                 .AddParameters(inner.Parameters);
 
-            return Query(outer);
+            return OnePerAuthor(Query(outer));
+        }
+
+        // Matching on the author and the date, not on MIN(Id), which was usually a different book from the one with that
+        // date and left the author's last or next book empty. Books released the same day both match, so keep one.
+        private static List<Book> OnePerAuthor(List<Book> books)
+        {
+            return books.GroupBy(x => x.AuthorMetadataId).Select(x => x.MinBy(b => b.Id)).ToList();
         }
 
         public List<Book> GetBooksByAuthorMetadataId(int authorMetadataId)

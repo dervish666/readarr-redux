@@ -77,7 +77,7 @@ namespace Readarr.Api.V1.Books
                 AuthorTitle = authorTitle,
                 SeriesTitle = seriesTitle,
                 Disambiguation = selectedEdition?.Disambiguation,
-                Images = selectedEdition?.Images.JsonClone() ?? new List<MediaCover>(),
+                Images = selectedEdition?.Images.Select(x => x.Clone()).ToList() ?? new List<MediaCover>(),
                 Links = model.Links.Concat(selectedEdition?.Links ?? new List<Links>()).ToList(),
                 Ratings = selectedEdition?.Ratings ?? new Ratings(),
                 Added = model.Added,

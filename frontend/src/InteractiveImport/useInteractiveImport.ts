@@ -52,6 +52,8 @@ const useInteractiveImport = (params: InteractiveImportParams) => {
         // Dropped when the modal closes, so a reopen scans the folder again.
         gcTime: 0,
         refetchOnWindowFocus: false,
+        // A refetch rescans the folder and throws away the author, book and quality picks made in the modal
+        refetchOnReconnect: false,
         retry: false,
         enabled: !!(params.folder || params.downloadId),
       },

@@ -27,10 +27,25 @@ namespace NzbDrone.Core.Test.MediaCoverTests
         private Edition _edition;
         private HttpResponse _httpResponse;
 
+        private void GivenCoverFileWrittenAt(DateTime lastWrite)
+        {
+            var fileInfo = new Mock<IFileInfo>();
+            fileInfo.SetupGet(f => f.Exists).Returns(true);
+            fileInfo.SetupGet(f => f.LastWriteTimeUtc).Returns(lastWrite);
+
+            Mocker.GetMock<IDiskProvider>().Setup(c => c.GetFileInfo(It.IsAny<string>()))
+                  .Returns(fileInfo.Object);
+        }
+
         [SetUp]
         public void Setup()
         {
             Mocker.SetConstant<IAppFolderInfo>(new AppFolderInfo(Mocker.Resolve<IStartupContext>()));
+
+            // No cover on disk unless a test says otherwise
+            var missing = new Mock<IFileInfo>();
+            missing.SetupGet(f => f.Exists).Returns(false);
+            Mocker.GetMock<IDiskProvider>().Setup(c => c.GetFileInfo(It.IsAny<string>())).Returns(missing.Object);
 
             _author = Builder<Author>.CreateNew()
                 .With(v => v.Id = 2)
@@ -159,11 +174,7 @@ namespace NzbDrone.Core.Test.MediaCoverTests
                     }
                 };
 
-            Mocker.GetMock<IDiskProvider>().Setup(c => c.FileGetLastWrite(It.IsAny<string>()))
-                  .Returns(new DateTime(1234));
-
-            Mocker.GetMock<IDiskProvider>().Setup(c => c.FileExists(It.IsAny<string>()))
-                  .Returns(true);
+            GivenCoverFileWrittenAt(new DateTime(1234));
 
             Subject.ConvertToLocalUrls(12, MediaCoverEntity.Author, covers);
 
@@ -183,11 +194,7 @@ namespace NzbDrone.Core.Test.MediaCoverTests
                     }
                 };
 
-            Mocker.GetMock<IDiskProvider>().Setup(c => c.FileGetLastWrite(It.IsAny<string>()))
-                  .Returns(new DateTime(1234));
-
-            Mocker.GetMock<IDiskProvider>().Setup(c => c.FileExists(It.IsAny<string>()))
-                  .Returns(true);
+            GivenCoverFileWrittenAt(new DateTime(1234));
 
             Subject.ConvertToLocalUrls(12, MediaCoverEntity.Author, covers);
 
@@ -207,11 +214,7 @@ namespace NzbDrone.Core.Test.MediaCoverTests
                     }
                 };
 
-            Mocker.GetMock<IDiskProvider>().Setup(c => c.FileGetLastWrite(It.IsAny<string>()))
-                  .Returns(new DateTime(1234));
-
-            Mocker.GetMock<IDiskProvider>().Setup(c => c.FileExists(It.IsAny<string>()))
-                  .Returns(true);
+            GivenCoverFileWrittenAt(new DateTime(1234));
 
             Subject.ConvertToLocalUrls(6, MediaCoverEntity.Book, covers);
 

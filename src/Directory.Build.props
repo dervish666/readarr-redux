@@ -107,34 +107,13 @@
   </PropertyGroup>
 
   <!--
-    SixLabors.ImageSharp 3.1.12 advisories fixed only in 4.1.2. ImageSharp 4 refuses to build in Release
-    without a Six Labors license key (free community keys are issued on application at
-    licensing.sixlabors.com), so the move waits for one. Readarr's one use is ImageResizer: load a cover,
-    Resize, save as JPEG/PNG/GIF/WebP/BMP. None of these paths reach it:
-    - GHSA-wmxv-xphr-5c9g (BigTIFF decode loop), GHSA-j9gm-c75j-xc9q (CCITT T4 encoder) and
-      GHSA-jjfr-hcj7-qf5w (CCITT T6 encoder): ImageResizer builds its own Configuration with no TIFF
-      codec, so a TIFF cover or a .tif destination is refused (ImageResizerFixture covers both).
-    - GHSA-j3p4-wp97-rph4: needs HistogramEqualization() on a float TIFF; Readarr never calls it.
-    - GHSA-gwg2-r3hj-4w44: on 3.x the ICC CLUT parser only runs from IccProfile.Entries, which Readarr
-      never reads; decoded profiles are only byte-copied on clone and encode.
-    Remove these with the move to ImageSharp 4.1.2 or later.
-  -->
-  <!--
     The Six Labors licence key for ImageSharp 4, read from the SIXLABORS_LICENSE_KEY environment variable: the
     whole contents of the issued sixlabors.lic, never committed. CI sets it from the repository secret of the
-    same name. ImageSharp 3.1.12 ignores it.
+    same name. A Release build fails without it; a Debug build only warns.
   -->
   <PropertyGroup Condition="'$(SixLaborsLicenseKey)' == '' and '$(SIXLABORS_LICENSE_KEY)' != ''">
     <SixLaborsLicenseKey>$(SIXLABORS_LICENSE_KEY)</SixLaborsLicenseKey>
   </PropertyGroup>
-
-  <ItemGroup>
-    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-wmxv-xphr-5c9g" />
-    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-j9gm-c75j-xc9q" />
-    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-jjfr-hcj7-qf5w" />
-    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-j3p4-wp97-rph4" />
-    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-gwg2-r3hj-4w44" />
-  </ItemGroup>
 
   <!-- Sentry specific configuration: Only in Release mode -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">

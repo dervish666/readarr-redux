@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import useApiMutation from 'Helpers/Hooks/useApiMutation';
 import useApiQuery from 'Helpers/Hooks/useApiQuery';
 import apiRequest from 'Utilities/Fetch/apiRequest';
@@ -40,6 +40,20 @@ const isEnabled = (params?: BookFilter) => {
   return !!params.titleSlug;
 };
 
+// One map per list, shared by every component using it (see useAuthors)
+const booksMaps = new WeakMap<Book[], Map<number, Book>>();
+
+const getBooksMap = (books: Book[]) => {
+  let map = booksMaps.get(books);
+
+  if (!map) {
+    map = new Map<number, Book>(books.map((book) => [book.id, book]));
+    booksMaps.set(books, map);
+  }
+
+  return map;
+};
+
 // No params: every book (GET /book), for the book index and bookshelf.
 const useBooks = (params?: BookFilter, enabled = true) => {
   const { data, ...result } = useApiQuery<Book[]>({
@@ -47,12 +61,15 @@ const useBooks = (params?: BookFilter, enabled = true) => {
     queryParams: params ? { ...params } : undefined,
     queryOptions: {
       enabled: enabled && isEnabled(params),
+      // SignalR keeps the cached books current, and refetches everything after a reconnect, so don't
+      // re-read every book in the library on each window focus or remount.
+      staleTime: 5 * 60 * 1000,
+      // Keep the whole-library list for good; per-author lists use the default so they don't pile up.
+      ...(params ? {} : { gcTime: Infinity }),
     },
   });
 
-  const booksMap = useMemo(() => {
-    return new Map<number, Book>((data ?? []).map((book) => [book.id, book]));
-  }, [data]);
+  const booksMap = getBooksMap((data as Book[] | undefined) ?? DEFAULT_BOOKS);
 
   return {
     ...result,

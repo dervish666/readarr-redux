@@ -206,6 +206,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 }
             }
 
+            // An ebook needs only one of a release's formats, so an imported ebook file completes its book
+            var importedEbooks = new HashSet<string>();
+
             var importedPaths = new HashSet<string>(PathEqualityComparer.Instance);
             var downloadedFiles = new List<(LocalBook Track, BookFile File)>();
 
@@ -351,6 +354,11 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                     // inserted and ids created
                     trackImportedEvents.Add(new TrackImportedEvent(localTrack, bookFile, oldFiles, !localTrack.ExistingFile, downloadClientItem));
                     imported = true;
+
+                    if (!ImportResultExtensions.IsAudio(localTrack.Path))
+                    {
+                        importedEbooks.Add(localTrack.Book.ForeignBookId);
+                    }
                 }
                 catch (RootFolderNotFoundException e)
                 {
@@ -424,10 +432,24 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             // Only drop the files an upgrade replaced once every part of the new release is in place
             foreach (var bookSetAsideFiles in setAsideFiles)
             {
-                if (incompleteBooks.Contains(bookSetAsideFiles.Key))
+                if (incompleteBooks.Contains(bookSetAsideFiles.Key) && !importedEbooks.Contains(bookSetAsideFiles.Key))
                 {
                     // Put back what fits; a new part sitting on an old path keeps that old file set aside
                     var kept = _bookFileUpgrader.RestoreSetAsideFiles(bookSetAsideFiles.Value);
+
+                    // The files back on disk are still in the library, so their rows return and the import events
+                    // don't report them as deleted
+                    var restored = bookSetAsideFiles.Value.Except(kept).Select(x => x.OriginalPath).ToHashSet(PathEqualityComparer.Instance);
+                    var restoredRows = moveResults.SelectMany(x => x.OldFiles).Where(x => restored.Contains(x.Path)).ToList();
+
+                    _bookFileUpgrader.RestoreRows(restoredRows);
+
+                    allOldTrackFiles.RemoveAll(x => restored.Contains(x.Path));
+
+                    foreach (var trackImportedEvent in trackImportedEvents)
+                    {
+                        trackImportedEvent.OldFiles.RemoveAll(x => restored.Contains(x.Path));
+                    }
 
                     _logger.Warn("Not every file for {0} imported, so the {1} files it was replacing were kept: {2} put back, {3} left in {4}",
                         qualifiedImports.First(x => x.Item.Book.ForeignBookId == bookSetAsideFiles.Key).Item.Book,

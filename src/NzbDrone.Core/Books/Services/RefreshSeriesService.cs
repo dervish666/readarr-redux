@@ -38,8 +38,18 @@ namespace NzbDrone.Core.Books
         {
             return new RemoteData
             {
-                Entity = remote.SingleOrDefault(x => x.ForeignSeriesId == local.ForeignSeriesId)
+                Entity = remote.SingleOrDefault(x => x.ForeignSeriesId == local.ForeignSeriesId),
+
+                // A series the user started is never in the metadata source; editing the book's metadata removes it once empty
+                Keep = local.ForeignSeriesId?.StartsWith(MetadataOverrideService.LocalSeriesPrefix, StringComparison.Ordinal) == true
             };
+        }
+
+        // A series drops out of the refresh whenever none of its books are in the library, or the user took them all out
+        // of it. That is routine, and DeleteEntity keeps the series while links the user added remain.
+        protected override void LogDeleting(Series local)
+        {
+            _logger.Debug($"Series {local} has none of the author's books in the metadata source, removing its links");
         }
 
         protected override bool IsMerge(Series local, Series remote)

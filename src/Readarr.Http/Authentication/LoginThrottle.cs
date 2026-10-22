@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Net.Sockets;
 
 namespace Readarr.Http.Authentication
 {
@@ -206,11 +208,24 @@ namespace Readarr.Http.Authentication
 
         private static string GetKey(string clientAddress, string username)
         {
-            return $"{clientAddress}|{username?.ToLowerInvariant()}";
+            return $"{GetSourceKey(clientAddress)}|{username?.ToLowerInvariant()}";
         }
 
+        // One IPv6 client usually holds a whole /64, so count it as one source; otherwise rotating through its
+        // addresses would give it unthrottled guesses and fill the map
         private static string GetSourceKey(string clientAddress)
         {
+            if (clientAddress != null &&
+                IPAddress.TryParse(clientAddress, out var address) &&
+                address.AddressFamily == AddressFamily.InterNetworkV6 &&
+                !address.IsIPv4MappedToIPv6)
+            {
+                var bytes = address.GetAddressBytes();
+                Array.Clear(bytes, 8, 8);
+
+                return new IPAddress(bytes) + "/64";
+            }
+
             return clientAddress ?? string.Empty;
         }
 
@@ -219,16 +234,18 @@ namespace Readarr.Http.Authentication
             return map.TryGetValue(key, out var attempts) ? attempts : null;
         }
 
-        // Keeps the map bounded without forgetting anything that matters. Only entries with no
-        // check in flight and no active ban can go, oldest first; if none can, the new key is refused.
+        // Keeps the map bounded. Entries with no check in flight and no active ban go first, oldest first. If that isn't
+        // enough, the oldest bans go too: refusing new keys instead would let anyone holding enough addresses lock every
+        // other client out of logging in.
         private static bool TryAdd(Dictionary<string, Attempts> map, string key, int freeAttempts, DateTime now, out Attempts attempts)
         {
             if (map.Count >= MaxEntries)
             {
                 var excess = map.Count - (MaxEntries * 9 / 10);
 
-                var victims = map.Where(e => e.Value.InFlight == 0 && !IsBanned(e.Value, freeAttempts, now))
-                                 .OrderBy(e => e.Value.LastFailure)
+                var victims = map.Where(e => e.Value.InFlight == 0)
+                                 .OrderBy(e => IsBanned(e.Value, freeAttempts, now))
+                                 .ThenBy(e => e.Value.LastFailure)
                                  .Take(excess)
                                  .Select(e => e.Key)
                                  .ToList();

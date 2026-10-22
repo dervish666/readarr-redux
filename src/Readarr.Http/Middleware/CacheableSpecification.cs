@@ -19,6 +19,18 @@ namespace Readarr.Http.Middleware
                 return false;
             }
 
+            var path = request.Path.Value ?? "";
+
+            // Backups, logs and initialize.json (which carries the API key) are never cacheable, even with a hash query
+            if (path.StartsWith("/backup", StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith("/logfile", StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith("/updatelogfile", StringComparison.OrdinalIgnoreCase) ||
+                path.EndsWith("/initialize.json", StringComparison.OrdinalIgnoreCase) ||
+                path.EndsWith("/initialize.js", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
             if (request.Query.ContainsKey("h"))
             {
                 return true;
@@ -39,26 +51,12 @@ namespace Readarr.Http.Middleware
                 return false;
             }
 
-            var path = request.Path.Value ?? "";
-
             if (path.EndsWith("/index.js"))
             {
                 return false;
             }
 
-            if (path.EndsWith("/initialize.json"))
-            {
-                return false;
-            }
-
             if (path.StartsWith("/feed", StringComparison.CurrentCultureIgnoreCase))
-            {
-                return false;
-            }
-
-            if ((path.StartsWith("/logfile", StringComparison.CurrentCultureIgnoreCase) ||
-                path.StartsWith("/updatelogfile", StringComparison.CurrentCultureIgnoreCase)) &&
-                path.EndsWith(".txt", StringComparison.CurrentCultureIgnoreCase))
             {
                 return false;
             }

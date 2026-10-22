@@ -72,6 +72,11 @@ namespace NzbDrone.Core.Books
             return true;
         }
 
+        protected virtual void LogDeleting(TEntity local)
+        {
+            _logger.Warn($"{typeof(TEntity).Name} {local} not found in metadata and is being deleted");
+        }
+
         protected abstract UpdateResult UpdateEntity(TEntity local, TEntity remote);
 
         protected virtual UpdateResult MoveEntity(TEntity local, TEntity remote)
@@ -133,7 +138,7 @@ namespace NzbDrone.Core.Books
 
                 if (ShouldDelete(local))
                 {
-                    _logger.Warn($"{typeof(TEntity).Name} {local} not found in metadata and is being deleted");
+                    LogDeleting(local);
                     DeleteEntity(local, false);
                     return false;
                 }

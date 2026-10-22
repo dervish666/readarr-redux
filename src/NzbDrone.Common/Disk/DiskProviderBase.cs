@@ -554,7 +554,10 @@ namespace NzbDrone.Common.Disk
                 return;
             }
 
-            foreach (var file in GetFiles(path, false))
+            // Hidden files too: DeleteFolder's check counts them, and would otherwise wait out its retries on a .DS_Store
+            var options = new EnumerationOptions { IgnoreInaccessible = true, AttributesToSkip = 0 };
+
+            foreach (var file in _fileSystem.Directory.EnumerateFiles(path, "*", options).ToList())
             {
                 DeleteFile(file);
             }

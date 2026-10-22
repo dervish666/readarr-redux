@@ -189,13 +189,13 @@ namespace Readarr.Api.V1.Author
 
         private void LinkNextPreviousBooks(params AuthorResource[] authors)
         {
-            var nextBooks = _bookService.GetNextBooksByAuthorMetadataId(authors.Select(x => x.AuthorMetadataId));
-            var lastBooks = _bookService.GetLastBooksByAuthorMetadataId(authors.Select(x => x.AuthorMetadataId));
+            var nextBooks = _bookService.GetNextBooksByAuthorMetadataId(authors.Select(x => x.AuthorMetadataId)).ToDictionary(x => x.AuthorMetadataId);
+            var lastBooks = _bookService.GetLastBooksByAuthorMetadataId(authors.Select(x => x.AuthorMetadataId)).ToDictionary(x => x.AuthorMetadataId);
 
             foreach (var authorResource in authors)
             {
-                authorResource.NextBook = nextBooks.FirstOrDefault(x => x.AuthorMetadataId == authorResource.AuthorMetadataId);
-                authorResource.LastBook = lastBooks.FirstOrDefault(x => x.AuthorMetadataId == authorResource.AuthorMetadataId);
+                authorResource.NextBook = nextBooks.GetValueOrDefault(authorResource.AuthorMetadataId);
+                authorResource.LastBook = lastBooks.GetValueOrDefault(authorResource.AuthorMetadataId);
             }
         }
 

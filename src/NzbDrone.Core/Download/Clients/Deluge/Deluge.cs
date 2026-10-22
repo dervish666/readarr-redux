@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -19,7 +20,10 @@ namespace NzbDrone.Core.Download.Clients.Deluge
     public class Deluge : TorrentClientBase<DelugeSettings>
     {
         private readonly IDelugeProxy _proxy;
-        private bool _hasAttemptedReconnecting;
+
+        // Download clients are built afresh for every poll, so the per-client flag has to outlive the instance, or
+        // every poll would disconnect Deluge's Web UI from its daemon again
+        private static readonly ConcurrentDictionary<int, bool> AttemptedReconnecting = new ConcurrentDictionary<int, bool>();
 
         public Deluge(IDelugeProxy proxy,
                       ITorrentFileInfoReader torrentFileInfoReader,
@@ -195,19 +199,19 @@ namespace NzbDrone.Core.Download.Clients.Deluge
 
             if (ignoredCount > 0)
             {
-                if (_hasAttemptedReconnecting)
+                if (AttemptedReconnecting.TryGetValue(Definition.Id, out var attempted) && attempted)
                 {
                     _logger.Warn("{0} torrent(s) were ignored because they did not have a hash or title. Deluge may have disconnected from its daemon. If you continue to see this error, check Deluge for invalid torrents.", ignoredCount);
                 }
                 else
                 {
                     _proxy.ReconnectToDaemon(Settings);
-                    _hasAttemptedReconnecting = true;
+                    AttemptedReconnecting[Definition.Id] = true;
                 }
             }
             else
             {
-                _hasAttemptedReconnecting = false;
+                AttemptedReconnecting.TryRemove(Definition.Id, out _);
             }
 
             return items;

@@ -115,16 +115,30 @@ namespace NzbDrone.Api.Test.Authentication
         }
 
         [Test]
-        public void full_map_of_active_bans_should_refuse_new_keys_and_keep_the_bans()
+        public void full_map_of_active_bans_should_drop_the_oldest_bans_rather_than_lock_everyone_out()
         {
             for (var i = 0; i < LoginThrottle.MaxEntries; i++)
             {
+                _subject.Now += TimeSpan.FromMilliseconds(50);
                 Fail(LoginThrottle.FreeAttempts, $"198.51.{i / 250}.{i % 250}", "user" + i);
             }
 
-            _subject.TryBeginAttempt("192.0.2.1", "newcomer", out _).Should().BeFalse();
+            _subject.TryBeginAttempt("192.0.2.1", "newcomer", out _).Should().BeTrue();
 
-            _subject.GetRetryDelay("198.51.0.0", "user0").Should().BeGreaterThan(TimeSpan.Zero);
+            var newest = LoginThrottle.MaxEntries - 1;
+            _subject.GetRetryDelay($"198.51.{newest / 250}.{newest % 250}", "user" + newest).Should().BeGreaterThan(TimeSpan.Zero);
+        }
+
+        [Test]
+        public void addresses_in_one_ipv6_64_should_share_a_throttle()
+        {
+            for (var i = 0; i < LoginThrottle.FreeAttempts; i++)
+            {
+                Fail(1, $"2001:db8:1:2::{i + 1:x}");
+            }
+
+            Admitted("2001:db8:1:2:ffff::1").Should().BeFalse();
+            Admitted("2001:db8:1:3::1").Should().BeTrue();
         }
 
         [Test]

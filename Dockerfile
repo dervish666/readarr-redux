@@ -9,7 +9,7 @@
 # The build stages run on the build host's architecture and cross-publish for the target one, so an arm64 image
 # never runs Node or the .NET SDK under emulation.
 
-FROM --platform=$BUILDPLATFORM node:20-bookworm-slim AS frontend
+FROM --platform=$BUILDPLATFORM node:24-trixie-slim AS frontend
 WORKDIR /src
 COPY package.json yarn.lock .yarnrc tsconfig.json ./
 RUN yarn install --frozen-lockfile --network-timeout 120000
@@ -17,7 +17,7 @@ COPY vite.config.mts index.html ./
 COPY frontend ./frontend
 RUN yarn build
 
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0.401-noble AS backend
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0.402-noble AS backend
 ARG TARGETARCH
 # Read by src/Directory.Build.props. Keep Major below 10 and Revision at or below 10000, or the app runs in development mode.
 ARG READARRVERSION=0.5.0.0
@@ -27,7 +27,7 @@ COPY . .
 COPY --from=frontend /src/_output/UI /ui
 # Updates come from new images, so the in-app updater (Readarr.Update) is not shipped.
 # The Six Labors licence key comes in as a build secret (docker build --secret id=SIXLABORS_LICENSE_KEY,env=SIXLABORS_LICENSE_KEY),
-# so it stays out of the image and its history. Without one the build still works while ImageSharp is on 3.x.
+# so it stays out of the image and its history. ImageSharp 4 refuses a Release build without one.
 RUN --mount=type=secret,id=SIXLABORS_LICENSE_KEY,env=SIXLABORS_LICENSE_KEY \
     case "$TARGETARCH" in \
         amd64) rid=linux-x64 ;; \
@@ -40,7 +40,7 @@ RUN --mount=type=secret,id=SIXLABORS_LICENSE_KEY,env=SIXLABORS_LICENSE_KEY \
     && mv "_artifacts/$rid/net10.0/Readarr" /readarr \
     && rm -rf /readarr/Readarr.Update
 
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 ARG READARRVERSION=0.5.0.0
 ARG SOURCE_URL=""
 
@@ -48,7 +48,7 @@ ARG SOURCE_URL=""
 # System.Data.SQLite package ships no Linux library.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        ca-certificates libc6 libgcc-s1 libgssapi-krb5-2 libicu72 libsqlite3-0 libssl3 libstdc++6 tzdata zlib1g \
+        ca-certificates libc6 libgcc-s1 libgssapi-krb5-2 libicu76 libsqlite3-0 libssl3t64 libstdc++6 tzdata zlib1g \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=backend /readarr /app/bin
@@ -59,7 +59,9 @@ RUN printf 'PackageVersion=%s\nPackageAuthor=%s\nUpdateMethod=Docker\nBranch=dev
         "$READARRVERSION" "${SOURCE_URL:+[$SOURCE_URL]($SOURCE_URL)}" > /app/package_info \
     && chmod 0755 /usr/local/bin/readarr-entrypoint
 
-LABEL org.opencontainers.image.title="Readarr" \
+LABEL org.opencontainers.image.title="Readarr Redux" \
+      org.opencontainers.image.description="Ebook and audiobook manager for Usenet and BitTorrent users, an unofficial continuation of Readarr" \
+      org.opencontainers.image.url="https://github.com/dervish666/readarr-redux" \
       org.opencontainers.image.version="$READARRVERSION" \
       org.opencontainers.image.source="$SOURCE_URL" \
       org.opencontainers.image.licenses="GPL-3.0"

@@ -6,6 +6,31 @@ Versions are `0.5.0.<CI run number>`. Only pushes to `develop` publish an image,
 
 ## Unreleased
 
+Release readiness: a bug, security and dependency pass before the first Docker Hub and Unraid release.
+
+- Fixed: Authors and books deleted without their files came back on the next scheduled Rescan Folders, monitored. Rescan Folders skips unchanged unmapped files again; an author's Refresh & Scan is what matches them again.
+- Fixed: When part of a multi-part upgrade failed to import, the old files that went back in place were left out of the library, and the import told Connect scripts and webhooks they had been deleted.
+- Fixed: Upgrading an ebook from a release with several formats (epub and azw3, say) counted the book as incomplete, so the old file was kept and could be left in a hidden `.readarr-upgrade` folder.
+- Fixed: Tightening a metadata profile no longer removed the books it now leaves out, and each of them cost a metadata lookup on every refresh. They go the way of a book the source no longer has again: removed after a refresh 12 hours later, never with files or when edited by hand.
+- Fixed: An author's "last book" was usually empty, and the next book could be wrong, because the query paired the lowest book id with the latest date.
+- Fixed: Refresh logged a series you started by hand, or one whose books you all took out, as "not found in metadata and is being deleted". Series you started are left alone by refresh.
+- Fixed: Deleting a folder holding a hidden file such as `.DS_Store` waited 9 seconds per folder.
+- Fixed: Deluge's Web UI was disconnected from its daemon on every queue poll while it listed a torrent with no name.
+- Fixed: A wrong qBittorrent password found while logging in again was reported as a connection error.
+- Fixed: Losing the connection to Readarr briefly re-ran open interactive searches on every indexer and threw away the picks made in an open Manual Import.
+- Fixed: The root folder health check linked to a page that doesn't exist, and a bad log file address showed an empty page.
+- Security: The UI now uses react-router 7.18.4. The 7.18.2 bump never took effect, because react-router-dom kept its own 7.15.1 copy. lodash and @babel/runtime are on patched versions too.
+- Security: .NET 10.0.13 runtime (October 2026 security release). ImageSharp 4.1.3, which fixes the five advisories 3.1.12 carried.
+- Security: The container log (`docker logs`, the Unraid log viewer) has secrets such as API keys removed, as the log files already did.
+- Security: Login throttling counts an IPv6 client by its /64, and a throttle table full of bans drops the oldest instead of refusing every new client.
+- Security: A wrong username takes as long to reject as a wrong password, so login timing no longer reveals the username. Control characters in a username are escaped in the auth log, so they can't forge lines for fail2ban.
+- Security: A malformed Basic auth header gets a 401 instead of a 500 with a stack trace.
+- Security: Backups, log files and `initialize.json` are never sent as cacheable, even with a `?h=` query.
+- Security: External links only open http and https addresses.
+- Performance: The book list is no longer fetched again on every window focus, every cover costs one disk check instead of three, and the author and book lists build their lookup maps once instead of once per row.
+- Docker: Images are also published to Docker Hub as `dervish666/readarr-redux`. `latest` now means the newest release tag; follow `develop` for every merge. The runtime image is Debian 13 (trixie), and the frontend builds on Node 24.
+- Unraid: A Community Applications template, `distribution/unraid/readarr-redux.xml`.
+
 The last redux state (app state, sidebar messages, UI settings, system status, the captcha and OAuth inputs) moved to zustand and react-query, and the router moved to React Router 7 (frontend migration stage 4). Nothing should look or work differently, and no saved setting resets.
 
 - Changed: A page address with extra parts after a real page, such as `/calendar/foo`, now shows Not Found instead of the page it starts with.

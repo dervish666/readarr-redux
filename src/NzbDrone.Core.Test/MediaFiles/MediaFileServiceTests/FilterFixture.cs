@@ -195,7 +195,6 @@ namespace NzbDrone.Core.Test.MediaFiles.MediaFileServiceTests
             Subject.FilterUnchangedFiles(files, filter).Select(x => x.FullName).Should().NotContain("C:\\file2.avi".AsOsAgnostic());
         }
 
-        [TestCase(FilterFilesType.Known)]
         [TestCase(FilterFilesType.Matched)]
         public void filter_unmatched_should_return_existing_file_if_unmatched(FilterFilesType filter)
         {
@@ -220,6 +219,31 @@ namespace NzbDrone.Core.Test.MediaFiles.MediaFileServiceTests
 
             Subject.FilterUnchangedFiles(files, filter).Should().HaveCount(3);
             Subject.FilterUnchangedFiles(files, filter).Select(x => x.FullName).Should().Contain("C:\\file2.avi".AsOsAgnostic());
+        }
+
+        // The Known filter runs with Add New Authors on, so retrying an unmapped file would bring back a deleted author
+        [Test]
+        public void filter_known_should_not_return_unchanged_unmapped_file()
+        {
+            FileSystem.AddFile("C:\\file1.avi".AsOsAgnostic(), new MockFileData("".PadRight(10)) { LastWriteTime = _lastWrite });
+            FileSystem.AddFile("C:\\file2.avi".AsOsAgnostic(), new MockFileData("".PadRight(10)) { LastWriteTime = _lastWrite });
+
+            var files = FileSystem.AllFiles.Select(x => DiskProvider.GetFileInfo(x)).ToList();
+
+            Mocker.GetMock<IMediaFileRepository>()
+                .Setup(c => c.GetFileWithPath(It.IsAny<List<string>>()))
+                .Returns(new List<BookFile>
+                {
+                    new BookFile
+                    {
+                        Path = "C:\\file2.avi".AsOsAgnostic(),
+                        Size = 10,
+                        Modified = _lastWrite,
+                        Edition = new LazyLoaded<Edition>(null)
+                    }
+                });
+
+            Subject.FilterUnchangedFiles(files, FilterFilesType.Known).Select(x => x.FullName).Should().NotContain("C:\\file2.avi".AsOsAgnostic());
         }
 
         [TestCase(FilterFilesType.Known)]

@@ -82,6 +82,14 @@ const QUERY_KEYS_BY_MESSAGE: Record<string, string[]> = {
   tag: ['/tag', '/tag/detail'],
 };
 
+const NOT_REFETCHED_ON_RECONNECT = new Set([
+  '/release',
+  '/manualimport',
+  '/search',
+  '/rename',
+  '/retag',
+]);
+
 function invalidateQueries(queryClient: QueryClient, name: string) {
   const keys = QUERY_KEYS_BY_MESSAGE[name];
 
@@ -135,8 +143,12 @@ function SignalRListener() {
     // are in sync after reconnecting.
     repopulatePage();
 
-    // Anything react-query holds may have changed while the socket was down.
-    queryClient.invalidateQueries();
+    // Anything react-query holds may have changed while the socket was down. Searches and previews are left
+    // alone: refetching would re-run every indexer search and rescan a Manual Import folder, losing the user's picks.
+    queryClient.invalidateQueries({
+      predicate: (query) =>
+        !NOT_REFETCHED_ON_RECONNECT.has(String(query.queryKey[0])),
+    });
   });
 
   const handleClose = useRef(() => {

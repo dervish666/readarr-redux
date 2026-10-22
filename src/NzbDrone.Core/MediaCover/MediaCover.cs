@@ -55,5 +55,11 @@ namespace NzbDrone.Core.MediaCover
             CoverType = coverType;
             Url = url;
         }
+
+        // Every member is a string or an enum, so a shallow copy is a full one
+        public MediaCover Clone()
+        {
+            return (MediaCover)MemberwiseClone();
+        }
     }
 }
