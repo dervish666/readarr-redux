@@ -32,10 +32,10 @@ docker run -d --name readarr \
   -v /path/to/config:/config \
   -v /path/to/books:/books \
   -v /path/to/downloads:/downloads \
-  dervish666/readarr-redux:latest
+  dervish/readarr-redux:latest
 ```
 
-The same images are on Docker Hub (`dervish666/readarr-redux`) and GHCR (`ghcr.io/dervish666/readarr`), for linux/amd64 and linux/arm64.
+The same images are on Docker Hub (`dervish/readarr-redux`) and GHCR (`ghcr.io/dervish666/readarr`), for linux/amd64 and linux/arm64.
 
 The image is a drop-in for the linuxserver.io one: `config.xml` and `readarr.db` sit at the root of `/config`, the app listens on 8787, and `PUID`, `PGID` and `UMASK` work the same way. The in-app updater is off; update by pulling a newer image.
 
@@ -48,7 +48,7 @@ The image is a drop-in for the linuxserver.io one: `config.xml` and `readarr.db`
 
 ### Unraid
 
-Search Community Applications for **readarr-redux**. The template is [distribution/unraid/readarr-redux.xml](distribution/unraid/readarr-redux.xml): set the Books and Downloads paths to the same paths your download client's container uses, and leave PUID 99 and PGID 100 unless you know you need otherwise. To move over from the linuxserver or hotio Readarr container, stop it and copy its appdata folder to `/mnt/user/appdata/readarr-redux` first, so the old container keeps an untouched copy.
+Search Community Applications for **Readarr Redux**. The template lives in [dervish666/unraid-templates](https://github.com/dervish666/unraid-templates). Set the Books and Downloads paths to the same paths your download client's container uses, and leave PUID 99 and PGID 100 unless you know you need otherwise. To move over from the linuxserver or hotio Readarr container, stop it and copy its appdata folder to `/mnt/user/appdata/readarr-redux` first, so the old container keeps an untouched copy.
 
 ## Moving from upstream Readarr
 

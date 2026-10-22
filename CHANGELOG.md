@@ -28,8 +28,8 @@ Release readiness: a bug, security and dependency pass before the first Docker H
 - Security: Backups, log files and `initialize.json` are never sent as cacheable, even with a `?h=` query.
 - Security: External links only open http and https addresses.
 - Performance: The book list is no longer fetched again on every window focus, every cover costs one disk check instead of three, and the author and book lists build their lookup maps once instead of once per row.
-- Docker: Images are also published to Docker Hub as `dervish666/readarr-redux`. `latest` now means the newest release tag; follow `develop` for every merge. The runtime image is Debian 13 (trixie), and the frontend builds on Node 24.
-- Unraid: A Community Applications template, `distribution/unraid/readarr-redux.xml`.
+- Docker: Images are also published to Docker Hub as `dervish/readarr-redux`. `latest` now means the newest release tag; follow `develop` for every merge. The runtime image is Debian 13 (trixie), and the frontend builds on Node 24.
+- Unraid: A Community Applications template, published from [dervish666/unraid-templates](https://github.com/dervish666/unraid-templates).
 
 The last redux state (app state, sidebar messages, UI settings, system status, the captcha and OAuth inputs) moved to zustand and react-query, and the router moved to React Router 7 (frontend migration stage 4). Nothing should look or work differently, and no saved setting resets.
 

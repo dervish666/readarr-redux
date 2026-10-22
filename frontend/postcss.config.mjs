@@ -20,7 +20,6 @@ export default {
     'postcss-simple-vars': {
       variables: () => ({ ...dimensions, ...fonts, ...animations, ...zIndexes })
     },
-    'postcss-color-function': {},
     'postcss-nested': {}
   }
 };
