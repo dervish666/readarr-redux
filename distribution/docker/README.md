@@ -15,7 +15,7 @@ docker run -d --name readarr-redux \
   -v /path/to/config:/config \
   -v /path/to/books:/books \
   -v /path/to/downloads:/downloads \
-  dervish666/readarr-redux:latest
+  dervish/readarr-redux:latest
 ```
 
 - A drop-in for the linuxserver.io Readarr image: `config.xml` and `readarr.db` sit at the root of `/config`, the app listens on 8787, and `PUID`, `PGID` and `UMASK` work the same way. Back up `/config` before pointing it at an existing install.

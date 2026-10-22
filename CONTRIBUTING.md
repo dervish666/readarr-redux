@@ -32,7 +32,7 @@ Always build the solution, not a single project. Warnings are errors, and StyleC
 3. CI builds the tag as version `X.Y.Z.<run number>`, publishes `X.Y.Z`, `X.Y` and `latest` to GHCR and Docker Hub (a pre-release gets only its own tag), updates the Docker Hub description from `distribution/docker/README.md`, and opens a draft GitHub release with the Linux tarballs.
 4. Write the release notes from the CHANGELOG and publish the draft.
 
-Docker Hub publishing needs the `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` repository secrets (an access token with Read & Write scope). Without them CI publishes to GHCR only. The `DOCKERHUB_IMAGE` repository variable overrides the image name, `dervish666/readarr-redux` by default.
+Docker Hub publishing needs the `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` repository secrets (an access token with Read & Write scope). Without them CI publishes to GHCR only. The `DOCKERHUB_IMAGE` repository variable overrides the image name, `dervish/readarr-redux` by default.
 
 ## Licence
 
