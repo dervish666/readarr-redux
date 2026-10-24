@@ -546,7 +546,7 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
         {
             GivenPartResults(
                 new ImportResult(new ImportDecision<LocalBook>(Part(1))),
-                new ImportResult(new ImportDecision<LocalBook>(Part(2)), "Book has already been imported"));
+                new ImportResult(new ImportDecision<LocalBook>(Part(2)), "Another file in this import came first for part 2: Part 02 copy.mp3"));
 
             Subject.Import(_trackedDownload);
 
@@ -680,7 +680,7 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
         {
             GivenPartResults(
                 new ImportResult(new ImportDecision<LocalBook>(Part(1))),
-                new ImportResult(new ImportDecision<LocalBook>(Part(2)), "Book has already been imported"));
+                new ImportResult(new ImportDecision<LocalBook>(Part(2)), "Another file in this import came first for part 2: Part 02 copy.mp3"));
 
             Subject.Import(_trackedDownload);
 
@@ -719,7 +719,7 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
         {
             GivenPartResults(
                 new ImportResult(new ImportDecision<LocalBook>(Part(1))),
-                new ImportResult(new ImportDecision<LocalBook>(Part(1)), "Book has already been imported"));
+                new ImportResult(new ImportDecision<LocalBook>(Part(1)), "File is listed twice, only its other listing is imported"));
 
             Subject.Import(_trackedDownload);
 

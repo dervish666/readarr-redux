@@ -1,4 +1,4 @@
-import { kinds } from 'Helpers/Props';
+import { icons, kinds } from 'Helpers/Props';
 import Queue from 'typings/Queue';
 import translate from 'Utilities/String/translate';
 
@@ -8,10 +8,14 @@ export const DESTINATION_EXISTS = 'destinationExists';
 // One of Helpers/Props kinds
 type ChipKind = string;
 
+// One of Helpers/Props icons
+type ChipIcon = typeof icons.WARNING;
+
 interface ChipDefinition {
   key: string;
   label: string;
   kind: ChipKind;
+  icon: ChipIcon;
 }
 
 export interface QueueStatusChip extends ChipDefinition {
@@ -38,6 +42,7 @@ function classify(message: string): ChipDefinition | null {
       key: CLOSE_MATCH,
       label: translate('QueueChipMatch', { percent: closeMatch[1] }),
       kind: kinds.WARNING,
+      icon: icons.QUEUE_CLOSE_MATCH,
     };
   }
 
@@ -46,6 +51,7 @@ function classify(message: string): ChipDefinition | null {
       key: DESTINATION_EXISTS,
       label: translate('QueueChipDestinationExists'),
       kind: kinds.DANGER,
+      icon: icons.QUEUE_DESTINATION_EXISTS,
     };
   }
 
@@ -54,6 +60,7 @@ function classify(message: string): ChipDefinition | null {
       key: 'notAnUpgrade',
       label: translate('QueueChipNotAnUpgrade'),
       kind: kinds.DEFAULT,
+      icon: icons.QUEUE_NOT_AN_UPGRADE,
     };
   }
 
@@ -62,6 +69,26 @@ function classify(message: string): ChipDefinition | null {
       key: 'alreadyImported',
       label: translate('QueueChipAlreadyImported'),
       kind: kinds.DEFAULT,
+      icon: icons.QUEUE_ALREADY_IMPORTED,
+    };
+  }
+
+  // A second file for a part another file in the download took first. It was never imported, so not "already imported".
+  if (/^Another file in this import came first/i.test(message)) {
+    return {
+      key: 'partClaimed',
+      label: translate('QueueChipPartClaimed'),
+      kind: kinds.WARNING,
+      icon: icons.QUEUE_PART_CLAIMED,
+    };
+  }
+
+  if (/^Not imported, still in the download/i.test(message)) {
+    return {
+      key: 'leftBehind',
+      label: translate('QueueChipLeftBehind'),
+      kind: kinds.WARNING,
+      icon: icons.QUEUE_LEFT_BEHIND,
     };
   }
 
@@ -70,6 +97,7 @@ function classify(message: string): ChipDefinition | null {
       key: 'sameSize',
       label: translate('QueueChipSameSize'),
       kind: kinds.DEFAULT,
+      icon: icons.QUEUE_SAME_SIZE,
     };
   }
 
@@ -78,6 +106,7 @@ function classify(message: string): ChipDefinition | null {
       key: 'noMatch',
       label: translate('QueueChipNoBookMatch'),
       kind: kinds.DANGER,
+      icon: icons.QUEUE_NO_MATCH,
     };
   }
 
@@ -86,6 +115,7 @@ function classify(message: string): ChipDefinition | null {
       key: 'mixedBooks',
       label: translate('QueueChipMixedBooks'),
       kind: kinds.WARNING,
+      icon: icons.QUEUE_MIXED_BOOKS,
     };
   }
 
@@ -94,6 +124,7 @@ function classify(message: string): ChipDefinition | null {
       key: 'unknownAuthor',
       label: translate('QueueChipUnknownAuthor'),
       kind: kinds.DANGER,
+      icon: icons.QUEUE_UNKNOWN_AUTHOR,
     };
   }
 
@@ -102,6 +133,7 @@ function classify(message: string): ChipDefinition | null {
       key: 'noFiles',
       label: translate('QueueChipNoFiles'),
       kind: kinds.WARNING,
+      icon: icons.QUEUE_NO_FILES,
     };
   }
 
@@ -110,6 +142,7 @@ function classify(message: string): ChipDefinition | null {
       key: 'path',
       label: translate('QueueChipPath'),
       kind: kinds.DANGER,
+      icon: icons.QUEUE_PATH,
     };
   }
 
@@ -118,6 +151,7 @@ function classify(message: string): ChipDefinition | null {
       key: 'space',
       label: translate('QueueChipFreeSpace'),
       kind: kinds.DANGER,
+      icon: icons.DRIVE,
     };
   }
 
@@ -126,6 +160,7 @@ function classify(message: string): ChipDefinition | null {
       key: 'permissions',
       label: translate('QueueChipPermissions'),
       kind: kinds.DANGER,
+      icon: icons.QUEUE_PERMISSIONS,
     };
   }
 
@@ -134,6 +169,7 @@ function classify(message: string): ChipDefinition | null {
       key: 'unpacking',
       label: translate('QueueChipUnpacking'),
       kind: kinds.INFO,
+      icon: icons.QUEUE_UNPACKING,
     };
   }
 
@@ -142,6 +178,7 @@ function classify(message: string): ChipDefinition | null {
       key: 'manual',
       label: translate('QueueChipManualImport'),
       kind: kinds.WARNING,
+      icon: icons.QUEUE_MANUAL_IMPORT,
     };
   }
 
@@ -189,6 +226,8 @@ export default function getQueueStatusChips({
               : translate('QueueChipWarning'),
           kind:
             trackedDownloadStatus === 'error' ? kinds.DANGER : kinds.WARNING,
+          icon:
+            trackedDownloadStatus === 'error' ? icons.DANGER : icons.WARNING,
         },
         detail
       );
@@ -201,6 +240,7 @@ export default function getQueueStatusChips({
         key: 'clientWarning',
         label: translate('QueueChipClientWarning'),
         kind: kinds.WARNING,
+        icon: icons.QUEUE_CLIENT_WARNING,
       },
       errorMessage
     );
@@ -212,6 +252,7 @@ export default function getQueueStatusChips({
         key: 'downloadFailed',
         label: translate('QueueChipDownloadFailed'),
         kind: kinds.DANGER,
+        icon: icons.QUEUE_DOWNLOAD_FAILED,
       },
       errorMessage
     );
@@ -222,6 +263,7 @@ export default function getQueueStatusChips({
       key: 'clientUnavailable',
       label: translate('QueueChipClientUnavailable'),
       kind: kinds.WARNING,
+      icon: icons.QUEUE_CLIENT_UNAVAILABLE,
     });
   }
 
@@ -231,18 +273,21 @@ export default function getQueueStatusChips({
         key: 'importPending',
         label: translate('QueueChipWaitingToImport'),
         kind: kinds.PRIMARY,
+        icon: icons.PENDING,
       });
     } else if (trackedDownloadState === 'importing') {
       add({
         key: 'importing',
         label: translate('QueueChipImporting'),
         kind: kinds.PRIMARY,
+        icon: icons.QUEUE_IMPORTING,
       });
     } else if (trackedDownloadState === 'downloadFailedPending') {
       add({
         key: 'failedPending',
         label: translate('QueueChipWaitingToProcess'),
         kind: kinds.DANGER,
+        icon: icons.QUEUE_WAITING_TO_PROCESS,
       });
     }
   }

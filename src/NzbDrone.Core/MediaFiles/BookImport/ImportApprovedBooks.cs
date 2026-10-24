@@ -232,7 +232,9 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                             localTrack.Part,
                             localTrack.Book);
 
-                        importResults.Add(new ImportResult(importDecision, "Book has already been imported"));
+                        // Not "already imported": this file never was, and the one that came first may have failed too.
+                        // The queue reads that wording as a book safely in the library.
+                        importResults.Add(new ImportResult(importDecision, PartClaimedMessage(localTrack, samePart)));
                         incompleteBooks.Add(localTrack.Book.ForeignBookId);
                         continue;
                     }
@@ -496,7 +498,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             foreach (var decision in listedAgain)
             {
                 _logger.Debug("Skipped {0}, it is listed twice", decision.Item.Path);
-                importResults.Add(new ImportResult(decision, "Book has already been imported"));
+                importResults.Add(new ImportResult(decision, "File is listed twice, only its other listing is imported"));
             }
 
             //Adding all the rejected decisions
@@ -624,6 +626,16 @@ namespace NzbDrone.Core.MediaFiles.BookImport
             }
 
             return Segments(outputPath).TakeLast(1).Concat(Segments(outputPath.GetRelativePath(path))).ToList();
+        }
+
+        // Why a file was skipped when an earlier file in the batch took its part (an ebook's only part, for a second format)
+        private static string PartClaimedMessage(LocalBook skipped, ImportResult first)
+        {
+            var firstFile = Path.GetFileName(first.ImportDecision.Item.Path);
+
+            return skipped.Part > 0
+                ? $"Another file in this import came first for part {skipped.Part}: {firstFile}"
+                : $"Another file in this import came first for this book: {firstFile}";
         }
 
         private static List<string> Segments(string path)

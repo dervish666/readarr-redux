@@ -13,6 +13,7 @@ import {
   CalendarDays,
   Captions,
   Check,
+  CheckCheck,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -32,43 +33,58 @@ import {
   Clock,
   Cloud,
   CloudDownload,
+  CloudOff,
   Copy,
+  CopyX,
   CornerLeftUp,
   Download,
   EllipsisVertical,
+  Equal,
   ExternalLink,
   Eye,
   File,
   FileArchive,
   FileAudio,
+  FileDown,
+  FileExclamationPoint,
   FileInput,
   FileOutput,
   FileText,
+  FileX,
   Flag,
   FlaskConical,
   Folder,
   FolderOpen,
   FolderPen,
+  FolderX,
+  GitCompareArrows,
   Group,
+  Hand,
   HardDrive,
   Heart,
   HeartPulse,
   History,
+  Hourglass,
   House,
   Info,
   Keyboard,
   Laptop,
+  Layers,
   LayoutGrid,
   LayoutList,
   ListChecks,
   ListFilter,
   Loader,
+  Lock,
   LogOut,
   Menu,
+  MessageSquareWarning,
   Minus,
   Monitor,
   MoveRight,
+  PackageOpen,
   Pause,
+  Percent,
   Play,
   Plus,
   Power,
@@ -77,9 +93,11 @@ import {
   RefreshCw,
   Rocket,
   RotateCcw,
+  Route,
   Rss,
   Save,
   Search,
+  SearchX,
   Settings,
   SquareCheckBig,
   SquarePen,
@@ -87,11 +105,14 @@ import {
   Table,
   Tags,
   Trash,
+  TrendingDown,
   TriangleAlert,
   Ungroup,
+  Unplug,
   User,
   UserPlus,
   Users,
+  UserX,
   Wrench,
   X,
   ZoomIn
@@ -212,3 +233,26 @@ export const UNSAVED_SETTING = CircleDot;
 export const VIEW = Eye;
 export const WARNING = TriangleAlert;
 export const WIKI = BookOpen;
+
+// Queue status chips and triage actions (Activity/Queue/getQueueStatusChips.ts)
+export const QUEUE_ALREADY_IMPORTED = CheckCheck;
+export const QUEUE_CLIENT_UNAVAILABLE = Unplug;
+export const QUEUE_CLIENT_WARNING = MessageSquareWarning;
+export const QUEUE_CLOSE_MATCH = Percent;
+export const QUEUE_COMPARE = GitCompareArrows;
+export const QUEUE_DESTINATION_EXISTS = FileExclamationPoint;
+export const QUEUE_DOWNLOAD_FAILED = CloudOff;
+export const QUEUE_IMPORTING = FileDown;
+export const QUEUE_LEFT_BEHIND = FileX;
+export const QUEUE_MANUAL_IMPORT = Hand;
+export const QUEUE_MIXED_BOOKS = Layers;
+export const QUEUE_NO_FILES = FolderX;
+export const QUEUE_NO_MATCH = SearchX;
+export const QUEUE_NOT_AN_UPGRADE = TrendingDown;
+export const QUEUE_PART_CLAIMED = CopyX;
+export const QUEUE_PATH = Route;
+export const QUEUE_PERMISSIONS = Lock;
+export const QUEUE_SAME_SIZE = Equal;
+export const QUEUE_UNKNOWN_AUTHOR = UserX;
+export const QUEUE_UNPACKING = PackageOpen;
+export const QUEUE_WAITING_TO_PROCESS = Hourglass;

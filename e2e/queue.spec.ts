@@ -59,14 +59,17 @@ test('queue fixture: rows, status chips and the sidebar count', async ({ page })
   // The downloading row: author and book links, no triage chips or buttons.
   const downloading = row(page, 'Fixture Book Downloading');
   await expect(downloading.getByRole('link', { name: 'Fixture Author' })).toBeVisible();
-  await expect(downloading.locator('[class*="QueueStatusCell-content"] [class*="Label-label"]')).toHaveCount(0);
+  await expect(downloading.locator('[class*="QueueStatusCell-chips"] li')).toHaveCount(0);
   await expect(downloading.getByRole('button', { name: 'Import anyway' })).toHaveCount(0);
   await expect(downloading.getByRole('cell', { name: '00:10:00', exact: true })).toBeVisible();
 
-  // The import-blocked row: one chip per kind of problem, and the triage buttons that fit them.
+  // The import-blocked row: one icon chip per kind of problem, named for screen readers and in its title,
+  // and the triage buttons that fit them. A file skipped for a part its sibling took is not "already imported".
   const blocked = row(page, 'Fixture Book Blocked');
-  const chips = blocked.locator('[class*="QueueStatusCell-content"] [class*="Label-label"]');
-  await expect(chips).toHaveText(['Match 72.5%', 'Destination exists']);
+  const chips = blocked.locator('[class*="QueueStatusCell-chips"] li');
+  await expect(chips).toHaveText(['Match 72.5%', 'Destination exists', 'Part taken by another file']);
+  await expect(chips.nth(2)).toHaveAttribute('title', /^Part taken by another file\nFixture Book Blocked\.azw3: Another file/);
+  await expect(chips.locator('svg[aria-hidden="true"]')).toHaveCount(3);
   await expect(blocked.getByRole('button', { name: 'Import anyway' })).toBeVisible();
   await expect(blocked.getByRole('button', { name: 'Blocklist and Search' })).toBeVisible();
   await expect(blocked.getByRole('button', { name: 'Compare' })).toBeVisible();

@@ -4,9 +4,7 @@ import BookFormats from 'Book/BookFormats';
 import BookQuality from 'Book/BookQuality';
 import BookTitleLink from 'Book/BookTitleLink';
 import Icon from 'Components/Icon';
-import Button from 'Components/Link/Button';
 import IconButton from 'Components/Link/IconButton';
-import SpinnerButton from 'Components/Link/SpinnerButton';
 import SpinnerIconButton from 'Components/Link/SpinnerIconButton';
 import ConfirmModal from 'Components/Modal/ConfirmModal';
 import ProgressBar from 'Components/ProgressBar';
@@ -17,7 +15,7 @@ import Column from 'Components/Table/Column';
 import TableRow from 'Components/Table/TableRow';
 import Popover from 'Components/Tooltip/Popover';
 import Tooltip from 'Components/Tooltip/Tooltip';
-import { icons, kinds, sizes, tooltipPositions } from 'Helpers/Props';
+import { icons, kinds, tooltipPositions } from 'Helpers/Props';
 import InteractiveImportModal from 'InteractiveImport/InteractiveImportModal';
 import { useUiSettingsValues } from 'Settings/UI/useUiSettings';
 import { SelectStateInputProps } from 'typings/props';
@@ -217,39 +215,42 @@ function QueueRow(props: QueueRowProps) {
               actionError={getImportErrorMessage(importError)}
             >
               {hasCloseMatch ? (
-                <SpinnerButton
-                  size={sizes.SMALL}
+                <SpinnerIconButton
+                  className={styles.triageButton}
+                  name={icons.FILEIMPORT}
                   kind={kinds.PRIMARY}
+                  size={14}
                   title={translate('ImportAnywayHelpText')}
+                  aria-label={translate('ImportAnyway')}
                   isSpinning={isImporting}
                   onPress={handleImportAnywayPress}
-                >
-                  {translate('ImportAnyway')}
-                </SpinnerButton>
+                />
               ) : null}
 
               {hasCloseMatch ? (
-                <Button
-                  size={sizes.SMALL}
+                <IconButton
+                  className={styles.triageButton}
+                  name={icons.BAN}
                   kind={kinds.WARNING}
+                  size={14}
                   title={translate('BlocklistAndSearchHelpText')}
+                  aria-label={translate('BlocklistAndSearch')}
                   isDisabled={isRemoving}
                   onPress={handleBlocklistAndSearchPress}
-                >
-                  {translate('BlocklistAndSearch')}
-                </Button>
+                />
               ) : null}
 
               {hasDestinationExists ? (
-                <SpinnerButton
-                  size={sizes.SMALL}
+                <SpinnerIconButton
+                  className={styles.triageButton}
+                  name={icons.QUEUE_COMPARE}
                   kind={kinds.DANGER}
+                  size={14}
                   title={translate('CompareHelpText')}
+                  aria-label={translate('Compare')}
                   isSpinning={isImporting}
                   onPress={handleComparePress}
-                >
-                  {translate('Compare')}
-                </SpinnerButton>
+                />
               ) : null}
             </QueueStatusCell>
           );

@@ -93,6 +93,12 @@
             "Book match is not close enough: 72.5%",
             "Destination already exists: /books/Fixture Author/Fixture Book Blocked/Fixture Book Blocked.epub"
           ]
+        },
+        {
+          "title": "Fixture Book Blocked.azw3",
+          "messages": [
+            "Another file in this import came first for this book: Fixture Book Blocked.epub"
+          ]
         }
       ],
       "downloadId": "FIXTURE-BLOCKED",

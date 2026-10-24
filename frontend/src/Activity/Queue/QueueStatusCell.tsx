@@ -1,6 +1,6 @@
+import classNames from 'classnames';
 import React, { ReactNode } from 'react';
 import Icon from 'Components/Icon';
-import Label from 'Components/Label';
 import TableRowCell from 'Components/Table/Cells/TableRowCell';
 import Popover from 'Components/Tooltip/Popover';
 import { icons, kinds, tooltipPositions } from 'Helpers/Props';
@@ -138,41 +138,49 @@ function QueueStatusCell(props: QueueStatusCellProps) {
     }
   }
 
+  const hasTriage = chips.length > 0 || actions.length > 0;
+
   return (
     <TableRowCell
-      className={
-        chips.length || actions.length ? styles.statusWithChips : styles.status
-      }
+      className={hasTriage ? styles.statusWithChips : styles.status}
     >
-      <div className={styles.content}>
-        <Popover
-          anchor={<Icon name={iconName} kind={iconKind} />}
-          title={title}
-          body={
-            hasWarning || hasError
-              ? getDetailedPopoverBody(statusMessages)
-              : sourceTitle
-          }
-          position={tooltipPositions.RIGHT}
-          canFlip={false}
-        />
+      <div className={hasTriage ? styles.triage : undefined}>
+        <span className={styles.statusIcon}>
+          <Popover
+            anchor={<Icon name={iconName} kind={iconKind} />}
+            title={title}
+            body={
+              hasWarning || hasError
+                ? getDetailedPopoverBody(statusMessages)
+                : sourceTitle
+            }
+            position={tooltipPositions.RIGHT}
+            canFlip={false}
+          />
+        </span>
 
-        {chips.map((chip) => {
-          return (
-            <Label
-              key={chip.key}
-              kind={chip.kind}
-              title={chip.details.join('\n')}
-            >
-              {chip.label}
-            </Label>
-          );
-        })}
+        {hasTriage ? (
+          <ul className={styles.chips}>
+            {chips.map((chip) => {
+              return (
+                <li
+                  key={chip.key}
+                  className={classNames(
+                    styles.chip,
+                    styles[chip.kind as keyof typeof styles]
+                  )}
+                  title={[chip.label, ...chip.details].join('\n')}
+                >
+                  <Icon name={chip.icon} size={14} aria-hidden={true} />
+                  <span className={styles.chipLabel}>{chip.label}</span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
+
+        {hasTriage ? <div className={styles.actions}>{actions}</div> : null}
       </div>
-
-      {actions.length > 0 ? (
-        <div className={styles.actions}>{actions}</div>
-      ) : null}
 
       {actionError ? (
         <div className={styles.actionError}>{actionError}</div>
