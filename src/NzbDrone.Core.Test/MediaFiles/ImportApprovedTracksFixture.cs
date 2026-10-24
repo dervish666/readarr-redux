@@ -748,9 +748,56 @@ namespace NzbDrone.Core.Test.MediaFiles
             decisions.Select(d => d.Item.Part).Should().Equal(tagged);
             results.Should().NotContain(r => r.Result == ImportResultType.Rejected);
             results.Where(r => r.Result == ImportResultType.Skipped).Should().HaveCount(skipped)
-                .And.OnlyContain(r => r.Errors.Contains("Book has already been imported"));
+                .And.OnlyContain(r => r.Errors.Single().StartsWith("Another file in this import came first for part "));
 
             ExceptionVerification.ExpectedWarns(skipped);
+        }
+
+        // The queue showed "Book has already been imported" for a file that never was, so a stuck download read as
+        // safely in the library. The reason has to say that a sibling took the part, and name it.
+        [Test]
+        public void should_say_which_file_took_the_part_when_skipping_a_second_file_for_it()
+        {
+            var saved = new List<BookFile>();
+            var decisions = GivenAudioParts(saved, ("Oblivion 2/001.mp3", 1), ("Oblivion 1/001.mp3", 1));
+
+            var results = Subject.Import(decisions, false);
+
+            var skipped = results.Single(r => r.Result == ImportResultType.Skipped);
+            var imported = results.Single(r => r.Result == ImportResultType.Imported);
+
+            skipped.Errors.Should().Equal($"Another file in this import came first for part 1: {Path.GetFileName(imported.ImportDecision.Item.Path)}");
+            skipped.Errors.Should().NotContain(e => e.Contains("already", StringComparison.OrdinalIgnoreCase));
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_not_call_a_second_ebook_format_already_imported()
+        {
+            var first = _approvedDecisions.First().Item;
+            var folder = @"C:\Test\Downloads\Book".AsOsAgnostic();
+
+            var decisions = new[] { ("Book.epub", Quality.EPUB), ("Book.azw3", Quality.AZW3) }
+                .Select(x => new ImportDecision<LocalBook>(new LocalBook
+                {
+                    Author = first.Author,
+                    Book = first.Book,
+                    Edition = first.Edition,
+                    Path = Path.Combine(folder, x.Item1),
+                    Quality = new QualityModel(x.Item2),
+                    FileTrackInfo = new ParsedTrackInfo()
+                }))
+                .ToList();
+
+            var results = Subject.Import(decisions, false);
+
+            var imported = results.Single(r => r.Result == ImportResultType.Imported);
+
+            results.Single(r => r.Result == ImportResultType.Skipped).Errors.Should()
+                .Equal($"Another file in this import came first for this book: {Path.GetFileName(imported.ImportDecision.Item.Path)}");
+
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]

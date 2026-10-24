@@ -30,6 +30,25 @@
   white-space: nowrap;
 }
 
+/* Triage actions in the status cell: bordered squares, so they read as buttons beside the flat chips */
+.triageButton {
+  composes: button from 'Components/Link/IconButton.module.css';
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--borderColor);
+  border-radius: 6px;
+
+  &:hover {
+    border: 1px solid var(--inkMuted);
+    background-color: color-mix(in oklch, var(--ink) 6%, transparent);
+  }
+}
+
 /* A release Readarr couldn't match to an author shows its raw title */
 .unmatchedTitle {
   display: inline-block;
