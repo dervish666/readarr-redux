@@ -66,7 +66,7 @@ Fixes from the 2026-10-17 audit's Medium and Low findings.
 - Fixed: Editing the metadata source address while a save was still running lost the edit.
 - Fixed: A failed Import anyway or Import and replace request showed no error. The queue row shows it, and the compare dialog stays open with the error.
 - Fixed: The author overview field disappeared without a word when it failed to load. It now says so, with a Reload button.
-- Build: CI and the Docker build read a Six Labors licence key from the `SIXLABORS_LICENSE_KEY` secret, ready for ImageSharp 4. ImageSharp stays on 3.1.12 until the secret is set.
+- Build: CI and the Docker build read a Six Labors licence key from the `SIXLABORS_LICENSE_KEY` secret, which ImageSharp 4 needs for a Release build.
 
 ## 0.5.0.94 (2026-10-17)
 
