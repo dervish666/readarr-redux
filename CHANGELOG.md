@@ -2,9 +2,11 @@
 
 Changes in Readarr Redux since it forked from Readarr (upstream commit `0b79d3000`, 2025-06-27). Upstream's own history is in the git log.
 
-Versions are `0.5.0.<CI run number>`. Only pushes to `develop` publish an image, so the numbers have gaps. Each entry is the image tag and the day it was built. The commit messages explain each fix in detail.
+Releases come from `vX.Y.Z` git tags and publish the images `X.Y.Z`, `X.Y` and `X.Y.Z.<CI run number>`. Builds from `develop` are `0.5.0.<CI run number>`, and the entries before 0.6.0 are those builds, so their numbers have gaps. Each entry is the version and the day it was published. The commit messages explain each fix in detail.
 
-## Unreleased
+## 0.6.0 (2026-10-23)
+
+The first release, and the first image on Docker Hub. Image tags `0.6.0`, `0.6`, `latest` and `0.6.0.185`.
 
 Release readiness: a bug, security and dependency pass before the first Docker Hub and Unraid release.
 

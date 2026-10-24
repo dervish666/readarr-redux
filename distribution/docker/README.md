@@ -27,7 +27,7 @@ docker run -d --name readarr-redux \
 - `latest`: the newest release.
 - `1.2.3` and `1.2`: a release and its line.
 - `develop`: every merge to the development branch. Expect rough edges.
-- `0.5.0.<build>`: one specific build.
+- `1.2.3.<build>` or `0.5.0.<build>`: one specific build, of a release or of `develop`.
 
 Images are built for `linux/amd64` and `linux/arm64`. The same images are on `ghcr.io/dervish666/readarr`.
 
