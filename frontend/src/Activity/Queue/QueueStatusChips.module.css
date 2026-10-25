@@ -1,0 +1,64 @@
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  gap: 4px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background-color: color-mix(in oklch, var(--ink) 10%, transparent);
+  color: var(--inkSoft);
+  cursor: help;
+}
+
+.danger {
+  background-color: color-mix(in oklch, var(--dangerColor) 16%, transparent);
+  color: var(--dangerColor);
+}
+
+.warning {
+  background-color: color-mix(in oklch, var(--warningColor) 18%, transparent);
+  color: var(--warningColor);
+}
+
+.info {
+  background-color: color-mix(in oklch, var(--infoColor) 16%, transparent);
+  color: var(--infoColor);
+}
+
+.primary {
+  background-color: color-mix(in oklch, var(--primaryColor) 16%, transparent);
+  color: var(--primaryColor);
+}
+
+.success {
+  background-color: color-mix(in oklch, var(--successColor) 16%, transparent);
+  color: var(--successColor);
+}
+
+.purple {
+  background-color: color-mix(in oklch, var(--purple) 16%, transparent);
+  color: var(--purple);
+}
+
+/* The chip's name for screen readers; sighted users get it from the title */
+.chipLabel {
+  position: absolute;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  margin: -1px;
+  padding: 0;
+  width: 1px;
+  height: 1px;
+  border: 0;
+  white-space: nowrap;
+}

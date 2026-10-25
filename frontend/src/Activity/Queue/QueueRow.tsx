@@ -32,6 +32,7 @@ import ImportDestinationsModal from './ImportDestinations/ImportDestinationsModa
 import { getImportErrorMessage } from './ImportDestinations/ImportDestinationsModalContent';
 import ProtocolLabel from './ProtocolLabel';
 import QueueStatusCell from './QueueStatusCell';
+import QueueStatusChips from './QueueStatusChips';
 import RemoveQueueItemModal from './RemoveQueueItemModal';
 import TimeLeftCell from './TimeLeftCell';
 import {
@@ -179,6 +180,7 @@ function QueueRow(props: QueueRowProps) {
   const hasCloseMatch = canRetry && chips.some((c) => c.key === CLOSE_MATCH);
   const hasDestinationExists =
     canRetry && chips.some((c) => c.key === DESTINATION_EXISTS);
+  const actionError = getImportErrorMessage(importError);
 
   const progress = 100 - (sizeleft / size) * 100;
   const showInteractiveImport =
@@ -211,48 +213,7 @@ function QueueRow(props: QueueRowProps) {
               trackedDownloadState={trackedDownloadState}
               statusMessages={statusMessages}
               errorMessage={errorMessage}
-              chips={chips}
-              actionError={getImportErrorMessage(importError)}
-            >
-              {hasCloseMatch ? (
-                <SpinnerIconButton
-                  className={styles.triageButton}
-                  name={icons.FILEIMPORT}
-                  kind={kinds.PRIMARY}
-                  size={14}
-                  title={translate('ImportAnywayHelpText')}
-                  aria-label={translate('ImportAnyway')}
-                  isSpinning={isImporting}
-                  onPress={handleImportAnywayPress}
-                />
-              ) : null}
-
-              {hasCloseMatch ? (
-                <IconButton
-                  className={styles.triageButton}
-                  name={icons.BAN}
-                  kind={kinds.WARNING}
-                  size={14}
-                  title={translate('BlocklistAndSearchHelpText')}
-                  aria-label={translate('BlocklistAndSearch')}
-                  isDisabled={isRemoving}
-                  onPress={handleBlocklistAndSearchPress}
-                />
-              ) : null}
-
-              {hasDestinationExists ? (
-                <SpinnerIconButton
-                  className={styles.triageButton}
-                  name={icons.QUEUE_COMPARE}
-                  kind={kinds.DANGER}
-                  size={14}
-                  title={translate('CompareHelpText')}
-                  aria-label={translate('Compare')}
-                  isSpinning={isImporting}
-                  onPress={handleComparePress}
-                />
-              ) : null}
-            </QueueStatusCell>
+            />
           );
         }
 
@@ -386,8 +347,8 @@ function QueueRow(props: QueueRowProps) {
         }
 
         if (name === 'actions') {
-          return (
-            <TableRowCell key={name} className={styles.actions}>
+          const rowActions = (
+            <>
               {downloadForced ? (
                 <Popover
                   anchor={<Icon name={icons.DANGER} kind={kinds.DANGER} />}
@@ -421,6 +382,74 @@ function QueueRow(props: QueueRowProps) {
                 isSpinning={isRemoving}
                 onPress={handleRemoveQueueItemPress}
               />
+            </>
+          );
+
+          return (
+            <TableRowCell key={name} className={styles.actions}>
+              {chips.length ? (
+                <div className={styles.triage}>
+                  <QueueStatusChips chips={chips} />
+
+                  <span
+                    className={
+                      hasCloseMatch || hasDestinationExists
+                        ? styles.divider
+                        : undefined
+                    }
+                    aria-hidden={true}
+                  />
+
+                  <div className={styles.triageButtons}>
+                    {hasCloseMatch ? (
+                      <SpinnerIconButton
+                        className={styles.triageButton}
+                        name={icons.FILEIMPORT}
+                        kind={kinds.PRIMARY}
+                        size={14}
+                        title={translate('ImportAnywayHelpText')}
+                        aria-label={translate('ImportAnyway')}
+                        isSpinning={isImporting}
+                        onPress={handleImportAnywayPress}
+                      />
+                    ) : null}
+
+                    {hasCloseMatch ? (
+                      <IconButton
+                        className={styles.triageButton}
+                        name={icons.BAN}
+                        kind={kinds.WARNING}
+                        size={14}
+                        title={translate('BlocklistAndSearchHelpText')}
+                        aria-label={translate('BlocklistAndSearch')}
+                        isDisabled={isRemoving}
+                        onPress={handleBlocklistAndSearchPress}
+                      />
+                    ) : null}
+
+                    {hasDestinationExists ? (
+                      <SpinnerIconButton
+                        className={styles.triageButton}
+                        name={icons.QUEUE_COMPARE}
+                        kind={kinds.DANGER}
+                        size={14}
+                        title={translate('CompareHelpText')}
+                        aria-label={translate('Compare')}
+                        isSpinning={isImporting}
+                        onPress={handleComparePress}
+                      />
+                    ) : null}
+                  </div>
+
+                  <div className={styles.rowActions}>{rowActions}</div>
+                </div>
+              ) : (
+                rowActions
+              )}
+
+              {actionError ? (
+                <div className={styles.actionError}>{actionError}</div>
+              ) : null}
             </TableRowCell>
           );
         }
