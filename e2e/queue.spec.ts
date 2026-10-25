@@ -59,20 +59,36 @@ test('queue fixture: rows, status chips and the sidebar count', async ({ page })
   // The downloading row: author and book links, no triage chips or buttons.
   const downloading = row(page, 'Fixture Book Downloading');
   await expect(downloading.getByRole('link', { name: 'Fixture Author' })).toBeVisible();
-  await expect(downloading.locator('[class*="QueueStatusCell-chips"] li')).toHaveCount(0);
+  await expect(downloading.locator('[class*="QueueStatusChips-chips"] li')).toHaveCount(0);
   await expect(downloading.getByRole('button', { name: 'Import anyway' })).toHaveCount(0);
   await expect(downloading.getByRole('cell', { name: '00:10:00', exact: true })).toBeVisible();
 
   // The import-blocked row: one icon chip per kind of problem, named for screen readers and in its title,
   // and the triage buttons that fit them. A file skipped for a part its sibling took is not "already imported".
   const blocked = row(page, 'Fixture Book Blocked');
-  const chips = blocked.locator('[class*="QueueStatusCell-chips"] li');
+  const chips = blocked.locator('[class*="QueueStatusChips-chips"] li');
   await expect(chips).toHaveText(['Match 72.5%', 'Destination exists', 'Part taken by another file']);
   await expect(chips.nth(2)).toHaveAttribute('title', /^Part taken by another file\nFixture Book Blocked\.azw3: Another file/);
   await expect(chips.locator('svg[aria-hidden="true"]')).toHaveCount(3);
   await expect(blocked.getByRole('button', { name: 'Import anyway' })).toBeVisible();
   await expect(blocked.getByRole('button', { name: 'Blocklist and Search' })).toBeVisible();
   await expect(blocked.getByRole('button', { name: 'Compare' })).toBeVisible();
+
+  // The chips and triage buttons sit in the actions cell with Remove; the status cell keeps only its icon.
+  const actionsCell = blocked.locator('td').last();
+  await expect(actionsCell.locator('[class*="QueueStatusChips-chips"] li')).toHaveCount(3);
+  await expect(actionsCell.getByRole('button', { name: 'Compare' })).toBeVisible();
+  await expect(actionsCell.getByTitle('Remove from queue')).toBeVisible();
+  await expect(blocked.locator('[class*="QueueStatusCell-status"] li')).toHaveCount(0);
+
+  // Remove ends at the same x on both rows, so the row buttons line up with or without chips.
+  const removeRight = async (title: string) => {
+    const box = await row(page, title).getByTitle('Remove from queue').boundingBox();
+    return box ? Math.round(box.x + box.width) : null;
+  };
+  const blockedRemoveRight = await removeRight('Fixture Book Blocked');
+  expect(blockedRemoveRight).not.toBeNull();
+  expect(blockedRemoveRight).toBe(await removeRight('Fixture Book Downloading'));
 
   // The sidebar count comes from /queue/status, which says 2.
   const queueLink = page.locator('[class*="PageSidebarItem-link"]', { hasText: /^Queue/ });

@@ -30,7 +30,37 @@
   white-space: nowrap;
 }
 
-/* Triage actions in the status cell: bordered squares, so they read as buttons beside the flat chips */
+/*
+ * Status chips, a divider, the triage buttons, then the row's own buttons. Every track has a fixed width
+ * and the grid sits against the right edge, so each group starts at the same x on every row with chips,
+ * and Remove lines up with the rows that have none.
+ */
+.triage {
+  display: grid;
+  align-items: center;
+  justify-content: end;
+  grid-template-columns: 74px 1px 80px 78px;
+
+  column-gap: 8px;
+}
+
+.divider {
+  align-self: stretch;
+  background-color: var(--borderColor);
+}
+
+.triageButtons {
+  display: flex;
+  gap: 4px;
+}
+
+.rowActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* Bordered squares, so they read as buttons beside the flat chips */
 .triageButton {
   composes: button from 'Components/Link/IconButton.module.css';
 
@@ -47,6 +77,16 @@
     border: 1px solid var(--inkMuted);
     background-color: color-mix(in oklch, var(--ink) 6%, transparent);
   }
+}
+
+/* Capped, so a long import error wraps under the buttons instead of widening the column */
+.actionError {
+  margin-top: 4px;
+  margin-left: auto;
+  max-width: 257px;
+  color: var(--dangerColor);
+  text-align: left;
+  white-space: normal;
 }
 
 /* A release Readarr couldn't match to an author shows its raw title */

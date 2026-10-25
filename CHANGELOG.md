@@ -9,7 +9,7 @@ Versions are `0.5.0.<CI run number>`. Only pushes to `develop` publish an image,
 Release readiness: a bug, security and dependency pass before the first Docker Hub and Unraid release.
 
 - Fixed: A file skipped because another file in the same download had taken its part was reported as "Book has already been imported", so a stuck download looked safely imported. It now names the file that came first, and the queue shows it as "Part taken by another file" instead of a bare Warning.
-- Changed: Queue status chips are icons in fixed columns that line up across rows, and Compare, Import anyway and Blocklist and Search are icon buttons beside them. Hovering a chip shows its name and the messages behind it.
+- Changed: Queue status chips are icons in fixed columns that line up across rows, on the right of the row with its buttons. Compare, Import anyway and Blocklist and Search come after the chips, then the row's own buttons, so Remove stays at the right edge. The first column keeps only the status icon. Hovering a chip shows its name and the messages behind it.
 
 - Fixed: Authors and books deleted without their files came back on the next scheduled Rescan Folders, monitored. Rescan Folders skips unchanged unmapped files again; an author's Refresh & Scan is what matches them again.
 - Fixed: When part of a multi-part upgrade failed to import, the old files that went back in place were left out of the library, and the import told Connect scripts and webhooks they had been deleted.
