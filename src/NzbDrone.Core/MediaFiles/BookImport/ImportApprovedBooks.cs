@@ -220,8 +220,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
                 try
                 {
-                    //check if already imported
-                    var samePart = importResults.FirstOrDefault(r => r.ImportDecision.Item.Book.Id == localTrack.Book.Id && r.ImportDecision.Item.Part == localTrack.Part);
+                    // Check if an imported file has already claimed this part
+                    var samePart = importResults.FirstOrDefault(r => r.Result == ImportResultType.Imported && r.ImportDecision.Item.Book.Id == localTrack.Book.Id && r.ImportDecision.Item.Part == localTrack.Part);
 
                     if (samePart != null)
                     {
@@ -232,7 +232,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                             localTrack.Part,
                             localTrack.Book);
 
-                        // Not "already imported": this file never was, and the one that came first may have failed too.
+                        // Not "already imported": this file never was.
                         // The queue reads that wording as a book safely in the library.
                         importResults.Add(new ImportResult(importDecision, PartClaimedMessage(localTrack, samePart)));
                         incompleteBooks.Add(localTrack.Book.ForeignBookId);
