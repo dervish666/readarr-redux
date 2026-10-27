@@ -28,6 +28,7 @@ namespace NzbDrone.Api.Test.Authentication
             var httpContext = new DefaultHttpContext();
 
             httpContext.Connection.RemoteIpAddress = remoteIp == null ? null : IPAddress.Parse(remoteIp);
+            httpContext.Request.Host = new HostString("127.0.0.1");
 
             if (unconsumedForwardedFor != null)
             {
@@ -54,6 +55,27 @@ namespace NzbDrone.Api.Test.Authentication
         public void should_bypass_authentication_for_local_address_without_forwarded_headers(string address)
         {
             IsAuthorized(GetHttpContext(address)).Should().BeTrue();
+        }
+
+        [TestCase("192.168.0.190", true)]
+        [TestCase("[::1]", true)]
+        [TestCase("localhost", true)]
+        [TestCase("tower", true)]
+        [TestCase("tower.local", true)]
+        [TestCase("nas.lan", true)]
+        [TestCase("box.home.arpa", true)]
+        [TestCase("x.internal", true)]
+        [TestCase("BOX.HOME.ARPA.", true)]
+        [TestCase("tower.localhost", false)]
+        [TestCase("evil.example.com", false)]
+        [TestCase("readarr.mydomain.co.uk", false)]
+        [TestCase("", false)]
+        public void should_only_bypass_authentication_for_local_host_names(string host, bool expected)
+        {
+            var httpContext = GetHttpContext("192.168.1.50");
+            httpContext.Request.Host = new HostString(host);
+
+            IsAuthorized(httpContext).Should().Be(expected);
         }
 
         [Test]

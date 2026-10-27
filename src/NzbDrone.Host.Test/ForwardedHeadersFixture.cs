@@ -42,6 +42,7 @@ namespace NzbDrone.App.Test
 
             var httpContext = new DefaultHttpContext();
             httpContext.Connection.RemoteIpAddress = IPAddress.Parse(peer);
+            httpContext.Request.Host = new HostString("192.168.0.190:8787");
 
             if (forwardedFor != null)
             {
