@@ -225,11 +225,16 @@ namespace Readarr.Api.V1.Queue
 
             if (pagingSpec.Records.Empty() && pagingSpec.Page > 1)
             {
-                pagingSpec.Page = (int)Math.Max(Math.Ceiling((decimal)(pagingSpec.TotalRecords / pagingSpec.PageSize)), 1);
+                pagingSpec.Page = GetLastPage(pagingSpec.TotalRecords, pagingSpec.PageSize);
                 pagingSpec.Records = ordered.Skip((pagingSpec.Page - 1) * pagingSpec.PageSize).Take(pagingSpec.PageSize).ToList();
             }
 
             return pagingSpec;
+        }
+
+        public static int GetLastPage(int totalRecords, int pageSize)
+        {
+            return (int)Math.Max(Math.Ceiling((decimal)totalRecords / pageSize), 1);
         }
 
         private Func<NzbDrone.Core.Queue.Queue, object> GetOrderByFunc(PagingSpec<NzbDrone.Core.Queue.Queue> pagingSpec)
