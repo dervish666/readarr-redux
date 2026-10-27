@@ -211,6 +211,12 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
             var importedPaths = new HashSet<string>(PathEqualityComparer.Instance);
             var downloadedFiles = new List<(LocalBook Track, BookFile File)>();
+            var downloadHistory = qualifiedImports.Any() && downloadClientItem?.DownloadId.IsNotNullOrWhiteSpace() == true
+                ? new Lazy<List<EntityHistory>>(() => _historyService.FindByDownloadId(downloadClientItem.DownloadId))
+                : null;
+            var grabHistory = new Lazy<EntityHistory>(() => downloadHistory.Value
+                .OrderByDescending(h => h.Date)
+                .FirstOrDefault(h => h.EventType == EntityHistoryEventType.Grabbed));
 
             foreach (var importDecision in qualifiedImports)
             {
@@ -260,11 +266,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
                     if (downloadClientItem?.DownloadId.IsNotNullOrWhiteSpace() == true)
                     {
-                        var grabHistory = _historyService.FindByDownloadId(downloadClientItem.DownloadId)
-                            .OrderByDescending(h => h.Date)
-                            .FirstOrDefault(h => h.EventType == EntityHistoryEventType.Grabbed);
-
-                        if (Enum.TryParse(grabHistory?.Data.GetValueOrDefault("indexerFlags"), true, out IndexerFlags flags))
+                        if (Enum.TryParse(grabHistory.Value?.Data.GetValueOrDefault("indexerFlags"), true, out IndexerFlags flags))
                         {
                             bookFile.IndexerFlags = flags;
                         }
@@ -465,7 +467,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 _bookFileUpgrader.RemoveSetAsideFiles(bookSetAsideFiles.Value);
             }
 
-            RemoveEarlierCopies(downloadedFiles, downloadClientItem);
+            RemoveEarlierCopies(downloadedFiles, downloadClientItem, downloadHistory);
 
             // now that trackfiles have been inserted and ids generated, publish the import events
             foreach (var trackImportedEvent in trackImportedEvents)
@@ -526,7 +528,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
         // A download imported for the wrong book and then again for the right one leaves the same file on both books, at
         // two paths: Everville's on Hellraiser #5, Heart of the Comet's on Contacting Aliens. An import only replaces
         // its own book's files, so take the earlier copy off the other book now, if it is provably still that file.
-        private void RemoveEarlierCopies(List<(LocalBook Track, BookFile File)> downloadedFiles, DownloadClientItem downloadClientItem)
+        private void RemoveEarlierCopies(List<(LocalBook Track, BookFile File)> downloadedFiles, DownloadClientItem downloadClientItem, Lazy<List<EntityHistory>> downloadHistory)
         {
             if (!downloadedFiles.Any() || downloadClientItem == null || downloadClientItem.DownloadId.IsNullOrWhiteSpace() || downloadClientItem.OutputPath.IsEmpty)
             {
@@ -535,7 +537,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport
 
             try
             {
-                var earlierImports = _historyService.FindByDownloadId(downloadClientItem.DownloadId)
+                var earlierImports = downloadHistory.Value
                     .Where(h => h.EventType == EntityHistoryEventType.BookFileImported)
                     .ToList();
 
