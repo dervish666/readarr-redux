@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
@@ -42,12 +43,36 @@ namespace NzbDrone.Http.Authentication
         {
             if (_authenticationRequired == AuthenticationRequiredType.DisabledForLocalAddresses &&
                 context.Resource is HttpContext httpContext &&
-                IsLocalRequest(httpContext, _configService.TrustCgnatIpAddresses))
+                IsLocalRequest(httpContext, _configService.TrustCgnatIpAddresses) &&
+                IsLocalHostName(httpContext.Request.Host.Host))
             {
                 context.Succeed(requirement);
             }
 
             return Task.CompletedTask;
+        }
+
+        // A local client address alone does not prevent DNS rebinding.
+        // Restrict the bypass to local host names and IP literals.
+        public static bool IsLocalHostName(string host)
+        {
+            if (string.IsNullOrEmpty(host))
+            {
+                return false;
+            }
+
+            if (host.EndsWith(".", StringComparison.Ordinal))
+            {
+                host = host.Substring(0, host.Length - 1);
+            }
+
+            return host.Length > 0 &&
+                   (IPAddress.TryParse(host, out _) ||
+                    !host.Contains('.') ||
+                    host.EndsWith(".local", StringComparison.OrdinalIgnoreCase) ||
+                    host.EndsWith(".lan", StringComparison.OrdinalIgnoreCase) ||
+                    host.EndsWith(".home.arpa", StringComparison.OrdinalIgnoreCase) ||
+                    host.EndsWith(".internal", StringComparison.OrdinalIgnoreCase));
         }
 
         public static bool IsLocalRequest(HttpContext httpContext, bool trustCgnatIpAddresses)
