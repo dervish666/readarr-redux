@@ -113,6 +113,45 @@ namespace NzbDrone.Core.Test.MediaFiles
         }
 
         [Test]
+        public void should_try_another_file_for_the_same_part_when_the_first_move_fails()
+        {
+            var decisions = GivenAudioParts(new List<BookFile>(), ("First.mp3", 1), ("Second.mp3", 1));
+            var first = decisions[0].Item;
+            var second = decisions[1].Item;
+            first.Size = 2;
+            second.Size = 1;
+
+            Mocker.GetMock<IUpgradeMediaFiles>()
+                .Setup(s => s.UpgradeBookFile(It.Is<BookFile>(f => f.Path == first.Path), It.IsAny<LocalBook>(), It.IsAny<bool>(), It.IsAny<ICollection<string>>()))
+                .Throws(new IOException("Move failed"));
+
+            var results = Subject.Import(decisions, false);
+
+            results.Should().ContainSingle(r => r.Result == ImportResultType.Imported)
+                .Which.ImportDecision.Item.Path.Should().Be(second.Path);
+            Mocker.GetMock<IUpgradeMediaFiles>()
+                .Verify(v => v.UpgradeBookFile(It.Is<BookFile>(f => f.Path == second.Path), second, It.IsAny<bool>(), It.IsAny<ICollection<string>>()), Times.Once());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_find_download_history_once_for_multiple_files()
+        {
+            var decisions = GivenAudioParts(new List<BookFile>(), ("First.mp3", 1), ("Second.mp3", 2));
+            _downloadClientItem.DownloadId = "download-id";
+            _downloadClientItem.OutputPath = new OsPath(Path.GetDirectoryName(decisions[0].Item.Path));
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(_downloadClientItem.DownloadId))
+                .Returns(new List<EntityHistory>());
+
+            var results = Subject.Import(decisions, false, _downloadClientItem);
+
+            results.Should().OnlyContain(r => r.Result == ImportResultType.Imported);
+            Mocker.GetMock<IHistoryService>().Verify(v => v.FindByDownloadId("download-id"), Times.Once());
+        }
+
+        [Test]
         public void should_give_an_edition_added_on_import_the_books_values_set_by_hand()
         {
             var local = _approvedDecisions.First().Item;
