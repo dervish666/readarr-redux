@@ -39,7 +39,7 @@ body:
 - type: input
   attributes:
     label: Readarr Redux version
-    description: The version from System > Status, or the image tag you run (for example `0.5.0.14` or `latest`).
+    description: The version from System > Status, or the image tag you run (for example `0.6.0.185` or `latest`).
   validations:
     required: true
 - type: dropdown
@@ -59,7 +59,7 @@ body:
     description: |
       examples:
         - **OS**: Ubuntu 24.04
-        - **Install**: Docker (ghcr.io/dervish666/readarr), or built from source
+        - **Install**: Docker (dervish/readarr-redux or ghcr.io/dervish666/readarr), or built from source
         - **Using Reverse Proxy**: No
         - **Browser**: Firefox 130 (if UI related)
         - **Database**: SQLite or Postgres

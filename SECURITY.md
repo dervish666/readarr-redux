@@ -10,4 +10,4 @@ If the problem is also in Sonarr, Radarr, Lidarr or Prowlarr, which share much o
 
 ## Supported versions
 
-Only the latest image (`ghcr.io/dervish666/readarr:latest`) and the head of `develop` get fixes.
+Only the latest image (`dervish/readarr-redux:latest`, also `ghcr.io/dervish666/readarr:latest`) and the head of `develop` get fixes.

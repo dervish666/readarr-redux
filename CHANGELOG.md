@@ -2,14 +2,24 @@
 
 Changes in Readarr Redux since it forked from Readarr (upstream commit `0b79d3000`, 2025-06-27). Upstream's own history is in the git log.
 
-Versions are `0.5.0.<CI run number>`. Only pushes to `develop` publish an image, so the numbers have gaps. Each entry is the image tag and the day it was built. The commit messages explain each fix in detail.
+Releases come from `vX.Y.Z` git tags and publish the images `X.Y.Z`, `X.Y` and `X.Y.Z.<CI run number>`. Builds from `develop` are `0.5.0.<CI run number>`, and the entries before 0.6.0 are those builds, so their numbers have gaps. Each entry is the version and the day it was published. The commit messages explain each fix in detail.
 
 ## Unreleased
 
-Release readiness: a bug, security and dependency pass before the first Docker Hub and Unraid release.
+## 0.6.1 (2026-10-28)
 
+- Security: With authentication off for local addresses, a page on another site that rebinds its domain to Readarr's LAN address looked local and could read the API key. The local bypass now also needs a Host header that is an IP address, `localhost`, a single-label name, or a name ending `.local`, `.lan`, `.home.arpa` or `.internal`. Any other host name gets the normal login, so if you reach Readarr by a full domain name without a login, that now asks for one.
 - Fixed: A file skipped because another file in the same download had taken its part was reported as "Book has already been imported", so a stuck download looked safely imported. It now names the file that came first, and the queue shows it as "Part taken by another file" instead of a bare Warning.
 - Changed: Queue status chips are icons in fixed columns that line up across rows, on the right of the row with its buttons. Compare, Import anyway and Blocklist and Search come after the chips, then the row's own buttons, so Remove stays at the right edge. The first column keeps only the status icon. Hovering a chip shows its name and the messages behind it.
+- Fixed: A file for an audiobook part whose import failed still claimed the part, so a second copy of that part was skipped and the part stayed missing. Only a file that imports claims the part now.
+- Fixed: The queue fell back to the wrong last page when asked for a page past the end, so with 21 items at 10 a page the 21st never showed.
+- Performance: An import reads the download's grab history once, instead of once per file and again when removing earlier copies.
+
+## 0.6.0 (2026-10-23)
+
+The first release, and the first image on Docker Hub. Image tags `0.6.0`, `0.6`, `latest` and `0.6.0.185`.
+
+Release readiness: a bug, security and dependency pass before the first Docker Hub and Unraid release.
 
 - Fixed: Authors and books deleted without their files came back on the next scheduled Rescan Folders, monitored. Rescan Folders skips unchanged unmapped files again; an author's Refresh & Scan is what matches them again.
 - Fixed: When part of a multi-part upgrade failed to import, the old files that went back in place were left out of the library, and the import told Connect scripts and webhooks they had been deleted.
@@ -67,7 +77,7 @@ Fixes from the 2026-10-17 audit's Medium and Low findings.
 - Fixed: Editing the metadata source address while a save was still running lost the edit.
 - Fixed: A failed Import anyway or Import and replace request showed no error. The queue row shows it, and the compare dialog stays open with the error.
 - Fixed: The author overview field disappeared without a word when it failed to load. It now says so, with a Reload button.
-- Build: CI and the Docker build read a Six Labors licence key from the `SIXLABORS_LICENSE_KEY` secret, ready for ImageSharp 4. ImageSharp stays on 3.1.12 until the secret is set.
+- Build: CI and the Docker build read a Six Labors licence key from the `SIXLABORS_LICENSE_KEY` secret, which ImageSharp 4 needs for a Release build.
 
 ## 0.5.0.94 (2026-10-17)
 

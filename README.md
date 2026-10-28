@@ -44,7 +44,7 @@ The image is a drop-in for the linuxserver.io one: `config.xml` and `readarr.db`
 | `latest` | The newest release |
 | `1.2.3`, `1.2` | A release, and the newest release in its line |
 | `develop` | Every merge to the development branch. Expect rough edges |
-| `0.5.0.<build>` | One specific build |
+| `1.2.3.<build>`, `0.5.0.<build>` | One specific build: a release, or a `develop` build |
 
 ### Unraid
 
