@@ -235,6 +235,12 @@ namespace NzbDrone.Host
                 firewallAdapter.MakeAccessible();
             }
 
+            // Before forwarded headers, so "Disabled for Local Addresses" can judge the host the request arrived with
+            app.Use((context, next) =>
+            {
+                UiAuthorizationHandler.RecordOriginalHost(context);
+                return next(context);
+            });
             app.UseForwardedHeaders();
 
             // After forwarded headers, so the host a trusted proxy forwards is the one checked

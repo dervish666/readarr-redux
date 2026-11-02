@@ -64,6 +64,8 @@ namespace NzbDrone.App.Test
                 httpContext.Request.Headers[name] = value;
             }
 
+            // As in Startup, ahead of the forwarded headers middleware
+            UiAuthorizationHandler.RecordOriginalHost(httpContext);
             middleware.Invoke(httpContext).GetAwaiter().GetResult();
 
             return httpContext;
@@ -216,6 +218,37 @@ namespace NzbDrone.App.Test
             GivenAllowedHosts("readarr.example.com", "localhost");
 
             IsAuthorized(SendWithTrustedNetworks(string.Empty, "readarr.example.com", "192.168.0.50", null)).Should().BeTrue();
+        }
+
+        // DNS rebinding: a page on evil.example.com, opened in a browser inside Trusted Networks, now resolves to
+        // Readarr. The browser sends Host: evil.example.com, but script can add any X-Forwarded-* header it likes.
+        [Test]
+        public void should_not_bypass_for_a_rebound_page_forwarding_a_local_host()
+        {
+            var httpContext = SendWithTrustedNetworks(ConfigFileProvider.LegacyTrustedNetworks, "evil.example.com:8787", "192.168.0.50", "127.0.0.1", ("X-Forwarded-Host", "localhost"));
+
+            httpContext.Request.Host.Host.Should().Be("localhost");
+            IsAuthorized(httpContext).Should().BeFalse();
+        }
+
+        [Test]
+        public void should_not_bypass_for_a_rebound_page_forwarding_an_allowed_host()
+        {
+            GivenAllowedHosts("readarr.example.com");
+
+            var httpContext = SendWithTrustedNetworks(ConfigFileProvider.LegacyTrustedNetworks, "evil.example.com:8787", "192.168.0.50", "127.0.0.1", ("X-Forwarded-Host", "readarr.example.com"));
+
+            IsAuthorized(httpContext).Should().BeFalse();
+        }
+
+        [Test]
+        public void should_bypass_for_lan_client_behind_lan_proxy_forwarding_an_allowed_host()
+        {
+            GivenAllowedHosts("readarr.example.com");
+
+            var httpContext = SendWithTrustedNetworks(ConfigFileProvider.LegacyTrustedNetworks, "readarr.example.com", "192.168.0.2", "192.168.0.50", ("X-Forwarded-Host", "readarr.example.com"));
+
+            IsAuthorized(httpContext).Should().BeTrue();
         }
 
         [TestCase("evil.example.com", 400)]

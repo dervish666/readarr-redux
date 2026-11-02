@@ -29,6 +29,7 @@ namespace NzbDrone.Api.Test.Authentication
 
             httpContext.Connection.RemoteIpAddress = remoteIp == null ? null : IPAddress.Parse(remoteIp);
             httpContext.Request.Host = new HostString("127.0.0.1");
+            UiAuthorizationHandler.RecordOriginalHost(httpContext);
 
             if (unconsumedForwardedFor != null)
             {
@@ -74,8 +75,19 @@ namespace NzbDrone.Api.Test.Authentication
         {
             var httpContext = GetHttpContext("192.168.1.50");
             httpContext.Request.Host = new HostString(host);
+            UiAuthorizationHandler.RecordOriginalHost(httpContext);
 
             IsAuthorized(httpContext).Should().Be(expected);
+        }
+
+        [Test]
+        public void should_not_bypass_authentication_when_the_original_host_was_not_recorded()
+        {
+            var httpContext = new DefaultHttpContext();
+            httpContext.Connection.RemoteIpAddress = IPAddress.Parse("192.168.1.50");
+            httpContext.Request.Host = new HostString("localhost");
+
+            IsAuthorized(httpContext).Should().BeFalse();
         }
 
         [Test]
