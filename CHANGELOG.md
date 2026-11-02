@@ -26,6 +26,7 @@ Releases come from `vX.Y.Z` git tags and publish the images `X.Y.Z`, `X.Y` and `
 - Fixed: HTTP basic auth credentials with characters outside Latin-1 were sent as `?`.
 - Fixed: Pooled HTTP connections lived forever and kept dialling a host's old address after a DNS change. They are recycled every 30 minutes.
 - Fixed: Email addresses in log messages are masked as `(removed)@example.com`.
+- Fixed: An indexer test that got 429 Too Many Requests said only "HTTP request failed". It now shows the indexer's own reason when it sends a Newznab error, such as Prowlarr's "Indexer is disabled till ... due to recent failures", and how long Retry-After says to wait.
 - Changed: .NET runtime 10.0.14, SDK 10.0.403.
 
 ## 0.6.1 (2026-10-28)

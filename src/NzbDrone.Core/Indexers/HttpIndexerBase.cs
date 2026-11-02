@@ -4,6 +4,8 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Xml;
+using System.Xml.Linq;
 using FluentValidation.Results;
 using NLog;
 using NzbDrone.Common.Extensions;
@@ -387,6 +389,12 @@ namespace NzbDrone.Core.Indexers
 
                 return new ValidationFailure(string.Empty, "Unable to connect to indexer. " + ex.Message);
             }
+            catch (TooManyRequestsException ex)
+            {
+                _logger.Warn(ex, "Indexer rejected the test with 429 Too Many Requests");
+
+                return new ValidationFailure(string.Empty, GetTooManyRequestsMessage(ex));
+            }
             catch (HttpException ex)
             {
                 if (ex.Response.StatusCode == HttpStatusCode.BadRequest &&
@@ -444,6 +452,38 @@ namespace NzbDrone.Core.Indexers
             }
 
             return null;
+        }
+
+        private string GetTooManyRequestsMessage(TooManyRequestsException ex)
+        {
+            string description = null;
+
+            try
+            {
+                if (ex.Response.Content.IsNotNullOrWhiteSpace())
+                {
+                    // Newznab and Torznab errors look like <error code="429" description="..."/>, which is how Prowlarr says an indexer is disabled
+                    var error = XDocument.Parse(ex.Response.Content).Descendants("error").FirstOrDefault();
+                    description = error?.Attribute("description")?.Value.Trim().TrimEnd('.');
+                }
+            }
+            catch (XmlException xmlException)
+            {
+                _logger.Debug(xmlException, "429 response body is not a Newznab error, using the generic message");
+            }
+
+            var message = description.IsNullOrWhiteSpace()
+                ? "Indexer is rate limiting requests or is disabled (HTTP 429)."
+                : $"Indexer is rate limiting requests or is disabled: {description}.";
+
+            if (ex.RetryAfter > TimeSpan.Zero)
+            {
+                var minutes = (int)Math.Ceiling(ex.RetryAfter.TotalMinutes);
+
+                return $"{message} Try again in {minutes} minute{(minutes == 1 ? "" : "s")}.";
+            }
+
+            return $"{message} Try again later.";
         }
     }
 }
