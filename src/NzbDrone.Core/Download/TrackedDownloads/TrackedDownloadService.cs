@@ -27,6 +27,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
     }
 
     public class TrackedDownloadService : ITrackedDownloadService,
+                                          IHandle<BookGrabbedEvent>,
                                           IHandle<BookInfoRefreshedEvent>,
                                           IHandle<AuthorDeletedEvent>
     {
@@ -279,6 +280,24 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                     return TrackedDownloadState.Ignored;
                 default:
                     return TrackedDownloadState.Downloading;
+            }
+        }
+
+        public void Handle(BookGrabbedEvent message)
+        {
+            if (message.DownloadId.IsNullOrWhiteSpace())
+            {
+                return;
+            }
+
+            var trackedDownload = _cache.Find(message.DownloadId);
+
+            // A torrent grabbed again keeps its hash, so drop the finished entry and let the next poll track it afresh
+            if (trackedDownload is { State: TrackedDownloadState.Imported or
+                                            TrackedDownloadState.DownloadFailed or
+                                            TrackedDownloadState.Ignored })
+            {
+                _cache.Remove(message.DownloadId);
             }
         }
 
