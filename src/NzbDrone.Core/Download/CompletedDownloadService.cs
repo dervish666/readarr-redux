@@ -16,6 +16,7 @@ using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.BookImport;
 using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Events;
+using NzbDrone.Core.Parser.Model;
 
 namespace NzbDrone.Core.Download
 {
@@ -37,6 +38,8 @@ namespace NzbDrone.Core.Download
         private readonly ITrackedDownloadAlreadyImported _trackedDownloadAlreadyImported;
         private readonly IDiskProvider _diskProvider;
         private readonly IRejectedImportService _rejectedImportService;
+        private readonly IRejectedFileExtensionService _rejectedFileExtensionService;
+        private readonly IProvideDownloadClient _downloadClientProvider;
         private readonly Logger _logger;
 
         public CompletedDownloadService(IEventAggregator eventAggregator,
@@ -47,6 +50,8 @@ namespace NzbDrone.Core.Download
                                         ITrackedDownloadAlreadyImported trackedDownloadAlreadyImported,
                                         IDiskProvider diskProvider,
                                         IRejectedImportService rejectedImportService,
+                                        IRejectedFileExtensionService rejectedFileExtensionService,
+                                        IProvideDownloadClient downloadClientProvider,
                                         Logger logger)
         {
             _eventAggregator = eventAggregator;
@@ -57,6 +62,8 @@ namespace NzbDrone.Core.Download
             _trackedDownloadAlreadyImported = trackedDownloadAlreadyImported;
             _diskProvider = diskProvider;
             _rejectedImportService = rejectedImportService;
+            _rejectedFileExtensionService = rejectedFileExtensionService;
+            _downloadClientProvider = downloadClientProvider;
             _logger = logger;
         }
 
@@ -119,18 +126,18 @@ namespace NzbDrone.Core.Download
             var importResults = _downloadedTracksImportService.ProcessPath(outputPath, ImportMode.Auto, trackedDownload.RemoteBook?.Author, trackedDownload.DownloadItem, grabbedBook, options);
 
             // A rejection of the download as a whole, such as an executable where the book should be
-            if (importResults.Count == 1 && _rejectedImportService.Process(trackedDownload, importResults.First()))
+            if (importResults.Count == 1 && ProcessRejectedImport(trackedDownload, importResults.First()))
             {
-                if (trackedDownload.State == TrackedDownloadState.ImportFailed)
-                {
-                    _eventAggregator.PublishEvent(new BookImportIncompleteEvent(trackedDownload));
-                }
-
                 return;
             }
 
             if (importResults.Empty())
             {
+                if (ProcessRejectedDownloadClientFiles(trackedDownload))
+                {
+                    return;
+                }
+
                 trackedDownload.Warn("No files found are eligible for import in {0}", outputPath);
                 trackedDownload.State = TrackedDownloadState.ImportPending;
                 return;
@@ -329,6 +336,61 @@ namespace NzbDrone.Core.Download
 
             _logger.Debug("Not all books have been imported for {0}", trackedDownload.DownloadItem.Title);
             return false;
+        }
+
+        private bool ProcessRejectedImport(TrackedDownload trackedDownload, ImportResult importResult)
+        {
+            if (!_rejectedImportService.Process(trackedDownload, importResult))
+            {
+                return false;
+            }
+
+            // Not failed, so the import is blocked until someone deals with it, and that holds across a restart
+            if (trackedDownload.State == TrackedDownloadState.ImportFailed)
+            {
+                _eventAggregator.PublishEvent(new BookImportIncompleteEvent(trackedDownload));
+            }
+
+            return true;
+        }
+
+        // Nothing on disk to import, which is also what a download looks like when the client skipped the
+        // executable it held. The client's own file list still shows it, downloaded or not.
+        private bool ProcessRejectedDownloadClientFiles(TrackedDownload trackedDownload)
+        {
+            var files = GetDownloadClientFiles(trackedDownload);
+
+            if (files.Empty())
+            {
+                return false;
+            }
+
+            var rejection = _rejectedFileExtensionService.GetRejection(files.Select(f => f.RelativePath));
+
+            if (rejection == null)
+            {
+                return false;
+            }
+
+            _logger.Debug("Download '{0}' has no files to import, but the download client lists a rejected file: {1}", trackedDownload.DownloadItem.Title, rejection.Reason);
+
+            return ProcessRejectedImport(trackedDownload, new ImportResult(new ImportDecision<LocalBook>(null, rejection), rejection.Reason));
+        }
+
+        private List<DownloadClientFile> GetDownloadClientFiles(TrackedDownload trackedDownload)
+        {
+            try
+            {
+                var downloadClient = _downloadClientProvider.Get(trackedDownload.DownloadClient);
+
+                return downloadClient.GetFiles(trackedDownload.DownloadItem).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug(ex, "Unable to get the files for download '{0}' from the download client", trackedDownload.DownloadItem.Title);
+
+                return new List<DownloadClientFile>();
+            }
         }
 
         private void SetImportItem(TrackedDownload trackedDownload)
