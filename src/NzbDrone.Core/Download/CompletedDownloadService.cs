@@ -36,6 +36,7 @@ namespace NzbDrone.Core.Download
         private readonly IDownloadedBooksImportService _downloadedTracksImportService;
         private readonly ITrackedDownloadAlreadyImported _trackedDownloadAlreadyImported;
         private readonly IDiskProvider _diskProvider;
+        private readonly IRejectedImportService _rejectedImportService;
         private readonly Logger _logger;
 
         public CompletedDownloadService(IEventAggregator eventAggregator,
@@ -45,6 +46,7 @@ namespace NzbDrone.Core.Download
                                         IDownloadedBooksImportService downloadedTracksImportService,
                                         ITrackedDownloadAlreadyImported trackedDownloadAlreadyImported,
                                         IDiskProvider diskProvider,
+                                        IRejectedImportService rejectedImportService,
                                         Logger logger)
         {
             _eventAggregator = eventAggregator;
@@ -54,6 +56,7 @@ namespace NzbDrone.Core.Download
             _downloadedTracksImportService = downloadedTracksImportService;
             _trackedDownloadAlreadyImported = trackedDownloadAlreadyImported;
             _diskProvider = diskProvider;
+            _rejectedImportService = rejectedImportService;
             _logger = logger;
         }
 
@@ -114,6 +117,17 @@ namespace NzbDrone.Core.Download
 
             var outputPath = trackedDownload.ImportItem.OutputPath.FullPath;
             var importResults = _downloadedTracksImportService.ProcessPath(outputPath, ImportMode.Auto, trackedDownload.RemoteBook?.Author, trackedDownload.DownloadItem, grabbedBook, options);
+
+            // A rejection of the download as a whole, such as an executable where the book should be
+            if (importResults.Count == 1 && _rejectedImportService.Process(trackedDownload, importResults.First()))
+            {
+                if (trackedDownload.State == TrackedDownloadState.ImportFailed)
+                {
+                    _eventAggregator.PublishEvent(new BookImportIncompleteEvent(trackedDownload));
+                }
+
+                return;
+            }
 
             if (importResults.Empty())
             {

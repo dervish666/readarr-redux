@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NzbDrone.Core.ThingiProvider;
 
 namespace NzbDrone.Core.Indexers
@@ -6,5 +7,6 @@ namespace NzbDrone.Core.Indexers
     {
         string BaseUrl { get; set; }
         int? EarlyReleaseLimit { get; set; }
+        IEnumerable<int> FailDownloads { get; set; }
     }
 }

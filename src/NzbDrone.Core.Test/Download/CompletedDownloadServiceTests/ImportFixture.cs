@@ -10,14 +10,18 @@ using NzbDrone.Core.Books;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download;
+using NzbDrone.Core.Download.History;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.History;
+using NzbDrone.Core.Indexers;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.BookImport;
+using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Test.Framework;
+using NzbDrone.Core.Test.IndexerTests;
 using NzbDrone.Test.Common;
 
 namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
@@ -882,6 +886,61 @@ namespace NzbDrone.Core.Test.Download.CompletedDownloadServiceTests
                   .Verify(v => v.PublishEvent(It.IsAny<DownloadCompletedEvent>()), Times.Once());
 
             _trackedDownload.State.Should().Be(TrackedDownloadState.Imported);
+        }
+
+        private void GivenExecutableInDownload(params FailDownloads[] failDownloads)
+        {
+            Mocker.SetConstant<IRejectedImportService>(Mocker.Resolve<RejectedImportService>());
+
+            Mocker.GetMock<IDownloadHistoryService>()
+                  .Setup(s => s.GetLatestGrab(It.IsAny<string>()))
+                  .Returns(new DownloadHistory { IndexerId = 3 });
+
+            Mocker.GetMock<IIndexerFactory>()
+                  .Setup(s => s.Get(3))
+                  .Returns(new IndexerDefinition { Id = 3, Settings = new TestIndexerSettings { FailDownloads = failDownloads.Select(f => (int)f).ToList() } });
+
+            var message = "Caution: Found executable file with extension: .exe";
+
+            Mocker.GetMock<IDownloadedBooksImportService>()
+                  .Setup(v => v.ProcessPath(It.IsAny<string>(), It.IsAny<ImportMode>(), It.IsAny<Author>(), It.IsAny<DownloadClientItem>(), It.IsAny<Book>(), It.IsAny<DownloadImportOptions>()))
+                  .Returns(new List<ImportResult>
+                           {
+                               new ImportResult(new ImportDecision<LocalBook>(null, new ImportRejection(ImportRejectionReason.ExecutableFile, message)), message)
+                           });
+        }
+
+        [Test]
+        public void should_fail_download_holding_an_executable_when_the_indexer_fails_executables()
+        {
+            GivenExecutableInDownload(FailDownloads.Executables, FailDownloads.PotentiallyDangerous);
+
+            Subject.Import(_trackedDownload);
+
+            _trackedDownload.State.Should().Be(TrackedDownloadState.DownloadFailedPending);
+            _trackedDownload.Status.Should().Be(TrackedDownloadStatus.Error);
+
+            Mocker.GetMock<IEventAggregator>()
+                  .Verify(v => v.PublishEvent(It.IsAny<DownloadCompletedEvent>()), Times.Never());
+            Mocker.GetMock<IEventAggregator>()
+                  .Verify(v => v.PublishEvent(It.IsAny<BookImportIncompleteEvent>()), Times.Never());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_block_import_of_download_holding_an_executable_when_the_indexer_does_not_fail_executables()
+        {
+            GivenExecutableInDownload();
+
+            Subject.Import(_trackedDownload);
+
+            _trackedDownload.State.Should().Be(TrackedDownloadState.ImportFailed);
+            _trackedDownload.Status.Should().Be(TrackedDownloadStatus.Warning);
+            _trackedDownload.StatusMessages.Single().Messages.Single().Should().Contain(".exe");
+
+            Mocker.GetMock<IEventAggregator>()
+                  .Verify(v => v.PublishEvent(It.IsAny<BookImportIncompleteEvent>()), Times.Once());
         }
     }
 }

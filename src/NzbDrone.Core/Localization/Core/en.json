@@ -691,6 +691,8 @@
   "IndexerSearchCheckNoAvailableIndexersMessage": "All search-capable indexers are temporarily unavailable due to recent indexer errors",
   "IndexerSearchCheckNoInteractiveMessage": "No indexers available with Interactive Search enabled, Readarr will not provide any interactive search results",
   "IndexerSettings": "Indexer Settings",
+  "IndexerSettingsFailDownloads": "Fail Downloads",
+  "IndexerSettingsFailDownloadsHelpText": "While processing completed downloads {appName} will treat these selected filetypes as failed downloads, blocklist the release and search for another",
   "IndexerSettingsSeedRatio": "Seed Ratio",
   "IndexerSettingsSeedRatioHelpText": "The ratio a torrent should reach before stopping, empty uses the download client's default. Ratio should be at least 1.0 and follow the indexers rules",
   "IndexerSettingsSeedTime": "Seed Time",

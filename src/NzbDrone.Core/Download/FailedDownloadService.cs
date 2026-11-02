@@ -111,6 +111,11 @@ namespace NzbDrone.Core.Download
             {
                 failure = trackedDownload.DownloadItem.Message;
             }
+            else if (trackedDownload.Status == TrackedDownloadStatus.Error && trackedDownload.StatusMessages.Any())
+            {
+                // Failed by Readarr itself while importing, such as for an executable in the download
+                failure = string.Join(", ", trackedDownload.StatusMessages.SelectMany(m => m.Messages));
+            }
 
             trackedDownload.State = TrackedDownloadState.DownloadFailed;
             PublishDownloadFailedEvent(grabbedItems, failure, trackedDownload);
