@@ -9,6 +9,7 @@ using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.Disk;
 using NzbDrone.Core.Books;
+using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.MediaFiles;
@@ -478,6 +479,31 @@ namespace NzbDrone.Core.Test.MediaFiles
             result.Single().Result.Should().Be(ImportResultType.Rejected);
             result.Single().ImportDecision.Item.Should().BeNull();
             result.Single().ImportDecision.Rejections.Single().As<ImportRejection>().RejectionReason.Should().Be(reason);
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_reject_a_download_folder_holding_an_executable_and_a_rejected_book_file()
+        {
+            Mocker.SetConstant<IRejectedFileExtensionService>(new RejectedFileExtensionService());
+
+            var folder = Path.Combine(_droneFactory, "Author - Book Title");
+            var audioFile = Path.Combine(folder, "01 Book Title.mp3");
+            FileSystem.AddFile(audioFile, new MockFileData(string.Empty));
+            FileSystem.AddFile(Path.Combine(folder, "Book.epub.exe"), new MockFileData(string.Empty));
+
+            var unreadable = new ImportDecision<LocalBook>(new LocalBook { Path = audioFile }, new Rejection("Unable to read the file"));
+
+            Mocker.GetMock<IImportApprovedBooks>()
+                  .Setup(s => s.Import(It.IsAny<List<ImportDecision<LocalBook>>>(), It.IsAny<bool>(), It.IsAny<DownloadClientItem>(), It.IsAny<ImportMode>()))
+                  .Returns(new List<ImportResult> { new ImportResult(unreadable, "Unable to read the file") });
+
+            var result = Subject.ProcessPath(folder, ImportMode.Auto, Builder<Author>.CreateNew().Build(), _trackedDownload.DownloadItem);
+
+            result.Should().ContainSingle();
+            result.Single().ImportDecision.Item.Should().BeNull();
+            result.Single().ImportDecision.Rejections.Single().As<ImportRejection>().RejectionReason.Should().Be(ImportRejectionReason.ExecutableFile);
 
             ExceptionVerification.ExpectedWarns(1);
         }

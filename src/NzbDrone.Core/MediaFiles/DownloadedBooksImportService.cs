@@ -314,7 +314,9 @@ namespace NzbDrone.Core.MediaFiles
             SetReplaceDestination(decisions, options);
             var importResults = _importApprovedTracks.Import(decisions, true, downloadClientItem, importMode);
 
-            if (importResults.Empty())
+            // Checked whenever nothing imported, not only when nothing was found: an unreadable book file beside
+            // an executable gives a rejected result of its own, and that must not hide the executable.
+            if (importResults.None(r => r.Result == ImportResultType.Imported))
             {
                 var rejectedFileResult = CheckForRejectedFiles(_diskProvider.GetFiles(directoryInfo.FullName, true));
 
