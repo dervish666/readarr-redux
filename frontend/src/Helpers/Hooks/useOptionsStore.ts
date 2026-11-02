@@ -5,7 +5,16 @@ import Column from 'Components/Table/Column';
 import { createPersist } from 'Helpers/createPersist';
 import SortDirection from 'Helpers/Props/SortDirection';
 
-const deepMerge = createDeepMerge({ all: true });
+// Arrays from persisted state replace the defaults. The default merge concatenates them,
+// so a saved ['b'] over a default ['a', 'b'] came back as ['a', 'b', 'b'].
+const deepMerge = createDeepMerge({
+  all: true,
+  mergeArray: ({ clone }) => {
+    return (_target, source) => {
+      return clone(source);
+    };
+  },
+});
 
 type TSettingsWithoutColumns = object;
 

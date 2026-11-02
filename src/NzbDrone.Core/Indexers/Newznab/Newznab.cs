@@ -166,7 +166,13 @@ namespace NzbDrone.Core.Indexers.Newznab
         {
             try
             {
-                return Math.Min(100, Math.Max(_capabilitiesProvider.GetCapabilities(Settings).DefaultPageSize, _capabilitiesProvider.GetCapabilities(Settings).MaxPageSize));
+                var capabilities = _capabilitiesProvider.GetCapabilities(Settings);
+
+                // Use the indexer's default when it reports one above 100, otherwise go as high as 100 if allowed
+                return Math.Clamp(
+                    capabilities.DefaultPageSize,
+                    Math.Min(100, capabilities.MaxPageSize),
+                    capabilities.MaxPageSize);
             }
             catch
             {
