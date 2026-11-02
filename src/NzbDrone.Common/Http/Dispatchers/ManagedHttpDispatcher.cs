@@ -77,7 +77,7 @@ namespace NzbDrone.Common.Http.Dispatchers
                 {
                     // Manually set header to avoid initial challenge response
                     var authInfo = bc.UserName + ":" + bc.Password;
-                    authInfo = Convert.ToBase64String(Encoding.GetEncoding("ISO-8859-1").GetBytes(authInfo));
+                    authInfo = Convert.ToBase64String(Encoding.UTF8.GetBytes(authInfo));
                     requestMessage.Headers.Authorization = new AuthenticationHeaderValue("Basic", authInfo);
                 }
                 else if (request.Credentials is NetworkCredential nc)
