@@ -9,6 +9,7 @@ using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Indexers;
+using NzbDrone.Core.Indexers.Exceptions;
 using NzbDrone.Core.Indexers.Newznab;
 using NzbDrone.Core.Indexers.Torznab;
 using NzbDrone.Core.Parser.Model;
@@ -176,6 +177,79 @@ namespace NzbDrone.Core.Test.IndexerTests.TorznabTests
             var result = new NzbDroneValidationResult(Subject.Test());
             result.IsValid.Should().BeTrue();
             result.HasWarnings.Should().BeTrue();
+        }
+
+        [Test]
+        public void test_failure_should_not_show_apikey_from_http_error()
+        {
+            (Subject.Definition.Settings as TorznabSettings).ApiKey = "mySecret";
+
+            Mocker.GetMock<IHttpClient>()
+                .Setup(o => o.ExecuteAsync(It.IsAny<HttpRequest>()))
+                .Returns<HttpRequest>(r => throw new HttpException(r, new HttpResponse(r, new HttpHeader(), "", System.Net.HttpStatusCode.BadGateway)));
+
+            var result = Subject.Test();
+
+            result.IsValid.Should().BeFalse();
+            result.Errors.Should().OnlyContain(e => !e.ErrorMessage.Contains("mySecret"));
+            result.Errors.Should().Contain(e => e.ErrorMessage.Contains("apikey=(removed)"));
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void test_should_explain_429_from_prowlarr_without_apikey()
+        {
+            (Subject.Definition.Settings as TorznabSettings).ApiKey = "mySecret";
+
+            var body = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<error code=\"429\" description=\"Indexer is disabled till 11/3/2026 5:02:48 AM due to recent failures.\" />";
+            var headers = new HttpHeader();
+            headers["Retry-After"] = "3600";
+
+            Mocker.GetMock<IHttpClient>()
+                .Setup(o => o.ExecuteAsync(It.IsAny<HttpRequest>()))
+                .Returns<HttpRequest>(r => throw new TooManyRequestsException(r, new HttpResponse(r, headers, body, (System.Net.HttpStatusCode)429)));
+
+            var result = Subject.Test();
+
+            result.IsValid.Should().BeFalse();
+            result.Errors.Should().ContainSingle().Which.ErrorMessage.Should()
+                .Be("Indexer is rate limiting requests or is disabled: Indexer is disabled till 11/3/2026 5:02:48 AM due to recent failures. Try again in 60 minutes.");
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void test_should_give_generic_429_message_when_body_is_not_newznab()
+        {
+            (Subject.Definition.Settings as TorznabSettings).ApiKey = "mySecret";
+
+            Mocker.GetMock<IHttpClient>()
+                .Setup(o => o.ExecuteAsync(It.IsAny<HttpRequest>()))
+                .Returns<HttpRequest>(r => throw new TooManyRequestsException(r, new HttpResponse(r, new HttpHeader(), "<html>slow down", (System.Net.HttpStatusCode)429)));
+
+            var result = Subject.Test();
+
+            result.IsValid.Should().BeFalse();
+            result.Errors.Should().ContainSingle().Which.ErrorMessage.Should()
+                .Be("Indexer is rate limiting requests or is disabled (HTTP 429). Try again later.");
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void test_failure_should_not_show_secrets_from_exception_text()
+        {
+            Mocker.GetMock<IHttpClient>()
+                .Setup(o => o.ExecuteAsync(It.IsAny<HttpRequest>()))
+                .Returns<HttpRequest>(r => throw new UnsupportedFeedException("Could not parse feed from {0}", "http://indexer.local/rss?passkey=mySecret"));
+
+            var result = Subject.Test();
+
+            result.IsValid.Should().BeFalse();
+            result.Errors.Should().OnlyContain(e => !e.ErrorMessage.Contains("mySecret"));
+
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [TestCase("/torznab/all/api")]

@@ -28,6 +28,7 @@ namespace NzbDrone.Common.Test.InstrumentationTests
 
         // Sabnzbd
         [TestCase(@"http://127.0.0.1:1234/api/call?vv=1&apikey=mySecret")]
+        [TestCase(@"http://127.0.0.1:1234/api/call?vv=1&api_key=mySecret")]
         [TestCase(@"http://127.0.0.1:1234/api/call?vv=1&ma_username=mySecret&ma_password=mySecret")]
         [TestCase(@"""config"":{""newzbin"":{""username"":""mySecret"",""password"":""mySecret""}")]
         [TestCase(@"""nzbxxx"":{""username"":""mySecret"",""apikey"":""mySecret""}")]

@@ -11,6 +11,7 @@ Releases come from `vX.Y.Z` git tags and publish the images `X.Y.Z`, `X.Y` and `
 - Security: The DNS rebinding fix in 0.6.1 could be walked around. A page in a browser on a trusted network can add its own `X-Forwarded-Host: localhost`, and the local address bypass judged that forwarded host. It now judges the host the request arrived with, which the browser sets and script can't change. A reverse proxy's forwarded client address still counts for the bypass, the login throttle and the logs.
 - Security: Host settings no longer send the proxy and SSL certificate passwords back in plain text.
 - Security: The API key and the legacy password hash are compared in constant time, and an empty API key matches nothing.
+- Security: A failed indexer test showed the request URL with the indexer's API key in plain text, for example a 429 from Prowlarr on `t=caps`. HTTP error messages now mask `apikey`, `api_key`, `passkey`, `token` and the other secrets the log cleanser knows, and indexer test failures are cleansed before the UI sees them.
 - Added: A download holding an executable or potentially dangerous file (.exe, .bat, .cmd, .sh, .lnk, .ps1, .vbs, .zipx) and no book is rejected at import. Each indexer's new Fail Downloads setting picks which kinds fail the download, so it is blocklisted, removed and searched again; anything else is blocked with a warning in the queue. When qBittorrent skipped the blocked files, Readarr reads the torrent's file list to find them.
 - Added: Fail Downloads is on (Executables and Potentially Dangerous) for new Newznab, Torznab, Nyaa and Torrent RSS indexers, and the upgrade turns it on for existing ones that have no value yet. Private trackers start with it off.
 - Added: Torrent indexers can reject a grabbed .torrent whose file list holds a type their Fail Downloads covers, before it reaches the client, so a torrent with a book and an executable side by side is skipped. Magnet links can't be checked.
@@ -25,6 +26,7 @@ Releases come from `vX.Y.Z` git tags and publish the images `X.Y.Z`, `X.Y` and `
 - Fixed: HTTP basic auth credentials with characters outside Latin-1 were sent as `?`.
 - Fixed: Pooled HTTP connections lived forever and kept dialling a host's old address after a DNS change. They are recycled every 30 minutes.
 - Fixed: Email addresses in log messages are masked as `(removed)@example.com`.
+- Fixed: An indexer test that got 429 Too Many Requests said only "HTTP request failed". It now shows the indexer's own reason when it sends a Newznab error, such as Prowlarr's "Indexer is disabled till ... due to recent failures", and how long Retry-After says to wait.
 - Changed: .NET runtime 10.0.14, SDK 10.0.403.
 
 ## 0.6.1 (2026-10-28)
