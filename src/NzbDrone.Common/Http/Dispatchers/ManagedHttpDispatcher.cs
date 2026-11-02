@@ -230,6 +230,18 @@ namespace NzbDrone.Common.Http.Dispatchers
 
         protected virtual System.Net.Http.HttpClient CreateHttpClient(HttpProxySettings proxySettings)
         {
+            var client = new System.Net.Http.HttpClient(CreateHandler(proxySettings))
+            {
+                DefaultRequestVersion = HttpVersion.Version20,
+                DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
+                Timeout = Timeout.InfiniteTimeSpan
+            };
+
+            return client;
+        }
+
+        protected SocketsHttpHandler CreateHandler(HttpProxySettings proxySettings)
+        {
             var handler = new SocketsHttpHandler()
             {
                 AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Brotli,
@@ -238,6 +250,9 @@ namespace NzbDrone.Common.Http.Dispatchers
                 Credentials = GetCredentialCache(),
                 PreAuthenticate = true,
                 MaxConnectionsPerServer = 12,
+
+                // The clients are cached for the life of the process, so recycle connections to pick up DNS changes
+                PooledConnectionLifetime = TimeSpan.FromMinutes(30),
                 ConnectCallback = onConnect,
                 SslOptions = new SslClientAuthenticationOptions
                 {
@@ -250,14 +265,7 @@ namespace NzbDrone.Common.Http.Dispatchers
                 handler.Proxy = _createManagedWebProxy.GetWebProxy(proxySettings);
             }
 
-            var client = new System.Net.Http.HttpClient(handler)
-            {
-                DefaultRequestVersion = HttpVersion.Version20,
-                DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
-                Timeout = Timeout.InfiniteTimeSpan
-            };
-
-            return client;
+            return handler;
         }
 
         protected virtual void AddRequestHeaders(HttpRequestMessage webRequest, HttpHeader headers)

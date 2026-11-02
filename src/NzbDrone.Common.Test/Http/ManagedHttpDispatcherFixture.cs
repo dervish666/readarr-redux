@@ -45,6 +45,11 @@ namespace NzbDrone.Common.Test.Http
             {
                 return new HttpClient(_handler, false);
             }
+
+            public SocketsHttpHandler CreateRealHandler()
+            {
+                return CreateHandler(null);
+            }
         }
 
         private static IUserAgentBuilder UserAgent()
@@ -75,6 +80,16 @@ namespace NzbDrone.Common.Test.Http
 
             var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(authorization.Parameter));
             decoded.Should().Be($"{username}:{password}");
+        }
+
+        [Test]
+        public void should_recycle_pooled_connections()
+        {
+            var dispatcher = new StubDispatcher(new CapturingHandler(), UserAgent());
+
+            using var handler = dispatcher.CreateRealHandler();
+
+            handler.PooledConnectionLifetime.Should().Be(TimeSpan.FromMinutes(30));
         }
     }
 }
