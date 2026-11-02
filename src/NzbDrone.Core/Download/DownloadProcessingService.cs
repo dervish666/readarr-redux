@@ -57,13 +57,16 @@ namespace NzbDrone.Core.Download
             {
                 try
                 {
+                    // Import before processing failures, so an import that fails the download, such as one that
+                    // found an executable, is failed on this pass rather than the next one
+                    if (enableCompletedDownloadHandling && trackedDownload.State == TrackedDownloadState.ImportPending)
+                    {
+                        _completedDownloadService.Import(trackedDownload);
+                    }
+
                     if (trackedDownload.State == TrackedDownloadState.DownloadFailedPending)
                     {
                         _failedDownloadService.ProcessFailed(trackedDownload);
-                    }
-                    else if (enableCompletedDownloadHandling && trackedDownload.State == TrackedDownloadState.ImportPending)
-                    {
-                        _completedDownloadService.Import(trackedDownload);
                     }
                 }
                 catch (Exception e)

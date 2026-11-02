@@ -6,6 +6,7 @@ using System.Linq;
 using NLog;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download;
@@ -35,6 +36,7 @@ namespace NzbDrone.Core.MediaFiles
         private readonly IImportApprovedBooks _importApprovedTracks;
         private readonly IEventAggregator _eventAggregator;
         private readonly IRuntimeInfo _runtimeInfo;
+        private readonly IRejectedFileExtensionService _rejectedFileExtensionService;
         private readonly Logger _logger;
 
         public DownloadedBooksImportService(IDiskProvider diskProvider,
@@ -45,6 +47,7 @@ namespace NzbDrone.Core.MediaFiles
                                              IImportApprovedBooks importApprovedTracks,
                                              IEventAggregator eventAggregator,
                                              IRuntimeInfo runtimeInfo,
+                                             IRejectedFileExtensionService rejectedFileExtensionService,
                                              Logger logger)
         {
             _diskProvider = diskProvider;
@@ -55,6 +58,7 @@ namespace NzbDrone.Core.MediaFiles
             _importApprovedTracks = importApprovedTracks;
             _eventAggregator = eventAggregator;
             _runtimeInfo = runtimeInfo;
+            _rejectedFileExtensionService = rejectedFileExtensionService;
             _logger = logger;
         }
 
@@ -95,6 +99,14 @@ namespace NzbDrone.Core.MediaFiles
 
             if (_diskProvider.FileExists(path))
             {
+                // A single file download that is itself an executable, such as 'Title.epub.exe', has nothing else to import
+                var rejectedFileResult = CheckForRejectedFiles(new[] { path });
+
+                if (rejectedFileResult != null)
+                {
+                    return new List<ImportResult> { rejectedFileResult };
+                }
+
                 var fileInfo = _diskProvider.GetFileInfo(path);
 
                 if (author == null)
@@ -302,6 +314,16 @@ namespace NzbDrone.Core.MediaFiles
             SetReplaceDestination(decisions, options);
             var importResults = _importApprovedTracks.Import(decisions, true, downloadClientItem, importMode);
 
+            if (importResults.Empty())
+            {
+                var rejectedFileResult = CheckForRejectedFiles(_diskProvider.GetFiles(directoryInfo.FullName, true));
+
+                if (rejectedFileResult != null)
+                {
+                    return new List<ImportResult> { rejectedFileResult };
+                }
+            }
+
             if (importMode == ImportMode.Auto)
             {
                 importMode = (downloadClientItem == null || downloadClientItem.CanMoveFiles) ? ImportMode.Move : ImportMode.Copy;
@@ -415,6 +437,22 @@ namespace NzbDrone.Core.MediaFiles
         {
             _logger.Debug("[{0}] is currently locked by another process, skipping", audioFile);
             return new ImportResult(new ImportDecision<LocalBook>(new LocalBook { Path = audioFile }, new Rejection("Locked file, try again later")), "Locked file, try again later");
+        }
+
+        // The result has no item because the rejection is about the download as a whole rather than one book file,
+        // which is how completed download handling tells it apart and can fail the download
+        private ImportResult CheckForRejectedFiles(IEnumerable<string> files)
+        {
+            var rejection = _rejectedFileExtensionService.GetRejection(files);
+
+            if (rejection == null)
+            {
+                return null;
+            }
+
+            _logger.Warn("Not importing, {0}", rejection.Reason);
+
+            return new ImportResult(new ImportDecision<LocalBook>(null, rejection), rejection.Reason);
         }
 
         private ImportResult UnknownAuthorResult(string message, string bookFile = null)
