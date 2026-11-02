@@ -12,12 +12,14 @@ namespace NzbDrone.Core.Datastore
 {
     public interface IRestoreDatabase
     {
-        void Restore();
+        bool Restore();
+        void RollBack();
     }
 
     public class DatabaseRestorationService : IRestoreDatabase, IHandleAsync<ApplicationStartedEvent>
     {
         private const string PreRestoreSuffix = ".pre-restore";
+        private const string RestoreFailedSuffix = ".restore-failed";
         private static readonly string[] DatabaseFileSuffixes = { "", "-shm", "-wal", "-journal" };
 
         private readonly IDiskProvider _diskProvider;
@@ -30,31 +32,39 @@ namespace NzbDrone.Core.Datastore
             _appFolderInfo = appFolderInfo;
         }
 
-        public void Restore()
+        public bool Restore()
         {
             var dbRestorePath = _appFolderInfo.GetDatabaseRestore();
 
             if (!_diskProvider.FileExists(dbRestorePath))
             {
-                return;
+                return false;
             }
 
             var dbPath = _appFolderInfo.GetDatabase();
             var movedSuffixes = new List<string>();
 
+            // A .pre-restore database is only removed once the app has started, so if one is still here the current
+            // database is an earlier restore that never got the app started. Keep the .pre-restore database, it is
+            // the last one known to work, and set the current one aside instead.
+            var asideSuffix = _diskProvider.FileExists(dbPath + PreRestoreSuffix) ? RestoreFailedSuffix : PreRestoreSuffix;
+
             try
             {
                 Logger.Info("Restoring Database");
 
-                // Keep the current database aside rather than deleting it, so it survives a restored
-                // database that fails to open. It is removed once the app has started.
+                if (asideSuffix == RestoreFailedSuffix)
+                {
+                    Logger.Warn("An earlier restore never finished starting, keeping {0} and moving the current database to {1}", dbPath + PreRestoreSuffix, dbPath + RestoreFailedSuffix);
+                }
+
                 foreach (var suffix in DatabaseFileSuffixes)
                 {
-                    _diskProvider.DeleteFile(dbPath + PreRestoreSuffix + suffix);
+                    _diskProvider.DeleteFile(dbPath + asideSuffix + suffix);
 
                     if (_diskProvider.FileExists(dbPath + suffix))
                     {
-                        _diskProvider.MoveFile(dbPath + suffix, dbPath + PreRestoreSuffix + suffix);
+                        _diskProvider.MoveFile(dbPath + suffix, dbPath + asideSuffix + suffix);
                         movedSuffixes.Add(suffix);
                     }
                 }
@@ -67,10 +77,52 @@ namespace NzbDrone.Core.Datastore
 
                 foreach (var suffix in movedSuffixes)
                 {
-                    _diskProvider.MoveFile(dbPath + PreRestoreSuffix + suffix, dbPath + suffix, true);
+                    _diskProvider.MoveFile(dbPath + asideSuffix + suffix, dbPath + suffix, true);
                 }
 
                 throw;
+            }
+
+            return true;
+        }
+
+        // Called when the database just restored fails to open or migrate. Puts the database from before the restore
+        // back so the next start uses it, rather than failing on the restored one every time.
+        public void RollBack()
+        {
+            var dbPath = _appFolderInfo.GetDatabase();
+
+            if (!_diskProvider.FileExists(dbPath + PreRestoreSuffix))
+            {
+                Logger.Error("The restored database failed to open and there is no database from before the restore to go back to");
+                return;
+            }
+
+            try
+            {
+                Logger.Error("The restored database failed to open, going back to the database from before the restore. The restored database is kept as {0}", dbPath + RestoreFailedSuffix);
+
+                foreach (var suffix in DatabaseFileSuffixes)
+                {
+                    _diskProvider.DeleteFile(dbPath + RestoreFailedSuffix + suffix);
+
+                    if (_diskProvider.FileExists(dbPath + suffix))
+                    {
+                        _diskProvider.MoveFile(dbPath + suffix, dbPath + RestoreFailedSuffix + suffix);
+                    }
+                }
+
+                foreach (var suffix in DatabaseFileSuffixes)
+                {
+                    if (_diskProvider.FileExists(dbPath + PreRestoreSuffix + suffix))
+                    {
+                        _diskProvider.MoveFile(dbPath + PreRestoreSuffix + suffix, dbPath + suffix);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.Error(e, "Failed to go back to the database from before the restore, it is at {0}", dbPath + PreRestoreSuffix);
             }
         }
 

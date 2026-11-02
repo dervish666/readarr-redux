@@ -120,8 +120,23 @@ namespace NzbDrone.Core.Datastore
         {
             try
             {
-                _restoreDatabaseService.Restore();
-                _migrationController.Migrate(connectionString, migrationContext, databaseType);
+                var restored = _restoreDatabaseService.Restore();
+
+                try
+                {
+                    _migrationController.Migrate(connectionString, migrationContext, databaseType);
+                }
+                catch (Exception)
+                {
+                    if (restored)
+                    {
+                        // Release pooled handles on the restored file so it can be moved aside
+                        SQLiteConnection.ClearAllPools();
+                        _restoreDatabaseService.RollBack();
+                    }
+
+                    throw;
+                }
             }
             catch (SQLiteException e)
             {
