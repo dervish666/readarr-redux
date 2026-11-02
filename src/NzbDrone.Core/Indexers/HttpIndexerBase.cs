@@ -8,6 +8,7 @@ using FluentValidation.Results;
 using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
+using NzbDrone.Common.Instrumentation;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Http.CloudFlare;
 using NzbDrone.Core.Indexers.Exceptions;
@@ -320,7 +321,15 @@ namespace NzbDrone.Core.Indexers
 
         protected override async Task Test(List<ValidationFailure> failures)
         {
-            failures.AddIfNotNull(await TestConnection());
+            var failure = await TestConnection();
+
+            if (failure != null)
+            {
+                // Exception text appended to the failure can carry the indexer URL, and the UI shows it
+                failure.ErrorMessage = CleanseLogMessage.Cleanse(failure.ErrorMessage);
+            }
+
+            failures.AddIfNotNull(failure);
         }
 
         protected virtual async Task<ValidationFailure> TestConnection()
