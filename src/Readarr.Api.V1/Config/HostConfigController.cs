@@ -76,7 +76,9 @@ namespace Readarr.Api.V1.Config
             X509Certificate2 cert;
             try
             {
-                cert = X509CertificateLoader.LoadPkcs12FromFile(resource.SslCertPath, resource.SslCertPassword, X509KeyStorageFlags.DefaultKeySet);
+                var password = resource.SslCertPassword == PasswordPlaceholder ? _configFileProvider.SslCertPassword : resource.SslCertPassword;
+
+                cert = X509CertificateLoader.LoadPkcs12FromFile(resource.SslCertPath, password, X509KeyStorageFlags.DefaultKeySet);
             }
             catch
             {
@@ -120,6 +122,10 @@ namespace Readarr.Api.V1.Config
             resource.Password = user != null ? PasswordPlaceholder : string.Empty;
             resource.PasswordConfirmation = string.Empty;
 
+            // Secrets go out as the placeholder and are swapped back for the stored value on save
+            resource.SslCertPassword = resource.SslCertPassword.IsNullOrWhiteSpace() ? string.Empty : PasswordPlaceholder;
+            resource.ProxyPassword = resource.ProxyPassword.IsNullOrWhiteSpace() ? string.Empty : PasswordPlaceholder;
+
             return resource;
         }
 
@@ -129,6 +135,16 @@ namespace Readarr.Api.V1.Config
             var dictionary = resource.GetType()
                                      .GetProperties(BindingFlags.Instance | BindingFlags.Public)
                                      .ToDictionary(prop => prop.Name, prop => prop.GetValue(resource, null));
+
+            if (resource.SslCertPassword == PasswordPlaceholder)
+            {
+                dictionary[nameof(HostConfigResource.SslCertPassword)] = _configFileProvider.SslCertPassword;
+            }
+
+            if (resource.ProxyPassword == PasswordPlaceholder)
+            {
+                dictionary[nameof(HostConfigResource.ProxyPassword)] = _configService.ProxyPassword;
+            }
 
             _configFileProvider.SaveConfigDictionary(dictionary);
             _configService.SaveConfigDictionary(dictionary);
