@@ -693,6 +693,8 @@
   "IndexerSettings": "Indexer Settings",
   "IndexerSettingsFailDownloads": "Fail Downloads",
   "IndexerSettingsFailDownloadsHelpText": "While processing completed downloads {appName} will treat these selected filetypes as failed downloads, blocklist the release and search for another",
+  "IndexerSettingsRejectTorrentFilesWithBlockedExtensions": "Reject Torrent Files with Blocked Extensions",
+  "IndexerSettingsRejectTorrentFilesWithBlockedExtensionsHelpText": "Also apply 'Fail Downloads' when grabbing torrent files. A torrent listing any file of a selected type is rejected and blocklisted before it reaches the download client, even if it also holds a book. Magnet links can't be checked",
   "IndexerSettingsSeedRatio": "Seed Ratio",
   "IndexerSettingsSeedRatioHelpText": "The ratio a torrent should reach before stopping, empty uses the download client's default. Ratio should be at least 1.0 and follow the indexers rules",
   "IndexerSettingsSeedTime": "Seed Time",
