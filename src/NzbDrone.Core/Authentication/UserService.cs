@@ -139,7 +139,7 @@ namespace NzbDrone.Core.Authentication
                 }
 
                 var salted = !user.Salt.IsNullOrWhiteSpace();
-                var verified = salted ? VerifyHashedPassword(user, password) : user.Password == password.SHA256Hash();
+                var verified = salted ? VerifyHashedPassword(user, password) : CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(password.SHA256Hash()), Encoding.ASCII.GetBytes(user.Password ?? string.Empty));
 
                 if (!verified)
                 {
