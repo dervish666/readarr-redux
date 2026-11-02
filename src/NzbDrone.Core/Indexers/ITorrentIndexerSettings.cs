@@ -6,5 +6,6 @@ namespace NzbDrone.Core.Indexers
 
         SeedCriteriaSettings SeedCriteria { get; set; }
         bool RejectBlocklistedTorrentHashesWhileGrabbing { get; set; }
+        bool RejectTorrentFilesWithBlockedExtensionsWhileGrabbing { get; set; }
     }
 }

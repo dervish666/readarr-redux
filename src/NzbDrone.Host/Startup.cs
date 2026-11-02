@@ -51,12 +51,15 @@ namespace NzbDrone.Host
                 b.ClearProviders();
                 b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
                 b.AddFilter("Microsoft.AspNetCore", Microsoft.Extensions.Logging.LogLevel.Warning);
+                b.AddFilter("Microsoft.AspNetCore.HostFiltering", LogLevel.Information);
+                b.AddFilter("Microsoft.AspNetCore.HttpOverrides", LogLevel.Debug);
                 b.AddFilter("Readarr.Http.Authentication", LogLevel.Information);
                 b.AddFilter("Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager", LogLevel.Error);
                 b.AddNLog();
             });
 
-            services.Configure<ForwardedHeadersOptions>(ForwardedHeadersConfigurator.Configure);
+            services.AddOptions<ForwardedHeadersOptions>()
+                    .Configure<IConfigFileProvider>(ForwardedHeadersConfigurator.Configure);
 
             services.AddRouting(options => options.LowercaseUrls = true);
 
@@ -232,7 +235,16 @@ namespace NzbDrone.Host
                 firewallAdapter.MakeAccessible();
             }
 
+            // Before forwarded headers, so "Disabled for Local Addresses" can judge the host the request arrived with
+            app.Use((context, next) =>
+            {
+                UiAuthorizationHandler.RecordOriginalHost(context);
+                return next(context);
+            });
             app.UseForwardedHeaders();
+
+            // After forwarded headers, so the host a trusted proxy forwards is the one checked
+            app.UseHostFiltering();
             app.UseMiddleware<LoggingMiddleware>();
             app.UseMiddleware<ViteDevMiddleware>(configFileProvider.UrlBase);
             app.UsePathBase(new PathString(configFileProvider.UrlBase));

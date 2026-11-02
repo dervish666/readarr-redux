@@ -131,6 +131,17 @@ namespace NzbDrone.Common.Test.InstrumentationTests
             cleansedMessage.Should().NotContain("mytoken");
         }
 
+        [TestCase(@"User 'mySecret@example.com' is not authorized to access this application")]
+        [TestCase(@"Auth-Logout ip 127.0.0.1 username 'mySecret@example.com'")]
+        [TestCase(@"Sending email to mySecret@sub.example.co.uk failed")]
+        public void should_clean_email(string message)
+        {
+            var cleansedMessage = CleanseLogMessage.Cleanse(message);
+
+            cleansedMessage.Should().NotContain("mySecret");
+            cleansedMessage.Should().Contain("(removed)@");
+        }
+
         [TestCase(@"Some message (from 32.2.3.5 user agent)")]
         [TestCase(@"Auth-Invalidated ip 32.2.3.5")]
         [TestCase(@"Auth-Success ip 32.2.3.5")]

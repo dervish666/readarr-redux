@@ -327,6 +327,33 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.QBittorrentTests
         }
 
         [Test]
+        public void should_list_every_file_in_the_torrent_including_skipped_ones()
+        {
+            var torrent = new QBittorrentTorrent
+            {
+                Hash = "HASH",
+                Name = "Author - Book Title",
+                Size = 1000,
+                Progress = 1.0,
+                Eta = 0,
+                State = "uploading",
+                Label = "",
+                SavePath = @"C:\Torrents".AsOsAgnostic()
+            };
+
+            GivenTorrents(new List<QBittorrentTorrent> { torrent });
+            GivenTorrentFiles(torrent.Hash, new List<QBittorrentTorrentFile>
+            {
+                new QBittorrentTorrentFile { Name = "Author - Book Title/Book Title.epub.exe" },
+                new QBittorrentTorrentFile { Name = "Author - Book Title/readme.txt" }
+            });
+
+            var result = Subject.GetFiles(new DownloadClientItem { DownloadId = torrent.Hash }).ToList();
+
+            result.Select(f => f.RelativePath).Should().Equal("Author - Book Title/Book Title.epub.exe", "Author - Book Title/readme.txt");
+        }
+
+        [Test]
         public void single_file_torrent_with_folder_should_only_have_first_subfolder()
         {
             var torrent = new QBittorrentTorrent

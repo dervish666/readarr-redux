@@ -17,7 +17,7 @@ COPY vite.config.mts index.html ./
 COPY frontend ./frontend
 RUN yarn build
 
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0.402-noble AS backend
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0.403-noble AS backend
 ARG TARGETARCH
 # Read by src/Directory.Build.props. Keep Major below 10 and Revision at or below 10000, or the app runs in development mode.
 ARG READARRVERSION=0.5.0.0

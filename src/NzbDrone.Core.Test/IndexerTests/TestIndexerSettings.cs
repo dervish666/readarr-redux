@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Validation;
 
@@ -13,5 +14,6 @@ namespace NzbDrone.Core.Test.IndexerTests
 
         public string BaseUrl { get; set; }
         public int? EarlyReleaseLimit { get; set; }
+        public IEnumerable<int> FailDownloads { get; set; }
     }
 }

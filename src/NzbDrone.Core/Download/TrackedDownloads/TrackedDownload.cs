@@ -32,6 +32,14 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             Status = TrackedDownloadStatus.Warning;
             StatusMessages = statusMessages;
         }
+
+        // Hands the download to failed download handling, which blocklists the release and searches again
+        public void Fail(params TrackedDownloadStatusMessage[] statusMessages)
+        {
+            Status = TrackedDownloadStatus.Error;
+            StatusMessages = statusMessages;
+            State = TrackedDownloadState.DownloadFailedPending;
+        }
     }
 
     public enum TrackedDownloadState
