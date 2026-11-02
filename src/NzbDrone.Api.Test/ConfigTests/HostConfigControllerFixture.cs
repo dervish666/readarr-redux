@@ -172,6 +172,76 @@ namespace NzbDrone.Api.Test.ConfigTests
             return validator.Validate(resource).Errors.Where(e => e.PropertyName == nameof(HostConfigResource.SslCertPath));
         }
 
+        private IEnumerable<ValidationFailure> Validate(HostConfigResource resource, string propertyName)
+        {
+            var validator = (IValidator<HostConfigResource>)typeof(RestController<HostConfigResource>)
+                .GetProperty("SharedValidator", BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetValue(Subject);
+
+            return validator.Validate(resource).Errors.Where(e => e.PropertyName == propertyName);
+        }
+
+        [TestCase("readarr.example.com", true)]
+        [TestCase("readarr.example.com, *.home.example.com; 192.168.0.190, [::1]", true)]
+        [TestCase("", true)]
+        [TestCase("http://readarr.example.com", false)]
+        [TestCase("readarr.example.com:8787", false)]
+        [TestCase("*", false)]
+        [TestCase("0.0.0.0", false)]
+        public void allowed_hosts_should_be_validated(string allowedHosts, bool valid)
+        {
+            var resource = Subject.GetHostConfig();
+            resource.AllowedHosts = allowedHosts;
+
+            Validate(resource, nameof(HostConfigResource.AllowedHosts)).Should().HaveCount(valid ? 0 : 1);
+        }
+
+        [TestCase("10.0.0.0/8, 172.17.0.1, fc00::/7", true)]
+        [TestCase("", true)]
+        [TestCase("10.0.0.0/8, nonsense", false)]
+        [TestCase("0.0.0.0/0", false)]
+        [TestCase("192.168.1.1/24", false)]
+        public void trusted_networks_should_be_validated(string trustedNetworks, bool valid)
+        {
+            var resource = Subject.GetHostConfig();
+            resource.TrustedNetworks = trustedNetworks;
+
+            Validate(resource, nameof(HostConfigResource.TrustedNetworks)).Should().HaveCount(valid ? 0 : 1);
+        }
+
+        [Test]
+        public void saving_should_normalize_allowed_hosts_and_trusted_networks()
+        {
+            var resource = Subject.GetHostConfig();
+            resource.AllowedHosts = " readarr.example.com;;2001:db8::1 ,readarr.example.com";
+            resource.TrustedNetworks = "10.0.0.0/8,, 172.17.0.1 ";
+
+            Subject.SaveHostConfig(resource);
+
+            Mocker.GetMock<IConfigFileProvider>()
+                .Verify(v => v.SaveConfigDictionary(It.Is<Dictionary<string, object>>(d =>
+                    Has(d, "AllowedHosts", "readarr.example.com, [2001:db8::1]") &&
+                    Has(d, "TrustedNetworks", "10.0.0.0/8, 172.17.0.1"))), Times.Once());
+        }
+
+        [Test]
+        public void saving_without_allowed_hosts_or_trusted_networks_should_keep_stored_values()
+        {
+            Mocker.GetMock<IConfigFileProvider>().SetupGet(s => s.AllowedHosts).Returns("readarr.example.com");
+            Mocker.GetMock<IConfigFileProvider>().SetupGet(s => s.TrustedNetworks).Returns("172.17.0.1");
+
+            var resource = Subject.GetHostConfig();
+            resource.AllowedHosts = null;
+            resource.TrustedNetworks = null;
+
+            Subject.SaveHostConfig(resource);
+
+            Mocker.GetMock<IConfigFileProvider>()
+                .Verify(v => v.SaveConfigDictionary(It.Is<Dictionary<string, object>>(d =>
+                    Has(d, "AllowedHosts", "readarr.example.com") &&
+                    Has(d, "TrustedNetworks", "172.17.0.1"))), Times.Once());
+        }
+
         [Test]
         public void unchanged_ssl_cert_password_should_validate_against_stored_password()
         {
