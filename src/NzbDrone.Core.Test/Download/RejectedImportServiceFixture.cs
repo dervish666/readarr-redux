@@ -87,6 +87,22 @@ namespace NzbDrone.Core.Test.Download
             _trackedDownload.Status.Should().Be(TrackedDownloadStatus.Warning);
         }
 
+        [TestCase(FailDownloads.Executables)]
+        [TestCase(FailDownloads.PotentiallyDangerous)]
+        public void should_fail_download_holding_both_kinds_of_file_when_indexer_fails_either(FailDownloads failDownloads)
+        {
+            GivenFailDownloads(failDownloads);
+
+            var rejections = new RejectedFileExtensionService().GetRejections(new[] { "Book Title.epub.exe", "Book Title.pdf.lnk" });
+            var importResult = new ImportResult(new ImportDecision<LocalBook>(null, rejections.ToArray<Rejection>()), rejections.Select(r => r.Reason).ToArray());
+
+            Subject.Process(_trackedDownload, importResult).Should().BeTrue();
+
+            _trackedDownload.State.Should().Be(TrackedDownloadState.DownloadFailedPending);
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
         [Test]
         public void should_block_import_with_a_warning_when_indexer_fails_nothing()
         {

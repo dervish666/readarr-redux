@@ -39,11 +39,12 @@ namespace NzbDrone.Core.Download
             }
 
             var statusMessage = new TrackedDownloadStatusMessage(trackedDownload.DownloadItem.Title, importResult.Errors);
-            var rejectionReason = importResult.ImportDecision.Rejections.OfType<ImportRejection>().FirstOrDefault()?.RejectionReason;
+            var rejectionReasons = importResult.ImportDecision.Rejections.OfType<ImportRejection>().Select(r => r.RejectionReason).ToList();
             var failDownloads = GetFailDownloads(trackedDownload);
 
-            if ((rejectionReason == ImportRejectionReason.DangerousFile && failDownloads.Contains(FailDownloads.PotentiallyDangerous)) ||
-                (rejectionReason == ImportRejectionReason.ExecutableFile && failDownloads.Contains(FailDownloads.Executables)))
+            // Fails when any kind of file found is one the indexer fails downloads for
+            if ((rejectionReasons.Contains(ImportRejectionReason.DangerousFile) && failDownloads.Contains(FailDownloads.PotentiallyDangerous)) ||
+                (rejectionReasons.Contains(ImportRejectionReason.ExecutableFile) && failDownloads.Contains(FailDownloads.Executables)))
             {
                 _logger.Warn("Failing download {0}: {1}", trackedDownload.DownloadItem.Title, string.Join(", ", importResult.Errors));
                 trackedDownload.Fail(statusMessage);

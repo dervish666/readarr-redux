@@ -31,13 +31,13 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport
         [Test]
         public void should_not_return_rejection_for_book_and_audio_files()
         {
-            Subject.GetRejection(BookAndAudioExtensions.Select(e => "Book Title" + e)).Should().BeNull();
+            Subject.GetRejections(BookAndAudioExtensions.Select(e => "Book Title" + e)).Should().BeEmpty();
         }
 
         [Test]
         public void should_not_return_rejection_for_files_without_an_extension()
         {
-            Subject.GetRejection(new[] { "Book Title" }).Should().BeNull();
+            Subject.GetRejections(new[] { "Book Title" }).Should().BeEmpty();
         }
 
         [TestCase(".lnk")]
@@ -47,9 +47,8 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport
         [TestCase(".LNK")]
         public void should_return_rejection_for_dangerous_file(string extension)
         {
-            var rejection = Subject.GetRejection(new[] { "Book Title.epub", "Book Title" + extension });
+            var rejection = Subject.GetRejections(new[] { "Book Title.epub", "Book Title" + extension }).Single();
 
-            rejection.Should().NotBeNull();
             rejection.RejectionReason.Should().Be(ImportRejectionReason.DangerousFile);
             rejection.Reason.Should().Contain(extension);
         }
@@ -61,17 +60,18 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport
         [TestCase(".EXE")]
         public void should_return_rejection_for_executable_file(string extension)
         {
-            var rejection = Subject.GetRejection(new[] { "Author - Book Title/Book Title.epub" + extension });
+            var rejection = Subject.GetRejections(new[] { "Author - Book Title/Book Title.epub" + extension }).Single();
 
-            rejection.Should().NotBeNull();
             rejection.RejectionReason.Should().Be(ImportRejectionReason.ExecutableFile);
             rejection.Reason.Should().Contain(extension);
         }
 
         [Test]
-        public void should_prefer_dangerous_over_executable()
+        public void should_return_a_rejection_for_each_kind_of_file_found()
         {
-            Subject.GetRejection(new[] { "setup.exe", "Book Title.lnk" }).RejectionReason.Should().Be(ImportRejectionReason.DangerousFile);
+            Subject.GetRejections(new[] { "setup.exe", "Book Title.lnk" })
+                   .Select(r => r.RejectionReason)
+                   .Should().BeEquivalentTo(new[] { ImportRejectionReason.DangerousFile, ImportRejectionReason.ExecutableFile });
         }
     }
 }

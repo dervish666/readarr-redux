@@ -445,16 +445,18 @@ namespace NzbDrone.Core.MediaFiles
         // which is how completed download handling tells it apart and can fail the download
         private ImportResult CheckForRejectedFiles(IEnumerable<string> files)
         {
-            var rejection = _rejectedFileExtensionService.GetRejection(files);
+            var rejections = _rejectedFileExtensionService.GetRejections(files);
 
-            if (rejection == null)
+            if (rejections.Empty())
             {
                 return null;
             }
 
-            _logger.Warn("Not importing, {0}", rejection.Reason);
+            var reasons = rejections.Select(r => r.Reason).ToArray();
 
-            return new ImportResult(new ImportDecision<LocalBook>(null, rejection), rejection.Reason);
+            _logger.Warn("Not importing, {0}", string.Join(", ", reasons));
+
+            return new ImportResult(new ImportDecision<LocalBook>(null, rejections.ToArray<Rejection>()), reasons);
         }
 
         private ImportResult UnknownAuthorResult(string message, string bookFile = null)

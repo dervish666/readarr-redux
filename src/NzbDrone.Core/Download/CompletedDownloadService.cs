@@ -10,6 +10,7 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Instrumentation.Extensions;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Datastore;
+using NzbDrone.Core.DecisionEngine;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.History;
 using NzbDrone.Core.MediaFiles;
@@ -365,16 +366,18 @@ namespace NzbDrone.Core.Download
                 return false;
             }
 
-            var rejection = _rejectedFileExtensionService.GetRejection(files.Select(f => f.RelativePath));
+            var rejections = _rejectedFileExtensionService.GetRejections(files.Select(f => f.RelativePath));
 
-            if (rejection == null)
+            if (rejections.Empty())
             {
                 return false;
             }
 
-            _logger.Debug("Download '{0}' has no files to import, but the download client lists a rejected file: {1}", trackedDownload.DownloadItem.Title, rejection.Reason);
+            var reasons = rejections.Select(r => r.Reason).ToArray();
 
-            return ProcessRejectedImport(trackedDownload, new ImportResult(new ImportDecision<LocalBook>(null, rejection), rejection.Reason));
+            _logger.Debug("Download '{0}' has no files to import, but the download client lists a rejected file: {1}", trackedDownload.DownloadItem.Title, string.Join(", ", reasons));
+
+            return ProcessRejectedImport(trackedDownload, new ImportResult(new ImportDecision<LocalBook>(null, rejections.ToArray<Rejection>()), reasons));
         }
 
         private List<DownloadClientFile> GetDownloadClientFiles(TrackedDownload trackedDownload)
