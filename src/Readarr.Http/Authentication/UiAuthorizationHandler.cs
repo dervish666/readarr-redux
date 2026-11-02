@@ -3,8 +3,10 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HostFiltering;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.Options;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Authentication;
 using NzbDrone.Core.Configuration;
@@ -31,11 +33,13 @@ namespace NzbDrone.Http.Authentication
         };
 
         private readonly IConfigFileProvider _configService;
+        private readonly IOptionsMonitor<HostFilteringOptions> _hostFilteringOptions;
         private static AuthenticationRequiredType _authenticationRequired;
 
-        public UiAuthorizationHandler(IConfigFileProvider configService)
+        public UiAuthorizationHandler(IConfigFileProvider configService, IOptionsMonitor<HostFilteringOptions> hostFilteringOptions)
         {
             _configService = configService;
+            _hostFilteringOptions = hostFilteringOptions;
             _authenticationRequired = configService.AuthenticationRequired;
         }
 
@@ -44,7 +48,7 @@ namespace NzbDrone.Http.Authentication
             if (_authenticationRequired == AuthenticationRequiredType.DisabledForLocalAddresses &&
                 context.Resource is HttpContext httpContext &&
                 IsLocalRequest(httpContext, _configService.TrustCgnatIpAddresses) &&
-                IsLocalHostName(httpContext.Request.Host.Host))
+                (IsHostFiltered() || IsLocalHostName(httpContext.Request.Host.Host)))
             {
                 context.Succeed(requirement);
             }
@@ -52,8 +56,18 @@ namespace NzbDrone.Http.Authentication
             return Task.CompletedTask;
         }
 
-        // A local client address alone does not prevent DNS rebinding.
-        // Restrict the bypass to local host names and IP literals.
+        // Asks the options the host filtering middleware runs with, not the saved Allowed Hosts,
+        // since a change to that only takes effect after a restart
+        private bool IsHostFiltered()
+        {
+            var allowedHosts = _hostFilteringOptions?.CurrentValue?.AllowedHosts;
+
+            return allowedHosts != null && allowedHosts.Count > 0 && !allowedHosts.Contains("*");
+        }
+
+        // A local client address alone does not prevent DNS rebinding. When Allowed Hosts is set,
+        // the host filtering middleware has already turned away any other host; otherwise restrict
+        // the bypass to local host names and IP literals.
         public static bool IsLocalHostName(string host)
         {
             if (string.IsNullOrEmpty(host))

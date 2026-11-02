@@ -5,6 +5,8 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Xml;
+using System.Xml.Linq;
 using NLog;
 using NzbDrone.Common;
 using NzbDrone.Common.Disk;
@@ -40,6 +42,7 @@ namespace NzbDrone.Core.Backup
         private string _backupTempFolder;
 
         public static readonly Regex BackupFileRegex = new Regex(@"readarr_backup_(v[0-9.]+_)?[._0-9]+\.zip", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly byte[] SqliteHeader = Encoding.ASCII.GetBytes("SQLite format 3\0");
 
         public BackupService(IMainDatabase maindDb,
                              IMakeDatabaseBackup makeDatabaseBackup,
@@ -130,47 +133,54 @@ namespace NzbDrone.Core.Backup
         {
             if (backupFileName.EndsWith(".zip"))
             {
-                var restoredFile = false;
                 var temporaryPath = Path.Combine(_appFolderInfo.TempFolder, "readarr_backup_restore");
 
                 // Start clean so leftovers from an earlier attempt can't be picked up below
-                if (_diskProvider.FolderExists(temporaryPath))
+                DeleteRestoreFolder(temporaryPath);
+
+                try
                 {
-                    _diskProvider.DeleteFolder(temporaryPath, true);
-                }
+                    // Only the two root-level files a restore uses are written; the archive is rejected
+                    // before anything is written if any entry points outside the restore folder
+                    _archiveService.ExtractRootFiles(backupFileName, temporaryPath, new[] { "config.xml", "readarr.db" });
 
-                // Only the two root-level files a restore uses are written; the archive is rejected
-                // before anything is written if any entry points outside the restore folder
-                _archiveService.ExtractRootFiles(backupFileName, temporaryPath, new[] { "config.xml", "readarr.db" });
+                    // Nothing is extracted, so no folder is created, when the archive has neither file
+                    var files = _diskProvider.FolderExists(temporaryPath)
+                        ? _diskProvider.GetFiles(temporaryPath, false).ToList()
+                        : new List<string>();
+                    var configFiles = files.Where(IsConfigFile).ToList();
+                    var databaseFiles = files.Where(IsDatabaseFile).ToList();
 
-                foreach (var file in _diskProvider.GetFiles(temporaryPath, false))
-                {
-                    var fileName = Path.GetFileName(file);
-
-                    if (fileName.Equals("Config.xml", StringComparison.InvariantCultureIgnoreCase))
+                    if (configFiles.Count == 0 && databaseFiles.Count == 0)
                     {
-                        _diskProvider.MoveFile(file, _appFolderInfo.GetConfigPath(), true);
-                        restoredFile = true;
+                        throw new RestoreBackupFailedException(HttpStatusCode.NotFound, "Unable to restore database file from backup");
                     }
 
-                    if (fileName.Equals("readarr.db", StringComparison.InvariantCultureIgnoreCase))
-                    {
-                        _diskProvider.MoveFile(file, _appFolderInfo.GetDatabaseRestore(), true);
-                        restoredFile = true;
-                    }
-                }
+                    // Check every file before restoring any, so one bad file can't leave a half-applied restore
+                    configFiles.ForEach(ValidateConfigFile);
+                    databaseFiles.ForEach(ValidateDatabase);
 
-                if (!restoredFile)
+                    configFiles.ForEach(RestoreConfigFile);
+                    databaseFiles.ForEach(RestoreDatabase);
+                }
+                finally
                 {
-                    throw new RestoreBackupFailedException(HttpStatusCode.NotFound, "Unable to restore database file from backup");
+                    DeleteRestoreFolder(temporaryPath);
                 }
-
-                _diskProvider.DeleteFolder(temporaryPath, true);
 
                 return;
             }
 
-            _diskProvider.MoveFile(backupFileName, _appFolderInfo.GetDatabaseRestore(), true);
+            if (backupFileName.EndsWith(".xml"))
+            {
+                ValidateConfigFile(backupFileName);
+                RestoreConfigFile(backupFileName);
+
+                return;
+            }
+
+            ValidateDatabase(backupFileName);
+            RestoreDatabase(backupFileName);
         }
 
         public string GetBackupFolder()
@@ -216,6 +226,75 @@ namespace NzbDrone.Core.Backup
             var tempConfigFile = Path.Combine(_backupTempFolder, Path.GetFileName(configFile));
 
             _diskTransferService.TransferFile(configFile, tempConfigFile, TransferMode.Copy);
+        }
+
+        private void RestoreConfigFile(string file)
+        {
+            _diskProvider.MoveFile(file, _appFolderInfo.GetConfigPath(), true);
+        }
+
+        private void RestoreDatabase(string file)
+        {
+            _diskProvider.MoveFile(file, _appFolderInfo.GetDatabaseRestore(), true);
+        }
+
+        private void DeleteRestoreFolder(string path)
+        {
+            if (_diskProvider.FolderExists(path))
+            {
+                _diskProvider.DeleteFolder(path, true);
+            }
+        }
+
+        private static bool IsConfigFile(string file)
+        {
+            return Path.GetFileName(file).Equals("config.xml", StringComparison.InvariantCultureIgnoreCase);
+        }
+
+        private static bool IsDatabaseFile(string file)
+        {
+            return Path.GetFileName(file).Equals("readarr.db", StringComparison.InvariantCultureIgnoreCase);
+        }
+
+        private void ValidateDatabase(string file)
+        {
+            if (!IsSqliteDatabase(file))
+            {
+                throw new RestoreBackupFailedException(HttpStatusCode.BadRequest, "Backup database is not a valid SQLite database");
+            }
+        }
+
+        private void ValidateConfigFile(string file)
+        {
+            if (!IsValidConfigFile(file))
+            {
+                throw new RestoreBackupFailedException(HttpStatusCode.BadRequest, "Backup config file is not a valid config file");
+            }
+        }
+
+        private bool IsValidConfigFile(string file)
+        {
+            try
+            {
+                using (var stream = _diskProvider.OpenReadStream(file))
+                {
+                    return XDocument.Load(stream).Descendants(ConfigFileProvider.CONFIG_ELEMENT_NAME).Count() == 1;
+                }
+            }
+            catch (XmlException)
+            {
+                return false;
+            }
+        }
+
+        private bool IsSqliteDatabase(string file)
+        {
+            var header = new byte[SqliteHeader.Length];
+
+            using (var stream = _diskProvider.OpenReadStream(file))
+            {
+                return stream.Read(header, 0, header.Length) == header.Length && header.SequenceEqual(SqliteHeader);
+            }
         }
 
         private void CreateVersionInfo(DateTime dateNow)

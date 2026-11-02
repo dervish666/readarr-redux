@@ -229,5 +229,49 @@ namespace NzbDrone.Common.Test
 
             Assert.Throws<InvalidConfigFileException>(() => Subject.GetValue("key", "value"));
         }
+
+        [Test]
+        public void new_install_should_trust_no_proxy_networks()
+        {
+            Subject.TrustedNetworks.Should().BeEmpty();
+
+            _configFileContents.Should().Contain("<TrustedNetworks></TrustedNetworks>");
+        }
+
+        [Test]
+        public void existing_install_without_trusted_networks_should_keep_trusting_private_ranges()
+        {
+            _configFileContents = "<Config><Port>8787</Port></Config>";
+
+            Subject.TrustedNetworks.Should().Be("10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, fc00::/7, fe80::/10");
+
+            _configFileContents.Should().Contain("<TrustedNetworks>10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, fc00::/7, fe80::/10</TrustedNetworks>");
+        }
+
+        [Test]
+        public void existing_install_with_trusted_networks_cleared_should_trust_no_proxy_networks()
+        {
+            _configFileContents = "<Config><Port>8787</Port><TrustedNetworks></TrustedNetworks></Config>";
+
+            Subject.TrustedNetworks.Should().BeEmpty();
+        }
+
+        [Test]
+        public void trusted_networks_from_environment_should_override_config_file()
+        {
+            _configFileContents = "<Config><TrustedNetworks>10.0.0.0/8</TrustedNetworks></Config>";
+
+            Mocker.GetMock<IOptions<ServerOptions>>()
+                .Setup(v => v.Value)
+                .Returns(new ServerOptions { TrustedNetworks = "172.17.0.1" });
+
+            Subject.TrustedNetworks.Should().Be("172.17.0.1");
+        }
+
+        [Test]
+        public void allowed_hosts_should_default_to_empty()
+        {
+            Subject.AllowedHosts.Should().BeEmpty();
+        }
     }
 }

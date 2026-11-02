@@ -33,6 +33,8 @@ namespace NzbDrone.Core.Configuration
         bool LaunchBrowser { get; }
         AuthenticationType AuthenticationMethod { get; }
         AuthenticationRequiredType AuthenticationRequired { get; }
+        string AllowedHosts { get; }
+        string TrustedNetworks { get; }
         bool AnalyticsEnabled { get; }
         string LogLevel { get; }
         string ConsoleLogLevel { get; }
@@ -67,6 +69,7 @@ namespace NzbDrone.Core.Configuration
     public class ConfigFileProvider : IConfigFileProvider
     {
         public const string CONFIG_ELEMENT_NAME = "Config";
+        public const string LegacyTrustedNetworks = "10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, fc00::/7, fe80::/10";
 
         private readonly IEventAggregator _eventAggregator;
         private readonly IDiskProvider _diskProvider;
@@ -79,6 +82,7 @@ namespace NzbDrone.Core.Configuration
         private readonly LogOptions _logOptions;
 
         private readonly string _configFile;
+        private readonly bool _configFileExisted;
 
         private static readonly object Mutex = new object();
 
@@ -97,6 +101,9 @@ namespace NzbDrone.Core.Configuration
             _eventAggregator = eventAggregator;
             _diskProvider = diskProvider;
             _configFile = appFolderInfo.GetConfigPath();
+
+            // Read before any default is written, which creates the file on a new install
+            _configFileExisted = _diskProvider.FileExists(_configFile);
             _postgresOptions = postgresOptions.Value;
             _authOptions = authOptions.Value;
             _appOptions = appOptions.Value;
@@ -214,6 +221,14 @@ namespace NzbDrone.Core.Configuration
             Enum.TryParse<AuthenticationRequiredType>(_authOptions.Required, out var enumValue)
                 ? enumValue
                 : GetValueEnum("AuthenticationRequired", AuthenticationRequiredType.Enabled);
+
+        public string AllowedHosts => _serverOptions.AllowedHosts ?? GetValue("AllowedHosts", string.Empty);
+
+        // Forwarded headers are only read from proxies on these networks (loopback is always trusted).
+        // Installs from before the setting existed trusted every private range, so a config file that
+        // was already there when this process started keeps that list, written out where it can be
+        // edited. A new install trusts no proxy until one is added.
+        public string TrustedNetworks => _serverOptions.TrustedNetworks ?? GetValue("TrustedNetworks", _configFileExisted ? LegacyTrustedNetworks : string.Empty);
 
         public bool AnalyticsEnabled => _logOptions.AnalyticsEnabled ?? GetValueBoolean("AnalyticsEnabled", false, persist: false);
 

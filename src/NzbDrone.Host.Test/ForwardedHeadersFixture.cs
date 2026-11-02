@@ -4,10 +4,12 @@ using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.HostFiltering;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Moq;
 using NUnit.Framework;
 using NzbDrone.Core.Authentication;
 using NzbDrone.Core.Configuration;
@@ -35,14 +37,22 @@ namespace NzbDrone.App.Test
 
         private static HttpContext Send(string peer, string forwardedFor, params (string Name, string Value)[] headers)
         {
+            return SendWithTrustedNetworks(ConfigFileProvider.LegacyTrustedNetworks, "192.168.0.190:8787", peer, forwardedFor, headers);
+        }
+
+        private static HttpContext SendWithTrustedNetworks(string trustedNetworks, string host, string peer, string forwardedFor, params (string Name, string Value)[] headers)
+        {
+            var configFileProvider = new Mock<IConfigFileProvider>();
+            configFileProvider.SetupGet(c => c.TrustedNetworks).Returns(trustedNetworks);
+
             var options = new ForwardedHeadersOptions();
-            ForwardedHeadersConfigurator.Configure(options);
+            ForwardedHeadersConfigurator.Configure(options, configFileProvider.Object);
 
             var middleware = new ForwardedHeadersMiddleware(_ => Task.CompletedTask, NullLoggerFactory.Instance, Options.Create(options));
 
             var httpContext = new DefaultHttpContext();
             httpContext.Connection.RemoteIpAddress = IPAddress.Parse(peer);
-            httpContext.Request.Host = new HostString("192.168.0.190:8787");
+            httpContext.Request.Host = new HostString(host);
 
             if (forwardedFor != null)
             {
@@ -140,6 +150,96 @@ namespace NzbDrone.App.Test
 
             httpContext.Connection.RemoteIpAddress.Should().Be(IPAddress.Parse("192.168.0.50"));
             IsAuthorized(httpContext).Should().BeTrue();
+        }
+
+        [TestCase("")]
+        [TestCase("172.17.0.1")]
+        public void should_not_trust_a_lan_proxy_outside_trusted_networks(string trustedNetworks)
+        {
+            var httpContext = SendWithTrustedNetworks(trustedNetworks, "192.168.0.190:8787", "192.168.0.2", InternetClient);
+
+            // The client address stays the proxy's, and the unresolved header keeps it from counting as local
+            httpContext.Connection.RemoteIpAddress.Should().Be(IPAddress.Parse("192.168.0.2"));
+            IsAuthorized(httpContext).Should().BeFalse();
+        }
+
+        [Test]
+        public void should_not_trust_spoofed_forwarded_for_from_a_lan_peer_outside_trusted_networks()
+        {
+            var httpContext = SendWithTrustedNetworks(string.Empty, "192.168.0.190:8787", "192.168.0.66", "10.9.8.7");
+
+            httpContext.Connection.RemoteIpAddress.Should().Be(IPAddress.Parse("192.168.0.66"));
+        }
+
+        [Test]
+        public void should_trust_a_proxy_listed_in_trusted_networks()
+        {
+            var httpContext = SendWithTrustedNetworks("172.17.0.1", "192.168.0.190:8787", "172.17.0.1", InternetClient);
+
+            httpContext.Connection.RemoteIpAddress.Should().Be(IPAddress.Parse(InternetClient));
+            IsAuthorized(httpContext).Should().BeFalse();
+        }
+
+        [Test]
+        public void should_always_trust_a_proxy_on_this_machine()
+        {
+            var httpContext = SendWithTrustedNetworks(string.Empty, "192.168.0.190:8787", "127.0.0.1", InternetClient);
+
+            httpContext.Connection.RemoteIpAddress.Should().Be(IPAddress.Parse(InternetClient));
+        }
+
+        private void GivenAllowedHosts(params string[] allowedHosts)
+        {
+            Mocker.GetMock<IOptionsMonitor<HostFilteringOptions>>()
+                  .SetupGet(o => o.CurrentValue)
+                  .Returns(new HostFilteringOptions { AllowedHosts = allowedHosts });
+        }
+
+        [Test]
+        public void should_not_bypass_for_a_public_host_name_without_allowed_hosts()
+        {
+            IsAuthorized(SendWithTrustedNetworks(string.Empty, "readarr.example.com", "192.168.0.50", null)).Should().BeFalse();
+        }
+
+        [Test]
+        public void should_not_bypass_for_a_public_host_name_when_allowed_hosts_is_a_wildcard()
+        {
+            GivenAllowedHosts("*");
+
+            IsAuthorized(SendWithTrustedNetworks(string.Empty, "readarr.example.com", "192.168.0.50", null)).Should().BeFalse();
+        }
+
+        [Test]
+        public void should_bypass_for_an_allowed_host_name_once_hosts_are_filtered()
+        {
+            // Host filtering has already turned away every other host by the time this runs
+            GivenAllowedHosts("readarr.example.com", "localhost");
+
+            IsAuthorized(SendWithTrustedNetworks(string.Empty, "readarr.example.com", "192.168.0.50", null)).Should().BeTrue();
+        }
+
+        [TestCase("evil.example.com", 400)]
+        [TestCase("readarr.example.com", 200)]
+        [TestCase("localhost", 200)]
+        public async Task host_filtering_should_turn_away_hosts_not_allowed(string host, int expectedStatus)
+        {
+            var configFileProvider = new Mock<IConfigFileProvider>();
+            configFileProvider.SetupGet(c => c.AllowedHosts).Returns("readarr.example.com");
+
+            var options = new HostFilteringOptions();
+            new ConfigureHostFilteringOptions(configFileProvider.Object, NLog.LogManager.CreateNullLogger()).Configure(options);
+
+            var monitor = new Mock<IOptionsMonitor<HostFilteringOptions>>();
+            monitor.SetupGet(o => o.CurrentValue).Returns(options);
+
+            var middleware = new HostFilteringMiddleware(_ => Task.CompletedTask, NullLogger<HostFilteringMiddleware>.Instance, monitor.Object);
+
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Host = new HostString(host);
+
+            await middleware.Invoke(httpContext);
+
+            httpContext.Response.StatusCode.Should().Be(expectedStatus);
         }
     }
 }
