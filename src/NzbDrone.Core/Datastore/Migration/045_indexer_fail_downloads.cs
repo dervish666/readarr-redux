@@ -21,12 +21,15 @@ namespace NzbDrone.Core.Datastore.Migration
 
         protected override void MainDbUpgrade()
         {
-            Execute.WithConnection(EnableFailDownloads);
+            // Dapper expands "IN @list" into one parameter per item, Npgsql sends the array as a single parameter and
+            // Postgres rejects "IN $1", so Postgres needs "= ANY (@list)" instead.
+            IfDatabase("sqlite").Execute.WithConnection((conn, tran) => EnableFailDownloads(conn, tran, "\"Implementation\" IN @Implementations"));
+            IfDatabase("postgres").Execute.WithConnection((conn, tran) => EnableFailDownloads(conn, tran, "\"Implementation\" = ANY (@Implementations)"));
         }
 
-        private void EnableFailDownloads(IDbConnection conn, IDbTransaction tran)
+        private void EnableFailDownloads(IDbConnection conn, IDbTransaction tran, string implementationFilter)
         {
-            var indexers = conn.Query<IndexerSettings045>("SELECT \"Id\", \"Settings\" FROM \"Indexers\" WHERE \"Implementation\" IN @Implementations",
+            var indexers = conn.Query<IndexerSettings045>("SELECT \"Id\", \"Settings\" FROM \"Indexers\" WHERE " + implementationFilter,
                 new { Implementations },
                 transaction: tran);
 
