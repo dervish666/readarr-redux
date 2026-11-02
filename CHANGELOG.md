@@ -6,6 +6,26 @@ Releases come from `vX.Y.Z` git tags and publish the images `X.Y.Z`, `X.Y` and `
 
 ## Unreleased
 
+- Security: Forwarded headers were trusted from every private range, so any device on the LAN could fake the client address the login throttle and the local address bypass see. A new Trusted Networks setting (Settings > General > Security) lists the proxies whose forwarded headers count, plus loopback. A new install trusts none; an existing config with no TrustedNetworks key is seeded with the old private ranges, so a LAN proxy keeps working. Needs a restart.
+- Security: A new Allowed Hosts setting (Settings > General > Host) answers 400 to requests for any other host name. localhost, loopback and the server's own name always work, and empty allows every host as before. A health check warns when authentication is off for local addresses and Allowed Hosts is empty. Needs a restart.
+- Security: Host settings no longer send the proxy and SSL certificate passwords back in plain text.
+- Security: The API key and the legacy password hash are compared in constant time, and an empty API key matches nothing.
+- Added: A download holding an executable or potentially dangerous file (.exe, .bat, .cmd, .sh, .lnk, .ps1, .vbs, .zipx) and no book is rejected at import. Each indexer's new Fail Downloads setting picks which kinds fail the download, so it is blocklisted, removed and searched again; anything else is blocked with a warning in the queue. When qBittorrent skipped the blocked files, Readarr reads the torrent's file list to find them.
+- Added: Fail Downloads is on (Executables and Potentially Dangerous) for new Newznab, Torznab, Nyaa and Torrent RSS indexers, and the upgrade turns it on for existing ones that have no value yet. Private trackers start with it off.
+- Added: Torrent indexers can reject a grabbed .torrent whose file list holds a type their Fail Downloads covers, before it reaches the client, so a torrent with a book and an executable side by side is skipped. Magnet links can't be checked.
+- Fixed: Restoring a backup deleted the live database before checking the restored one, so a bad upload left nothing to start from. Files are checked first, the current database is kept as `.pre-restore` until the restored one starts, and an uploaded `config.xml` replaces the config instead of being staged as the database.
+- Fixed: A torrent grabbed again after it had been imported never imported again.
+- Fixed: Downloads removed from the download client stayed tracked in the queue.
+- Fixed: A blocklisted NZB hid the same release on every other indexer. A usenet blocklist entry now matches only its own indexer.
+- Fixed: Newznab and Torznab page size never went past 100 even when the indexer recommends more.
+- Fixed: SQLite gave up on a busy database after 100ms with "database is locked". It now waits up to a second.
+- Fixed: A saved list option holding a list of values came back with the defaults appended to it.
+- Fixed: Expired cache entries stayed in memory until read again. A Clear Expired Cache task sweeps them every 5 minutes.
+- Fixed: HTTP basic auth credentials with characters outside Latin-1 were sent as `?`.
+- Fixed: Pooled HTTP connections lived forever and kept dialling a host's old address after a DNS change. They are recycled every 30 minutes.
+- Fixed: Email addresses in log messages are masked as `(removed)@example.com`.
+- Changed: .NET runtime 10.0.14, SDK 10.0.403.
+
 ## 0.6.1 (2026-10-28)
 
 - Security: With authentication off for local addresses, a page on another site that rebinds its domain to Readarr's LAN address looked local and could read the API key. The local bypass now also needs a Host header that is an IP address, `localhost`, a single-label name, or a name ending `.local`, `.lan`, `.home.arpa` or `.internal`. Any other host name gets the normal login, so if you reach Readarr by a full domain name without a login, that now asks for one.
