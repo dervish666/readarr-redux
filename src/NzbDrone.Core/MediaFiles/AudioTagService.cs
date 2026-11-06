@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using NLog;
@@ -173,16 +174,19 @@ namespace NzbDrone.Core.MediaFiles
             }
 
             var path = trackfile.Path;
+            var watch = Stopwatch.StartNew();
             var oldTags = ReadAudioTag(path);
             var newTags = GetTrackMetadata(trackfile, oldTags);
             var diff = oldTags.Diff(newTags);
 
             if (!diff.Any())
             {
-                _logger.Debug("No tags update for {0} due to no difference", trackfile);
+                _logger.Debug("No tags update for {0} due to no difference ({1}ms)", trackfile, watch.ElapsedMilliseconds);
                 return;
             }
 
+            var checkDuration = watch.ElapsedMilliseconds;
+            watch.Restart();
             _rootFolderWatchingService.ReportFileSystemChangeBeginning(path);
 
             if (_configService.ScrubAudioTags)
@@ -194,6 +198,7 @@ namespace NzbDrone.Core.MediaFiles
             _logger.Debug($"Writing tags for {trackfile}");
 
             newTags.Write(path);
+            _logger.Debug("Audio tag timing for {2}: check {0}ms, write {1}ms", checkDuration, watch.ElapsedMilliseconds, path);
 
             UpdateTrackfileSizeAndModified(trackfile, path);
 
