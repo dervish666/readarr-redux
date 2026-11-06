@@ -86,7 +86,7 @@
     "zustand": "5.0.15"
   },
   "devDependencies": {
-    "@babel/core": "7.29.6",
+    "@babel/core": "7.29.7",
     "@babel/eslint-parser": "7.25.9",
     "@babel/preset-react": "7.26.3",
     "@playwright/test": "1.63.0",
