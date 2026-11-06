@@ -19,6 +19,7 @@ env:
 
 jobs:
   frontend:
+    name: frontend-${{ github.event_name }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -52,6 +53,7 @@ jobs:
           retention-days: 1
 
   backend-pr:
+    name: backend-pr-${{ github.event_name }}
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     steps:

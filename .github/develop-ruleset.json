@@ -40,11 +40,11 @@
         "do_not_enforce_on_create": true,
         "required_status_checks": [
           {
-            "context": "frontend",
+            "context": "frontend-pull_request",
             "integration_id": 15368
           },
           {
-            "context": "backend-pr",
+            "context": "backend-pr-pull_request",
             "integration_id": 15368
           }
         ]
