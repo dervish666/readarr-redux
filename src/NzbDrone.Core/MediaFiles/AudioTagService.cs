@@ -69,12 +69,15 @@ namespace NzbDrone.Core.MediaFiles
 
         public AudioTag GetTrackMetadata(BookFile trackfile)
         {
+            return GetTrackMetadata(trackfile, ReadAudioTag(trackfile.Path));
+        }
+
+        private AudioTag GetTrackMetadata(BookFile trackfile, AudioTag fileTags)
+        {
             var edition = trackfile.Edition.Value;
             var book = edition.Book.Value;
             var author = book.Author.Value;
             var partCount = edition.BookFiles.Value.Count;
-
-            var fileTags = ReadAudioTag(trackfile.Path);
 
             var cover = edition.Images.FirstOrDefault(x => x.CoverType == MediaCoverTypes.Cover);
             string imageFile = null;
@@ -169,10 +172,10 @@ namespace NzbDrone.Core.MediaFiles
                 }
             }
 
-            var newTags = GetTrackMetadata(trackfile);
             var path = trackfile.Path;
-
-            var diff = ReadAudioTag(path).Diff(newTags);
+            var oldTags = ReadAudioTag(path);
+            var newTags = GetTrackMetadata(trackfile, oldTags);
+            var diff = oldTags.Diff(newTags);
 
             if (!diff.Any())
             {
@@ -248,7 +251,7 @@ namespace NzbDrone.Core.MediaFiles
                 }
 
                 var oldTags = ReadAudioTag(f.Path);
-                var newTags = GetTrackMetadata(f);
+                var newTags = GetTrackMetadata(f, oldTags);
                 var diff = oldTags.Diff(newTags);
 
                 if (diff.Any())

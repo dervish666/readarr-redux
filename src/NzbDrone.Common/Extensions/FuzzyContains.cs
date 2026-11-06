@@ -35,6 +35,12 @@ namespace NzbDrone.Common.Extensions
         // return the accuracy of the best match of pattern within text
         public static double FuzzyContains(this string text, string pattern)
         {
+            // Even deleting every extra character cannot reach the minimum score.
+            if (text.Length > 0 && text.Length < pattern.Length * 0.25)
+            {
+                return 0.25;
+            }
+
             return FuzzyMatch(text, pattern, 0.25).Item3;
         }
 

@@ -87,6 +87,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
             idOverrides = PinGrabbedBook(idOverrides, releases);
 
             var i = 0;
+            var cache = new CandidateCache();
             foreach (var localRelease in releases)
             {
                 i++;
@@ -95,7 +96,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
 
                 try
                 {
-                    IdentifyRelease(localRelease, idOverrides, config);
+                    IdentifyRelease(localRelease, idOverrides, config, cache);
                 }
                 catch (Exception e)
                 {
@@ -178,12 +179,12 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
             return localTracks;
         }
 
-        private void IdentifyRelease(LocalEdition localBookRelease, IdentificationOverrides idOverrides, ImportDecisionMakerConfig config)
+        private void IdentifyRelease(LocalEdition localBookRelease, IdentificationOverrides idOverrides, ImportDecisionMakerConfig config, CandidateCache cache)
         {
             var watch = System.Diagnostics.Stopwatch.StartNew();
             var usedRemote = false;
 
-            IEnumerable<CandidateEdition> candidateReleases = _candidateService.GetDbCandidatesFromTags(localBookRelease, idOverrides, config.IncludeExisting);
+            IEnumerable<CandidateEdition> candidateReleases = _candidateService.GetDbCandidatesFromTags(localBookRelease, idOverrides, config.IncludeExisting, cache);
 
             // convert all the TrackFiles that represent extra files to List<LocalTrack>
             // local candidates are actually a list so this is fine to enumerate

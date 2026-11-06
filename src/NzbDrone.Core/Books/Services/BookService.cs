@@ -115,14 +115,29 @@ namespace NzbDrone.Core.Books
             var scoringFunctions = new List<Tuple<Func<Book, string, double>, string>>
             {
                 tc((a, t) => a.CleanTitle.FuzzyMatch(t), cleanTitle),
-                tc((a, t) => a.Title.FuzzyMatch(t), title),
-                tc((a, t) => a.CleanTitle.FuzzyMatch(t), title.RemoveBracketsAndContents().CleanAuthorName()),
-                tc((a, t) => a.CleanTitle.FuzzyMatch(t), title.RemoveAfterDash().CleanAuthorName()),
-                tc((a, t) => a.CleanTitle.FuzzyMatch(t), title.RemoveBracketsAndContents().RemoveAfterDash().CleanAuthorName()),
+                tc((a, t) => a.Title.FuzzyMatch(t), title)
+            };
+
+            var cleanTitles = new HashSet<string> { cleanTitle };
+            foreach (var variant in new[]
+            {
+                title.RemoveBracketsAndContents().CleanAuthorName(),
+                title.RemoveAfterDash().CleanAuthorName(),
+                title.RemoveBracketsAndContents().RemoveAfterDash().CleanAuthorName()
+            })
+            {
+                if (cleanTitles.Add(variant))
+                {
+                    scoringFunctions.Add(tc((a, t) => a.CleanTitle.FuzzyMatch(t), variant));
+                }
+            }
+
+            scoringFunctions.AddRange(new[]
+            {
                 tc((a, t) => t.FuzzyContains(a.CleanTitle), cleanTitle),
                 tc((a, t) => t.FuzzyContains(a.Title), title),
                 tc((a, t) => a.Title.SplitBookTitle(a.AuthorMetadata.Value.Name).Item1.FuzzyMatch(t), title)
-            };
+            });
 
             return scoringFunctions;
         }
