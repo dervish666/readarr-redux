@@ -141,14 +141,18 @@ namespace NzbDrone.Core.Books
         private List<Tuple<Func<Edition, string, double>, string>> EditionScoringFunctions(string title)
         {
             Func<Func<Edition, string, double>, string, Tuple<Func<Edition, string, double>, string>> tc = Tuple.Create;
-            var scoringFunctions = new List<Tuple<Func<Edition, string, double>, string>>
+            var titles = new[]
             {
-                tc((a, t) => a.Title.FuzzyMatch(t), title),
-                tc((a, t) => a.Title.FuzzyMatch(t), title.RemoveBracketsAndContents().CleanAuthorName()),
-                tc((a, t) => a.Title.FuzzyMatch(t), title.RemoveAfterDash().CleanAuthorName()),
-                tc((a, t) => a.Title.FuzzyMatch(t), title.RemoveBracketsAndContents().RemoveAfterDash().CleanAuthorName()),
-                tc((a, t) => t.FuzzyContains(a.Title), title)
+                title,
+                title.RemoveBracketsAndContents().CleanAuthorName(),
+                title.RemoveAfterDash().CleanAuthorName(),
+                title.RemoveBracketsAndContents().RemoveAfterDash().CleanAuthorName()
             };
+
+            var scoringFunctions = titles.Distinct()
+                .Select(t => tc((Edition a, string candidateTitle) => a.Title.FuzzyMatch(candidateTitle), t))
+                .ToList();
+            scoringFunctions.Add(tc((a, t) => t.FuzzyContains(a.Title), title));
 
             return scoringFunctions;
         }

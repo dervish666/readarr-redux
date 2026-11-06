@@ -397,6 +397,26 @@ namespace NzbDrone.Core.Test.MediaFiles.AudioTagServiceFixture
         }
 
         [Test]
+        [TestCase("nin.mp3")]
+        [TestCase("nin.m4a")]
+        public void retag_preview_should_be_empty_after_writing_the_suggested_tags(string filename)
+        {
+            GivenFileCopy(filename);
+            var file = GivenPopulatedTrackfile(0);
+            file.Path = _copiedFile;
+            var bookId = file.Edition.Value.Book.Value.Id;
+            Mocker.GetMock<IMediaFileService>().Setup(s => s.GetFilesByBook(bookId)).Returns(new List<BookFile> { file });
+
+            Subject.GetRetagPreviewsByBook(bookId).Should().ContainSingle().Which.Changes.Should().NotBeEmpty();
+
+            Subject.WriteTags(file, true, true);
+
+            Subject.GetRetagPreviewsByBook(bookId).Should().BeEmpty();
+            Mocker.GetMock<IEventAggregator>()
+                .Verify(v => v.PublishEvent(It.IsAny<BookFileRetaggedEvent>()), Times.Once());
+        }
+
+        [Test]
         public void should_not_fail_reading_metadata_with_dates_omitted()
         {
             GivenFileCopy("nin.mp3");

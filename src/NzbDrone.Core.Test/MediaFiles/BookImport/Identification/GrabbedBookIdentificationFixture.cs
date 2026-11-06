@@ -25,7 +25,7 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport.Identification
 
             // No candidates anywhere, so each file ends up with whatever book the overrides pin
             Mocker.GetMock<ICandidateService>()
-                .Setup(s => s.GetDbCandidatesFromTags(It.IsAny<LocalEdition>(), It.IsAny<IdentificationOverrides>(), It.IsAny<bool>()))
+                .Setup(s => s.GetDbCandidatesFromTags(It.IsAny<LocalEdition>(), It.IsAny<IdentificationOverrides>(), It.IsAny<bool>(), It.IsAny<CandidateCache>()))
                 .Returns(new List<CandidateEdition>());
 
             Mocker.GetMock<ICandidateService>()
@@ -54,6 +54,23 @@ namespace NzbDrone.Core.Test.MediaFiles.BookImport.Identification
             Subject.Identify(files, overrides, new ImportDecisionMakerConfig());
 
             return files;
+        }
+
+        [Test]
+        public void should_share_a_cache_within_a_batch_and_start_fresh_on_the_next_identification()
+        {
+            var caches = new List<CandidateCache>();
+            Mocker.GetMock<ICandidateService>()
+                .Setup(s => s.GetDbCandidatesFromTags(It.IsAny<LocalEdition>(), It.IsAny<IdentificationOverrides>(), It.IsAny<bool>(), It.IsAny<CandidateCache>()))
+                .Callback<LocalEdition, IdentificationOverrides, bool, CandidateCache>((_, _, _, cache) => caches.Add(cache))
+                .Returns(new List<CandidateEdition>());
+
+            Identify(Files("The Book One", 1, "one"), Files("The Book Two", 1, "two"));
+            Identify(Files("The Book Three", 1, "three"));
+
+            caches.Should().HaveCount(3);
+            caches[0].Should().BeSameAs(caches[1]);
+            caches[2].Should().NotBeSameAs(caches[0]);
         }
 
         [Test]
