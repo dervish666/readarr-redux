@@ -383,7 +383,7 @@ namespace NzbDrone.Core.Books.Calibre
             }
         }
 
-        private long ConvertBook(int calibreId, CalibreConversionOptions options, CalibreSettings settings)
+        internal long ConvertBook(int calibreId, CalibreConversionOptions options, CalibreSettings settings)
         {
             try
             {
@@ -394,8 +394,8 @@ namespace NzbDrone.Core.Books.Calibre
 
                 var jobId = _httpClient.Post<long>(request).Resource;
 
-                // Poll in the background until the conversion finishes, logging the outcome
-                _ = Task.Run(() => PollConvertStatus(jobId, settings));
+                // Import must keep its recovery copies until conversion has actually succeeded.
+                PollConvertStatus(jobId, settings).GetAwaiter().GetResult();
 
                 return jobId;
             }
@@ -602,19 +602,24 @@ namespace NzbDrone.Core.Books.Calibre
                         if (!status.Ok)
                         {
                             _logger.Warn("Calibre conversion {0} failed.\n{1}\n{2}", jobId, status.Traceback, status.Log);
+                            throw new CalibreException($"Calibre conversion {jobId} failed; import was not committed");
                         }
 
                         return;
                     }
 
-                    await Task.Delay(2000);
+                    await Task.Delay(2000).ConfigureAwait(false);
                 }
 
-                _logger.Warn("Calibre conversion {0} still running after an hour, no longer checking it", jobId);
+                throw new CalibreException($"Calibre conversion {jobId} still running after an hour; import was not committed");
+            }
+            catch (CalibreException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
-                _logger.Warn(ex, "Unable to check Calibre conversion {0}", jobId);
+                throw new CalibreException("Unable to check Calibre conversion {0}; import was not committed", ex, jobId);
             }
         }
 

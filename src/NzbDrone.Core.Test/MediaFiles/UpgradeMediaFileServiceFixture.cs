@@ -193,6 +193,8 @@ namespace NzbDrone.Core.Test.MediaFiles
             disk[pdf].Should().Be("original pdf");
             disk[mobi].Should().Be("unrelated mobi");
             disk[source].Should().Be("new epub");
+            disk.Keys.Where(path => path.Contains(UpgradeMediaFileService.SetAsideFolderName))
+                .Should().HaveCount(3);
         }
 
         [Test]

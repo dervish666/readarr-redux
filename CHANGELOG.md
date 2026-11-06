@@ -6,6 +6,8 @@ Releases come from `vX.Y.Z` git tags and publish the images `X.Y.Z`, `X.Y` and `
 
 ## Unreleased
 
+- Fixed: Calibre imports wait for conversion success before committing. A failed or unreachable conversion leaves the import failed and keeps recovery copies of the original formats.
+
 - Fixed: A failed Calibre upgrade keeps recoverable copies of the existing formats, including when the new library rows fail to save. Other formats are retained, and Readarr keeps the imported format selected.
 - Fixed: Recycling two author folders with the same name no longer overwrites the earlier recovery copy. Manual metadata edits survive concurrent author refreshes, and series edits roll back completely if a write fails.
 - Security: The local address exception cannot skip the first-run setup code. Unexpected API errors no longer send exception details to clients.
