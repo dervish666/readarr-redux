@@ -19,6 +19,9 @@ namespace NzbDrone.Api.Test.Authentication
         public void Setup()
         {
             Mocker.GetMock<IConfigFileProvider>()
+                  .SetupGet(c => c.AuthenticationMethod)
+                  .Returns(AuthenticationType.Forms);
+            Mocker.GetMock<IConfigFileProvider>()
                   .SetupGet(c => c.AuthenticationRequired)
                   .Returns(AuthenticationRequiredType.DisabledForLocalAddresses);
         }
@@ -47,6 +50,16 @@ namespace NzbDrone.Api.Test.Authentication
             Subject.HandleAsync(context).GetAwaiter().GetResult();
 
             return context.HasSucceeded;
+        }
+
+        [TestCase(false, false)]
+        [TestCase(true, true)]
+        public void should_require_setup_proof_before_allowing_unconfigured_local_access(bool confirmed, bool expected)
+        {
+            Mocker.GetMock<IConfigFileProvider>().SetupGet(c => c.AuthenticationMethod).Returns(AuthenticationType.None);
+            Mocker.GetMock<IConfigFileProvider>().SetupGet(c => c.AuthenticationNoneConfirmed).Returns(confirmed);
+
+            IsAuthorized(GetHttpContext("127.0.0.1")).Should().Be(expected);
         }
 
         [TestCase("127.0.0.1")]

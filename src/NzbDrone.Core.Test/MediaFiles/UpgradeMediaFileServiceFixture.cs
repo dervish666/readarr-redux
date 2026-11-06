@@ -8,6 +8,7 @@ using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.Disk;
 using NzbDrone.Core.Books;
+using NzbDrone.Core.Books.Calibre;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Parser.Model;
@@ -105,6 +106,93 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             diskProvider.Setup(c => c.DeleteFile(It.IsAny<string>()))
                 .Callback<string>(p => disk.Remove(p));
+        }
+
+        [TestCase("upload")]
+        [TestCase("database")]
+        [TestCase("success")]
+        public void should_preserve_calibre_formats_through_upgrade(string outcome)
+        {
+            GivenSingleTrackWithSingleTrackFile();
+            var epub = Path.Combine(_rootPath, "old.epub");
+            var pdf = Path.Combine(_rootPath, "old.pdf");
+            var mobi = Path.Combine(_rootPath, "old.mobi");
+            var source = Path.Combine(_rootPath, "download.epub");
+            var disk = new Dictionary<string, string> { [epub] = "original epub", [pdf] = "original pdf", [source] = "new epub", [mobi] = "unrelated mobi" };
+            GivenDisk(disk);
+            Mocker.GetMock<IDiskProvider>().Setup(x => x.CopyFile(It.IsAny<string>(), It.IsAny<string>(), false))
+                .Callback<string, string, bool>((from, to, overwrite) => disk.Add(to, disk[from]));
+            Mocker.GetMock<IMediaFileService>().Setup(x => x.GetFilesByBook(_localTrack.Book.Id))
+                .Returns(new List<BookFile> { new BookFile { Id = 1, Path = epub, CalibreId = 7 } });
+            var settings = new CalibreSettings { OutputFormat = "PDF" };
+            Mocker.GetMock<IRootFolderService>().Setup(x => x.GetBestRootFolder(It.IsAny<string>()))
+                .Returns(new RootFolder { IsCalibreLibrary = true, CalibreSettings = settings });
+            Mocker.GetMock<ICalibreProxy>().Setup(x => x.GetBook(7, settings)).Returns(new CalibreBook
+            {
+                Formats = new Dictionary<string, CalibreBookFormat>
+                {
+                    ["EPUB"] = new CalibreBookFormat { Path = epub },
+                    ["PDF"] = new CalibreBookFormat { Path = pdf },
+                    ["MOBI"] = new CalibreBookFormat { Path = mobi }
+                }
+            });
+            Mocker.GetMock<ICalibreProxy>().Setup(x => x.RemoveFormats(7, It.IsAny<IEnumerable<string>>(), settings))
+                .Callback<int, IEnumerable<string>, CalibreSettings>((id, formats, config) =>
+                {
+                    foreach (var format in formats)
+                    {
+                        disk.Remove(format.Equals("PDF", StringComparison.OrdinalIgnoreCase) ? pdf : epub);
+                    }
+                });
+            Mocker.GetMock<ICalibreProxy>().Setup(x => x.AddFormat(It.IsAny<BookFile>(), settings))
+                .Callback<BookFile, CalibreSettings>((file, config) =>
+                    disk[Path.ChangeExtension(epub, Path.GetExtension(file.Path))] = disk[file.Path]);
+            Mocker.GetMock<ICalibreProxy>().Setup(x => x.AddAndConvert(_trackFile, settings))
+                .Returns(() =>
+                {
+                    var backupRoot = Path.Combine(Path.GetDirectoryName(_rootPath), UpgradeMediaFileService.SetAsideFolderName);
+                    disk.Keys.Where(path => path.Contains(UpgradeMediaFileService.SetAsideFolderName))
+                        .Should().HaveCount(3).And.OnlyContain(path => path.StartsWith(backupRoot));
+                    disk[epub] = "replacement";
+                    if (outcome == "upload")
+                    {
+                        throw new IOException("upload failed");
+                    }
+
+                    disk[pdf] = "converted pdf";
+                    _trackFile.Path = epub;
+                    return _trackFile;
+                });
+            _trackFile.Path = source;
+
+            if (outcome == "upload")
+            {
+                Assert.Throws<IOException>(() => Subject.UpgradeBookFile(_trackFile, _localTrack));
+            }
+            else
+            {
+                var result = Subject.UpgradeBookFile(_trackFile, _localTrack);
+                if (outcome == "database")
+                {
+                    Subject.RollBack(new[] { result }).Should().BeEmpty();
+                }
+                else
+                {
+                    Subject.RemoveSetAsideFiles(result.SetAsideFiles);
+                    Subject.CompleteCalibreImports(new[] { result });
+                    disk[epub].Should().Be("replacement");
+                    disk[pdf].Should().Be("converted pdf");
+                    disk[mobi].Should().Be("unrelated mobi");
+                    disk.Should().NotContainKey(source);
+                    Mocker.GetMock<ICalibreProxy>().Verify(x => x.RemoveFormats(7, It.Is<IEnumerable<string>>(formats => !formats.Contains("EPUB")), settings), Times.Once());
+                    return;
+                }
+            }
+
+            disk[epub].Should().Be("original epub");
+            disk[pdf].Should().Be("original pdf");
+            disk[mobi].Should().Be("unrelated mobi");
+            disk[source].Should().Be("new epub");
         }
 
         [Test]

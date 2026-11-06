@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import useApiMutation from 'Helpers/Hooks/useApiMutation';
 import useApiQuery, { QueryOptions } from 'Helpers/Hooks/useApiQuery';
 import { usePendingChangesStore } from 'Helpers/Hooks/usePendingChangesStore';
@@ -22,23 +22,40 @@ export const useSettings = <T extends object>(
 // onSaved gets the saved resource.
 export const useSaveSettings = <T extends object>(
   path: string,
-  onSaved?: (updatedSettings: T) => void
+  onSaved?: (updatedSettings: T, submitted: T) => void
 ) => {
   const queryClient = useQueryClient();
+  const saving = useRef(false);
 
   const { mutate, isPending, error } = useApiMutation<T, T>({
     path,
     method: 'PUT',
     mutationOptions: {
-      onSuccess: (updatedSettings: T) => {
+      onSuccess: (updatedSettings: T, submitted: T) => {
         queryClient.setQueryData<T>([path], updatedSettings);
-        onSaved?.(updatedSettings);
+        onSaved?.(updatedSettings, submitted);
       },
     },
   });
 
+  const save = useCallback(
+    (submitted: T) => {
+      if (saving.current) {
+        return;
+      }
+
+      saving.current = true;
+      mutate(submitted, {
+        onSettled: () => {
+          saving.current = false;
+        },
+      });
+    },
+    [mutate]
+  );
+
   return {
-    save: mutate,
+    save,
     isSaving: isPending,
     saveError: error,
   };
@@ -46,18 +63,22 @@ export const useSaveSettings = <T extends object>(
 
 export const useManageSettings = <T extends object>(
   path: string,
-  onSaved?: (updatedSettings: T) => void
+  onSaved?: (updatedSettings: T, submitted: T) => void
 ) => {
   const { data, isFetching, isFetched, error, refetch } = useSettings<T>(path);
-  const { pendingChanges, setPendingChange, clearPendingChanges } =
-    usePendingChangesStore<T>({});
+  const {
+    pendingChanges,
+    setPendingChange,
+    clearPendingChanges,
+    clearSavedChanges,
+  } = usePendingChangesStore<T>({});
 
   const handleSaved = useCallback(
-    (updatedSettings: T) => {
-      clearPendingChanges();
-      onSaved?.(updatedSettings);
+    (updatedSettings: T, submitted: T) => {
+      clearSavedChanges(submitted);
+      onSaved?.(updatedSettings, submitted);
     },
-    [clearPendingChanges, onSaved]
+    [clearSavedChanges, onSaved]
   );
 
   const { save, isSaving, saveError } = useSaveSettings<T>(path, handleSaved);

@@ -1,10 +1,12 @@
 import classNames from 'classnames';
 import PropTypes from 'prop-types';
-import React from 'react';
+import React, { useContext } from 'react';
 import { sizes } from 'Helpers/Props';
+import FormFieldContext, { getFormInputId } from './FormFieldContext';
 import styles from './FormLabel.module.css';
 
 function FormLabel(props) {
+  const fieldId = useContext(FormFieldContext);
   const {
     children,
     className,
@@ -25,7 +27,8 @@ function FormLabel(props) {
         hasError && errorClassName,
         isAdvanced && styles.isAdvanced
       )}
-      htmlFor={name}
+      id={fieldId ? `${fieldId.id}-label` : undefined}
+      htmlFor={getFormInputId(fieldId, name ?? fieldId?.name) ?? name}
     >
       {children}
     </label>

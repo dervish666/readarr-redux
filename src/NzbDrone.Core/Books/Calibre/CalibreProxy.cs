@@ -29,6 +29,7 @@ namespace NzbDrone.Core.Books.Calibre
         BookFile AddAndConvert(BookFile file, CalibreSettings settings);
         void DeleteBook(BookFile book, CalibreSettings settings);
         void DeleteBooks(List<BookFile> books, CalibreSettings settings);
+        void AddFormat(BookFile file, CalibreSettings settings);
         void RemoveFormats(int calibreId, IEnumerable<string> formats, CalibreSettings settings);
         void SetFields(BookFile file, CalibreSettings settings, bool updateCover = true, bool embed = false);
         List<string> GetAllBookFilePaths(CalibreSettings settings);
@@ -69,8 +70,14 @@ namespace NzbDrone.Core.Books.Calibre
             _logger = logger;
         }
 
-        public static string GetOriginalFormat(Dictionary<string, CalibreBookFormat> formats)
+        public static string GetOriginalFormat(Dictionary<string, CalibreBookFormat> formats, string preferredFormat = null)
         {
+            var preferred = formats.FirstOrDefault(x => x.Key.Equals(preferredFormat, StringComparison.OrdinalIgnoreCase)).Value?.Path;
+            if (preferred.IsNotNullOrWhiteSpace())
+            {
+                return preferred;
+            }
+
             return formats
                 .Where(x => MediaFileExtensions.TextExtensions.Contains("." + x.Key))
                 .OrderBy(f => f.Value.LastModified)
@@ -172,7 +179,7 @@ namespace NzbDrone.Core.Books.Calibre
             _httpClient.Post(request);
         }
 
-        private void AddFormat(BookFile file, CalibreSettings settings)
+        public void AddFormat(BookFile file, CalibreSettings settings)
         {
             var format = Path.GetExtension(file.Path);
             var bookData = Convert.ToBase64String(File.ReadAllBytes(file.Path));
@@ -275,7 +282,7 @@ namespace NzbDrone.Core.Books.Calibre
             // updating the calibre metadata may have renamed the file, so track that
             var updated = GetBook(file.CalibreId, settings);
 
-            var updatedPath = GetOriginalFormat(updated.Formats);
+            var updatedPath = GetOriginalFormat(updated.Formats, Path.GetExtension(file.Path).TrimStart('.'));
 
             _logger.Trace("File path from Calibre: '{0}'", updatedPath);
 

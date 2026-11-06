@@ -31,6 +31,9 @@ namespace NzbDrone.App.Test
         public void Setup()
         {
             Mocker.GetMock<IConfigFileProvider>()
+                  .SetupGet(c => c.AuthenticationMethod)
+                  .Returns(AuthenticationType.Forms);
+            Mocker.GetMock<IConfigFileProvider>()
                   .SetupGet(c => c.AuthenticationRequired)
                   .Returns(AuthenticationRequiredType.DisabledForLocalAddresses);
         }

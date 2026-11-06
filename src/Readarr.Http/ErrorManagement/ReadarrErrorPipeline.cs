@@ -81,6 +81,16 @@ namespace Readarr.Http.ErrorManagement
                 _logger.Fatal(exception, "Request Failed. {0} {1}", context.Request.Method, context.Request.Path);
             }
 
+            if ((int)statusCode >= 500)
+            {
+                errorModel.Message = "An unexpected error occurred.";
+                errorModel.Description = $"Request ID: {context.TraceIdentifier}";
+            }
+            else
+            {
+                errorModel.Description = null;
+            }
+
             await errorModel.WriteToResponse(response, statusCode);
         }
     }

@@ -257,6 +257,41 @@ namespace NzbDrone.Core.Datastore
             }
         }
 
+        internal void UpdateMany(IList<TModel> models, IDbConnection connection, IDbTransaction transaction)
+        {
+            if (models.Any(x => x.Id == 0))
+            {
+                throw new InvalidOperationException("Can't update model with ID 0");
+            }
+
+            UpdateFields(connection, transaction, models, _properties);
+        }
+
+        internal void InsertMany(IList<TModel> models, IDbConnection connection, IDbTransaction transaction)
+        {
+            foreach (var model in models)
+            {
+                if (model.Id != 0)
+                {
+                    throw new InvalidOperationException("Can't insert model with existing ID != 0");
+                }
+
+                Insert(connection, transaction, model);
+            }
+        }
+
+        internal void DeleteMany(List<TModel> models, IDbConnection connection, IDbTransaction transaction)
+        {
+            if (models.Count == 0)
+            {
+                return;
+            }
+
+            var ids = models.Select(x => x.Id).ToList();
+            var sql = Builder().Where<TModel>(x => ids.Contains(x.Id)).AddDeleteTemplate(typeof(TModel));
+            connection.Execute(sql.RawSql, sql.Parameters, transaction);
+        }
+
         protected void Delete(Expression<Func<TModel, bool>> where)
         {
             Delete(Builder().Where<TModel>(where));

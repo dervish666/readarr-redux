@@ -11,6 +11,8 @@ namespace NzbDrone.Core.Books
 
     public class AuthorMetadataService : IAuthorMetadataService
     {
+        internal static readonly object EditLock = new object();
+
         private readonly IAuthorMetadataRepository _authorMetadataRepository;
 
         public AuthorMetadataService(IAuthorMetadataRepository authorMetadataRepository)

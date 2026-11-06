@@ -10,7 +10,9 @@ import { isIOS } from 'Utilities/browser';
 import * as keyCodes from 'Utilities/Constants/keyCodes';
 import getUniqueElememtId from 'Utilities/getUniqueElementId';
 import { setScrollLock } from 'Utilities/scrollLock';
+import translate from 'Utilities/String/translate';
 import ModalError from './ModalError';
+import ModalTitleContext from './ModalTitleContext';
 import styles from './Modal.module.css';
 
 const openModals = [];
@@ -198,12 +200,18 @@ class Modal extends Component {
                 styles[size]
               )}
               style={style}
+              role="dialog"
+              aria-label={translate('Dialog')}
+              aria-modal="true"
+              aria-labelledby={`${this._modalId}-title`}
             >
               <ErrorBoundary
                 errorComponent={ModalError}
                 onModalClose={onModalClose}
               >
-                {children}
+                <ModalTitleContext.Provider value={`${this._modalId}-title`}>
+                  {children}
+                </ModalTitleContext.Provider>
               </ErrorBoundary>
             </div>
           </div>

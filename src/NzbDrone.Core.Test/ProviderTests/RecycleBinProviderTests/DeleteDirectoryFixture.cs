@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using FluentAssertions;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.Disk;
@@ -46,7 +48,23 @@ namespace NzbDrone.Core.Test.ProviderTests.RecycleBinProviderTests
             Mocker.Resolve<RecycleBinProvider>().DeleteFolder(path);
 
             Mocker.GetMock<IDiskTransferService>()
-                  .Verify(v => v.TransferFolder(path, @"C:\Test\Recycle Bin\30 Rock".AsOsAgnostic(), TransferMode.Move), Times.Once());
+                  .Verify(v => v.TransferFolder(path, It.Is<string>(p => Path.GetFileName(p).StartsWith("30 Rock.")), TransferMode.Move), Times.Once());
+        }
+
+        [Test]
+        public void should_keep_same_named_deleted_folders_separate()
+        {
+            WithRecycleBin();
+            var destinations = new List<string>();
+            Mocker.GetMock<IDiskTransferService>()
+                .Setup(x => x.TransferFolder(It.IsAny<string>(), It.IsAny<string>(), TransferMode.Move))
+                .Callback<string, string, TransferMode>((source, target, mode) => destinations.Add(target));
+
+            var recycle = Mocker.Resolve<RecycleBinProvider>();
+            recycle.DeleteFolder(@"C:\Books\Author".AsOsAgnostic());
+            recycle.DeleteFolder(@"C:\Audio\Author".AsOsAgnostic());
+
+            destinations.Should().OnlyHaveUniqueItems().And.HaveCount(2);
         }
 
         [Test]
@@ -58,7 +76,7 @@ namespace NzbDrone.Core.Test.ProviderTests.RecycleBinProviderTests
 
             Mocker.Resolve<RecycleBinProvider>().DeleteFolder(path);
 
-            Mocker.GetMock<IDiskProvider>().Verify(v => v.FolderSetLastWriteTime(@"C:\Test\Recycle Bin\30 Rock".AsOsAgnostic(), It.IsAny<DateTime>()), Times.Once());
+            Mocker.GetMock<IDiskProvider>().Verify(v => v.FolderSetLastWriteTime(It.Is<string>(p => Path.GetFileName(p).StartsWith("30 Rock.")), It.IsAny<DateTime>()), Times.Once());
         }
 
         [Test]
@@ -68,7 +86,7 @@ namespace NzbDrone.Core.Test.ProviderTests.RecycleBinProviderTests
             WithRecycleBin();
             var path = @"C:\Test\TV\30 Rock".AsOsAgnostic();
 
-            Mocker.GetMock<IDiskProvider>().Setup(s => s.GetFilesNotFollowingLinks(@"C:\Test\Recycle Bin\30 Rock".AsOsAgnostic()))
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.GetFilesNotFollowingLinks(It.IsAny<string>()))
                                            .Returns(new List<string> { "File1", "File2", "File3" });
 
             Mocker.Resolve<RecycleBinProvider>().DeleteFolder(path);

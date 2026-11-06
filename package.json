@@ -14,7 +14,9 @@
     "typecheck": "yarn types:css && tsc --noEmit --skipLibCheck -p frontend/tsconfig.json",
     "smoke": "playwright test -c e2e/playwright.config.ts",
     "stylelint-linux": "stylelint $(find frontend -name '*.css') --config frontend/.stylelintrc",
-    "stylelint-windows": "stylelint \"frontend/**/*.css\" --config frontend/.stylelintrc"
+    "stylelint-windows": "stylelint \"frontend/**/*.css\" --config frontend/.stylelintrc",
+    "test:frontend": "vitest run",
+    "deadcode": "knip --reporter compact"
   },
   "repository": {
     "type": "git",
@@ -55,7 +57,7 @@
     "mousetrap": "1.6.5",
     "normalize.css": "8.0.1",
     "prop-types": "15.8.1",
-    "qs": "6.16.0",
+    "qs": "6.16.1",
     "react": "18.3.1",
     "react-addons-shallow-compare": "15.6.3",
     "react-async-script": "1.2.0",
@@ -103,18 +105,21 @@
     "eslint-plugin-react": "7.37.1",
     "eslint-plugin-react-hooks": "4.6.2",
     "eslint-plugin-simple-import-sort": "12.1.1",
+    "jsdom": "27.4.0",
+    "knip": "6.44.1",
     "postcss": "8.5.23",
     "postcss-mixins": "9.0.4",
     "postcss-nested": "7.0.2",
     "postcss-simple-vars": "7.0.1",
     "prettier": "2.8.8",
-    "rimraf": "6.1.3",
+    "rimraf": "6.1.4",
     "stylelint": "16.26.1",
     "stylelint-order": "6.0.4",
     "typed-css-modules": "0.9.1",
     "typescript-plugin-css-modules": "5.0.1",
     "vite": "8.3.3",
-    "vite-css-modules": "1.16.0"
+    "vite-css-modules": "1.16.0",
+    "vitest": "5.1.0"
   },
   "volta": {
     "node": "24.11.0",

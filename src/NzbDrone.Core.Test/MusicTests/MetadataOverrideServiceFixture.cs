@@ -1,11 +1,16 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Dapper;
 using FizzWare.NBuilder;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Books.Commands;
+using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.MetadataSource;
@@ -56,8 +61,85 @@ namespace NzbDrone.Core.Test.MusicTests
             Mocker.Resolve<SeriesRepository>().Insert(_series);
             Mocker.Resolve<SeriesBookLinkRepository>().Insert(new SeriesBookLink { SeriesId = _series.Id, BookId = _book1.Id, Position = "1", SeriesPosition = 1, IsPrimary = true });
 
+            Mocker.SetConstant<IMetadataEditRepository>(Mocker.Resolve<MetadataEditRepository>());
             _subject = Mocker.Resolve<MetadataOverrideService>();
             _refresh = Mocker.Resolve<RefreshSeriesService>();
+        }
+
+        [Test]
+        public void should_roll_back_metadata_and_series_when_a_link_insert_fails()
+        {
+            using (var connection = Mocker.Resolve<IMainDatabase>().OpenConnection())
+            {
+                if (Mocker.Resolve<IMainDatabase>().DatabaseType == DatabaseType.SQLite)
+                {
+                    connection.Execute("CREATE TRIGGER fail_series_edit BEFORE INSERT ON \"SeriesBookLink\" BEGIN SELECT RAISE(FAIL, 'injected failure'); END;");
+                }
+                else
+                {
+                    connection.Execute(@"CREATE FUNCTION fail_series_edit() RETURNS trigger AS $$
+                        BEGIN RAISE EXCEPTION 'injected failure'; END; $$ LANGUAGE plpgsql;
+                        CREATE TRIGGER fail_series_edit BEFORE INSERT ON ""SeriesBookLink""
+                        FOR EACH ROW EXECUTE FUNCTION fail_series_edit();");
+                }
+            }
+
+            Assert.Catch<Exception>(() => _subject.UpdateBookMetadata(_book1.Id, new BookMetadataEdit
+            {
+                Title = "Changed title",
+                Series = new List<BookSeriesEdit> { new BookSeriesEdit { NewSeriesTitle = "New series" } }
+            }));
+
+            Mocker.Resolve<BookRepository>().Get(_book1.Id).Title.Should().Be(_book1.Title);
+            Mocker.Resolve<SeriesBookLinkRepository>().GetLinksByBook(new List<int> { _book1.Id })
+                .Should().ContainSingle(x => x.SeriesId == _series.Id);
+            Mocker.Resolve<SeriesRepository>().All().Should().ContainSingle(x => x.Id == _series.Id);
+        }
+
+        [Test]
+        public void should_keep_an_overview_saved_while_refresh_is_writing()
+        {
+            var database = Mocker.Resolve<IMainDatabase>();
+            using var snapshotRead = new ManualResetEventSlim();
+            using var finishRefresh = new ManualResetEventSlim();
+            var connectionCount = 0;
+            var delayedDatabase = new Mock<IMainDatabase>();
+            delayedDatabase.SetupGet(x => x.DatabaseType).Returns(database.DatabaseType);
+            delayedDatabase.Setup(x => x.OpenConnection()).Returns(() =>
+            {
+                if (Interlocked.Increment(ref connectionCount) == 2)
+                {
+                    snapshotRead.Set();
+                    if (!finishRefresh.Wait(TimeSpan.FromSeconds(10)))
+                    {
+                        throw new TimeoutException("refresh test barrier");
+                    }
+                }
+
+                return database.OpenConnection();
+            });
+            var repository = new AuthorMetadataRepository(delayedDatabase.Object, Mocker.Resolve<NzbDrone.Core.Messaging.Events.IEventAggregator>(), TestLogger);
+            var remote = Mocker.Resolve<AuthorMetadataRepository>().Get(_metadata.Id);
+            remote.Overview = "Source changed";
+            Mocker.GetMock<IAuthorService>().Setup(x => x.GetAuthor(1))
+                .Returns(() => new Author { Id = 1, Metadata = Mocker.Resolve<AuthorMetadataRepository>().Get(_metadata.Id) });
+            var refresh = Task.Run(() => repository.UpsertMany(new List<AuthorMetadata> { remote }));
+            Task edit = null;
+
+            try
+            {
+                snapshotRead.Wait(TimeSpan.FromSeconds(5)).Should().BeTrue();
+                edit = Task.Run(() => _subject.UpdateAuthorOverview(1, "Saved while refreshing"));
+                edit.Wait(TimeSpan.FromMilliseconds(200));
+            }
+            finally
+            {
+                finishRefresh.Set();
+                Task.WaitAll(new[] { refresh, edit ?? Task.CompletedTask }, TimeSpan.FromSeconds(10)).Should().BeTrue();
+            }
+
+            Mocker.Resolve<AuthorMetadataRepository>().Get(_metadata.Id).MetadataOverrides.Overview
+                .Should().Be("Saved while refreshing");
         }
 
         private Book GivenBook(string foreignId, string title)

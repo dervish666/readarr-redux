@@ -15,6 +15,7 @@ namespace NzbDrone.Core.MediaFiles
     public interface IUpgradeMediaFiles
     {
         BookFileMoveResult UpgradeBookFile(BookFile bookFile, LocalBook localBook, bool copyOnly = false, ICollection<string> importedPaths = null);
+        void CompleteCalibreImports(IEnumerable<BookFileMoveResult> results);
         void RemoveSetAsideFiles(IEnumerable<SetAsideBookFile> files);
         List<SetAsideBookFile> RestoreSetAsideFiles(IEnumerable<SetAsideBookFile> files);
         List<SetAsideBookFile> RollBack(IEnumerable<BookFileMoveResult> results);
@@ -83,6 +84,7 @@ namespace NzbDrone.Core.MediaFiles
             var setAsideFolder = string.Format(SetAsideFolderFormat, DateTime.UtcNow, Guid.NewGuid());
             var sourcePath = bookFile.Path;
             BookFile displaced = null;
+            var backedUpCalibreIds = new HashSet<int>();
 
             try
             {
@@ -108,10 +110,29 @@ namespace NzbDrone.Core.MediaFiles
                         }
                         else
                         {
-                            var existing = _calibre.GetBook(file.CalibreId, settings);
-                            var existingFormats = existing.Formats.Keys;
-                            _logger.Debug($"Removing existing formats {existingFormats.ConcatToString()} from calibre");
-                            _calibre.RemoveFormats(file.CalibreId, existingFormats, settings);
+                            if (backedUpCalibreIds.Add(file.CalibreId))
+                            {
+                                var existing = _calibre.GetBook(file.CalibreId, settings);
+
+                                // Calibre replaces same-format bytes during upload, so back up before any API write.
+                                foreach (var format in existing.Formats.Values)
+                                {
+                                    var backup = BackUpCalibreFormat(format.Path, subfolder, setAsideFolder, file.CalibreId, settings, rootFolder.Path.IsNullOrWhiteSpace() ? rootFolderPath : rootFolder.Path);
+                                    setAside.Add(backup);
+                                }
+
+                                var input = Path.GetExtension(sourcePath).TrimStart('.');
+                                var converted = (settings.OutputFormat ?? string.Empty).Split(',')
+                                    .Select(x => x.Trim())
+                                    .Where(x => !x.Equals(input, StringComparison.OrdinalIgnoreCase) &&
+                                                existing.Formats.Keys.Contains(x, StringComparer.OrdinalIgnoreCase))
+                                    .ToList();
+
+                                if (converted.Any())
+                                {
+                                    _calibre.RemoveFormats(file.CalibreId, converted, settings);
+                                }
+                            }
                         }
                     }
                 }
@@ -145,11 +166,6 @@ namespace NzbDrone.Core.MediaFiles
                 else
                 {
                     moveFileResult.BookFile = _calibre.AddAndConvert(bookFile, settings);
-
-                    if (!copyOnly)
-                    {
-                        _diskProvider.DeleteFile(sourcePath);
-                    }
                 }
 
                 importedPaths?.Add(bookFile.Path);
@@ -228,6 +244,39 @@ namespace NzbDrone.Core.MediaFiles
             var occupant = _mediaFileService.GetFileWithPath(destination);
 
             return occupant != null && existingFiles.All(f => f.Id != occupant.Id) ? occupant : null;
+        }
+
+        public void CompleteCalibreImports(IEnumerable<BookFileMoveResult> results)
+        {
+            foreach (var result in results.Where(x => x.IsCalibre && !x.CopyOnly && !x.SourcePath.PathEquals(x.BookFile.Path)))
+            {
+                try
+                {
+                    _diskProvider.DeleteFile(result.SourcePath);
+                }
+                catch (Exception e)
+                {
+                    _logger.Warn(e, "Imported to Calibre but couldn't remove the source file {0}", result.SourcePath);
+                }
+            }
+        }
+
+        private SetAsideBookFile BackUpCalibreFormat(string path, string subfolder, string folderName, int calibreId, CalibreSettings settings, string libraryRoot)
+        {
+            // Calibre may rename author/book folders while setting metadata. Keep backups outside those folders.
+            var folder = Path.Combine(libraryRoot, SetAsideFolderName, folderName, calibreId.ToString());
+            var destination = Path.Combine(folder, Path.GetFileName(path));
+            _diskProvider.CreateFolder(folder);
+            _diskProvider.CopyFile(path, destination, false);
+
+            return new SetAsideBookFile
+            {
+                OriginalPath = path,
+                Path = destination,
+                RecycleBinSubfolder = subfolder,
+                CalibreId = calibreId,
+                CalibreSettings = settings
+            };
         }
 
         public void RemoveSetAsideFiles(IEnumerable<SetAsideBookFile> files)
@@ -368,7 +417,11 @@ namespace NzbDrone.Core.MediaFiles
         {
             try
             {
-                if (!_diskProvider.TryCreateHardLink(file.Path, file.OriginalPath))
+                if (file.CalibreSettings != null)
+                {
+                    _calibre.AddFormat(new BookFile { CalibreId = file.CalibreId, Path = file.Path }, file.CalibreSettings);
+                }
+                else if (!_diskProvider.TryCreateHardLink(file.Path, file.OriginalPath))
                 {
                     if (_diskProvider.FileExists(file.OriginalPath))
                     {
