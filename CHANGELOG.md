@@ -6,6 +6,13 @@ Releases come from `vX.Y.Z` git tags and publish the images `X.Y.Z`, `X.Y` and `
 
 ## Unreleased
 
+- Fixed: A failed Calibre upgrade keeps recoverable copies of the existing formats, including when the new library rows fail to save. Other formats are retained, and Readarr keeps the imported format selected.
+- Fixed: Recycling two author folders with the same name no longer overwrites the earlier recovery copy. Manual metadata edits survive concurrent author refreshes, and series edits roll back completely if a write fails.
+- Security: The local address exception cannot skip the first-run setup code. Unexpected API errors no longer send exception details to clients.
+- Fixed: Instance names containing quotes or backslashes no longer prevent the UI loading. Settings edits made during a save are retained, and a failed initial live-update connection is retried.
+- Accessibility: Shared form controls have associated labels; dialogs announce their title and name the close button.
+- Development: Fork pull requests run backend tests without a private build licence. Frontend regression tests and dead-code tooling are available locally; dependency updates cover npm and NuGet.
+
 - Security: Forwarded headers were trusted from every private range, so any device on the LAN could fake the client address the login throttle and the local address bypass see. A new Trusted Networks setting (Settings > General > Security) lists the proxies whose forwarded headers count, plus loopback. A new install trusts none; an existing config with no TrustedNetworks key is seeded with the old private ranges, so a LAN proxy keeps working. Needs a restart.
 - Security: A new Allowed Hosts setting (Settings > General > Host) answers 400 to requests for any other host name. localhost, loopback and the server's own name always work, and empty allows every host as before. A health check warns when authentication is off for local addresses and Allowed Hosts is empty. Needs a restart. Behind a reverse proxy, don't use "Disabled for Local Addresses" unless the proxy sends X-Forwarded-For, since without it every request looks like it comes from the proxy's LAN address.
 - Security: The DNS rebinding fix in 0.6.1 could be walked around. A page in a browser on a trusted network can add its own `X-Forwarded-Host: localhost`, and the local address bypass judged that forwarded host. It now judges the host the request arrived with, which the browser sets and script can't change. A reverse proxy's forwarded client address still counts for the bypass, the login throttle and the logs.

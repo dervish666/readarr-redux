@@ -1,0 +1,26 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "frontend/src/index.ts",
+    "frontend/src/bootstrap.tsx",
+    "vite.config.mts",
+    "vitest.config.mts",
+    "tests/frontend/**/*.test.{ts,tsx}",
+    "e2e/**/*.ts"
+  ],
+  "project": [
+    "frontend/src/**/*.{js,ts,tsx}",
+    "vite.config.mts",
+    "vitest.config.mts",
+    "tests/frontend/**/*.ts*",
+    "e2e/**/*.ts"
+  ],
+  "ignore": [
+    "frontend/src/**/*.css.d.ts"
+  ],
+  "paths": {
+    "*": [
+      "frontend/src/*"
+    ]
+  }
+}

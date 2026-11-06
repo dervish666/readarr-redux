@@ -43,6 +43,23 @@ export const usePendingChangesStore = <T extends object>(
     }));
   }, [store]);
 
+  const clearSavedChanges = useCallback(
+    (submitted: Partial<T>) => {
+      store.setState((state) => {
+        const remaining = { ...state.pendingChanges };
+
+        (Object.keys(submitted) as (keyof T)[]).forEach((key) => {
+          if (Object.is(remaining[key], submitted[key])) {
+            delete remaining[key];
+          }
+        });
+
+        return { ...state, pendingChanges: remaining };
+      });
+    },
+    [store]
+  );
+
   const pendingChanges = useStore(
     store,
     useShallow((state) => {
@@ -59,6 +76,7 @@ export const usePendingChangesStore = <T extends object>(
     pendingChanges,
     setPendingChange,
     clearPendingChanges,
+    clearSavedChanges,
     hasPendingChanges,
   };
 };

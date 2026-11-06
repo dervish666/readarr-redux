@@ -38,6 +38,9 @@ jobs:
       - name: Typecheck
         run: yarn typecheck
 
+      - name: Frontend tests
+        run: yarn test:frontend
+
       - name: Build
         run: yarn build
 
@@ -48,7 +51,23 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  backend-pr:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Pin SDK
+        run: echo "{\"sdk\":{\"version\":\"$DOTNET_VERSION\"}}" > global.json
+      - name: Debug build without secrets
+        run: dotnet build src/Readarr.sln -p:Configuration=Debug -p:Platform=Posix -p:SentryUploadSymbols=false
+      - name: Unit tests
+        run: TEST_DIR=_tests/net10.0 ./test.sh Linux Unit Test
+
   backend:
+    if: github.event_name != 'pull_request'
     needs: frontend
     runs-on: ubuntu-24.04
     env:

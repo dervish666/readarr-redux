@@ -63,6 +63,7 @@ namespace NzbDrone.Core.Books
         private readonly IManageCommandQueue _commandQueueManager;
         private readonly IProvideAuthorInfo _authorInfo;
         private readonly IEventAggregator _eventAggregator;
+        private readonly IMetadataEditRepository _metadataEditRepository;
         private readonly Logger _logger;
 
         public MetadataOverrideService(IBookService bookService,
@@ -74,6 +75,7 @@ namespace NzbDrone.Core.Books
                                        IManageCommandQueue commandQueueManager,
                                        IProvideAuthorInfo authorInfo,
                                        IEventAggregator eventAggregator,
+                                       IMetadataEditRepository metadataEditRepository,
                                        Logger logger)
         {
             _bookService = bookService;
@@ -85,6 +87,7 @@ namespace NzbDrone.Core.Books
             _commandQueueManager = commandQueueManager;
             _authorInfo = authorInfo;
             _eventAggregator = eventAggregator;
+            _metadataEditRepository = metadataEditRepository;
             _logger = logger;
         }
 
@@ -169,12 +172,7 @@ namespace NzbDrone.Core.Books
                 editions.ForEach(overrides.ApplyTo);
                 book.MetadataOverrides = overrides;
 
-                // The overrides go first: they hold the suppressions for the source links removed below, so if a
-                // later write fails, a refresh still leaves those links out instead of bringing them back
-                _bookService.UpdateMany(new List<Book> { book });
-                _editionService.UpdateMany(editions);
-
-                ApplySeries(book, plan);
+                _metadataEditRepository.Save(book, editions, plan);
 
                 foreignAuthorId = book.AuthorMetadata?.Value?.ForeignAuthorId;
 
@@ -194,35 +192,38 @@ namespace NzbDrone.Core.Books
 
         public void UpdateAuthorOverview(int authorId, string overview)
         {
-            var author = _authorService.GetAuthor(authorId);
-            var metadata = author.Metadata.Value;
-            var overrides = metadata.MetadataOverrides ?? new AuthorMetadataOverrides();
-            var wasOverridden = overrides.Overview != null;
-
-            overrides.Overview = overview.IsNullOrWhiteSpace() ? null : overview.Trim();
-            metadata.MetadataOverrides = overrides;
-
-            if (wasOverridden && overrides.Overview == null)
+            lock (AuthorMetadataService.EditLock)
             {
-                // Like an edition, an author keeps its overview when the source sends none, so clear it here
-                metadata.Overview = string.Empty;
+                var author = _authorService.GetAuthor(authorId);
+                var metadata = author.Metadata.Value;
+                var overrides = metadata.MetadataOverrides ?? new AuthorMetadataOverrides();
+                var wasOverridden = overrides.Overview != null;
+
+                overrides.Overview = overview.IsNullOrWhiteSpace() ? null : overview.Trim();
+                metadata.MetadataOverrides = overrides;
+
+                if (wasOverridden && overrides.Overview == null)
+                {
+                    // Like an edition, an author keeps its overview when the source sends none, so clear it here
+                    metadata.Overview = string.Empty;
+                }
+
+                overrides.ApplyTo(metadata);
+                _authorMetadataService.Update(metadata);
+
+                // A refresh put the user's overview on the cached author, which would bring it back once cleared
+                _authorInfo.EvictAuthor(metadata.ForeignAuthorId);
+
+                _logger.Info("Updated the overview of {0} by hand", author);
+
+                // Only now the override is saved and the cache gone, so the refresh brings back the source's overview
+                if (wasOverridden && overrides.Overview == null)
+                {
+                    _commandQueueManager.Push(new RefreshAuthorCommand(authorId));
+                }
+
+                _eventAggregator.PublishEvent(new AuthorUpdatedEvent(_authorService.GetAuthor(authorId)));
             }
-
-            overrides.ApplyTo(metadata);
-            _authorMetadataService.Update(metadata);
-
-            // A refresh put the user's overview on the cached author, which would bring it back once cleared
-            _authorInfo.EvictAuthor(metadata.ForeignAuthorId);
-
-            _logger.Info("Updated the overview of {0} by hand", author);
-
-            // Only now the override is saved and the cache gone, so the refresh brings back the source's overview
-            if (wasOverridden && overrides.Overview == null)
-            {
-                _commandQueueManager.Push(new RefreshAuthorCommand(authorId));
-            }
-
-            _eventAggregator.PublishEvent(new AuthorUpdatedEvent(_authorService.GetAuthor(authorId)));
         }
 
         // A row is an existing series, or 0 with a title for a new one. Anything else used to drop out of the wanted
@@ -238,18 +239,9 @@ namespace NzbDrone.Core.Books
             }
         }
 
-        private class SeriesPlan
+        private MetadataSeriesPlan PlanSeries(Book book, BookMetadataOverrides overrides, List<BookSeriesEdit> wanted)
         {
-            public List<SeriesBookLink> Removed { get; } = new List<SeriesBookLink>();
-            public List<SeriesBookLink> ToAdd { get; } = new List<SeriesBookLink>();
-            public List<SeriesBookLink> ToUpdate { get; } = new List<SeriesBookLink>();
-            public List<Tuple<Series, SeriesBookLink>> ToCreate { get; } = new List<Tuple<Series, SeriesBookLink>>();
-            public Dictionary<int, Series> Series { get; set; }
-        }
-
-        private SeriesPlan PlanSeries(Book book, BookMetadataOverrides overrides, List<BookSeriesEdit> wanted)
-        {
-            var plan = new SeriesPlan();
+            var plan = new MetadataSeriesPlan();
             var current = _linkService.GetLinksByBook(new List<int> { book.Id });
             var series = GetAvailableSeries(book.Id).ToDictionary(x => x.Id);
 
@@ -342,34 +334,6 @@ namespace NzbDrone.Core.Books
                 IsPrimary = isPrimary,
                 IsManual = true
             };
-        }
-
-        private void ApplySeries(Book book, SeriesPlan plan)
-        {
-            foreach (var (created, link) in plan.ToCreate)
-            {
-                _seriesService.InsertMany(new List<Series> { created });
-                plan.Series[created.Id] = created;
-                link.SeriesId = created.Id;
-                plan.ToAdd.Add(link);
-
-                _logger.Info("Started series {0} for {1}", created.Title, book);
-            }
-
-            _linkService.DeleteMany(plan.Removed);
-            _linkService.InsertMany(plan.ToAdd);
-            _linkService.UpdateMany(plan.ToUpdate);
-
-            // A series the user started and has now emptied has nothing left to show
-            foreach (var link in plan.Removed)
-            {
-                if (plan.Series.TryGetValue(link.SeriesId, out var s) &&
-                    s.ForeignSeriesId.StartsWith(LocalSeriesPrefix) &&
-                    !_linkService.GetLinksBySeries(s.Id).Any())
-                {
-                    _seriesService.Delete(s.Id);
-                }
-            }
         }
 
         public static int ParsePosition(string position)

@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import Icon from 'Components/Icon';
 import { icons, kinds } from 'Helpers/Props';
+import FormFieldContext, { getFormInputId } from './FormFieldContext';
 import FormInputHelpText from './FormInputHelpText';
 import styles from './CheckInput.module.css';
 
@@ -116,6 +117,8 @@ class CheckInput extends Component {
           onClick={this.onClick}
         >
           <input
+            id={getFormInputId(this.context, this.props.name)}
+            aria-labelledby={this.context ? `${this.context.id}-label` : undefined}
             ref={this.setRef}
             className={styles.checkbox}
             type="checkbox"
@@ -165,6 +168,8 @@ class CheckInput extends Component {
     );
   }
 }
+
+CheckInput.contextType = FormFieldContext;
 
 CheckInput.propTypes = {
   className: PropTypes.string.isRequired,

@@ -15,6 +15,7 @@ import { icons, scrollDirections, sizes } from 'Helpers/Props';
 import { isMobile as isMobileUtil } from 'Utilities/browser';
 import * as keyCodes from 'Utilities/Constants/keyCodes';
 import getUniqueElememtId from 'Utilities/getUniqueElementId';
+import FormFieldContext, { getFormInputId } from './FormFieldContext';
 import HintedSelectInputOption from './HintedSelectInputOption';
 import HintedSelectInputSelectedValue from './HintedSelectInputSelectedValue';
 import TextInput from './TextInput';
@@ -363,6 +364,7 @@ class EnhancedSelectInput extends Component {
                           onChange={onChange}
                         />
                         <Link
+                          aria-labelledby={this.context ? `${this.context.id}-label` : undefined}
                           className={classNames(
                             styles.dropdownArrowContainerEditable,
                             isDisabled ?
@@ -390,6 +392,8 @@ class EnhancedSelectInput extends Component {
                         </Link>
                       </div> :
                       <Link
+                        id={getFormInputId(this.context, this.props.name)}
+                        aria-labelledby={this.context ? `${this.context.id}-label` : undefined}
                         className={classNames(
                           className,
                           hasError && styles.hasError,
@@ -570,6 +574,8 @@ class EnhancedSelectInput extends Component {
     );
   }
 }
+
+EnhancedSelectInput.contextType = FormFieldContext;
 
 EnhancedSelectInput.propTypes = {
   className: PropTypes.string,
