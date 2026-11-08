@@ -4,7 +4,7 @@ Changes in Readarr Redux since it forked from Readarr (upstream commit `0b79d300
 
 Releases come from `vX.Y.Z` git tags and publish the images `X.Y.Z`, `X.Y` and `X.Y.Z.<CI run number>`. Builds from `develop` are `0.5.0.<CI run number>`, and the entries before 0.6.0 are those builds, so their numbers have gaps. Each entry is the version and the day it was published. The commit messages explain each fix in detail.
 
-## Unreleased
+## 0.7.0 (2026-11-08)
 
 - Fixed: Calibre imports wait for conversion success before committing. A failed or unreachable conversion leaves the import failed and keeps recovery copies of the original formats.
 
