@@ -111,7 +111,7 @@
     "postcss-mixins": "9.0.4",
     "postcss-nested": "7.0.2",
     "postcss-simple-vars": "7.0.1",
-    "prettier": "2.8.8",
+    "prettier": "3.10.1",
     "rimraf": "6.1.4",
     "stylelint": "16.26.1",
     "stylelint-order": "6.0.4",
