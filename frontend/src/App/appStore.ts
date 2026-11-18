@@ -61,10 +61,13 @@ export const useAppStore = create<AppState>()(() => {
 export const useAppValues = <K extends keyof AppState>(...keys: K[]) => {
   return useAppStore(
     useShallow((state) => {
-      return keys.reduce((acc, key) => {
-        acc[key] = state[key];
-        return acc;
-      }, {} as Pick<AppState, K>);
+      return keys.reduce(
+        (acc, key) => {
+          acc[key] = state[key];
+          return acc;
+        },
+        {} as Pick<AppState, K>
+      );
     })
   );
 };
@@ -84,10 +87,13 @@ export const useAppDimension = <K extends keyof Dimensions>(key: K) => {
 export const getAppValues = <K extends keyof AppState>(...keys: K[]) => {
   const state = useAppStore.getState();
 
-  return keys.reduce((acc, key) => {
-    acc[key] = state[key];
-    return acc;
-  }, {} as Pick<AppState, K>);
+  return keys.reduce(
+    (acc, key) => {
+      acc[key] = state[key];
+      return acc;
+    },
+    {} as Pick<AppState, K>
+  );
 };
 
 export const getAppValue = <K extends keyof AppState>(key: K) => {

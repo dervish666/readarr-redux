@@ -125,7 +125,7 @@ export const useManageMetadataSourceSettings = () => {
       }
 
       setResult({
-        probe: testError ? null : probe ?? null,
+        probe: testError ? null : (probe ?? null),
         probeFromSave: false,
         testError: testError ?? null,
       });

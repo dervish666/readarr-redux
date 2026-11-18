@@ -2,8 +2,10 @@ import React from 'react';
 import Link, { LinkProps } from 'Components/Link/Link';
 import styles from './Card.module.css';
 
-interface CardProps
-  extends Pick<LinkProps, 'aria-label' | 'onPress' | 'title'> {
+interface CardProps extends Pick<
+  LinkProps,
+  'aria-label' | 'onPress' | 'title'
+> {
   // TODO: Consider using different properties for classname depending if it's overlaying content or not
   className?: string;
   overlayClassName?: string;

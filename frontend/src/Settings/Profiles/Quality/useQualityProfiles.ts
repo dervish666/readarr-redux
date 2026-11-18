@@ -30,8 +30,7 @@ export interface QualityProfileGroup {
 }
 
 export type QualityProfileItem =
-  | QualityProfileQualityItem
-  | QualityProfileGroup;
+  QualityProfileQualityItem | QualityProfileGroup;
 
 export type QualityProfileItems = QualityProfileItem[];
 

@@ -15,9 +15,7 @@ interface ReactRouterLinkProps {
 export interface LinkProps extends React.HTMLProps<HTMLAnchorElement> {
   className?: string;
   component?:
-    | string
-    | FunctionComponent<LinkProps>
-    | ComponentClass<LinkProps, unknown>;
+    string | FunctionComponent<LinkProps> | ComponentClass<LinkProps, unknown>;
   to?: string;
   target?: string;
   isDisabled?: boolean;

@@ -13,8 +13,7 @@ import {
 } from './useQualityProfiles';
 import styles from './QualityProfileItems.module.css';
 
-interface QualityProfileItemsProps
-  extends QualityProfileItemDragSourceActionProps {
+interface QualityProfileItemsProps extends QualityProfileItemDragSourceActionProps {
   mode: EditQualityProfileMode;
   dropQualityIndex: string | null;
   dropPosition: string | null;
@@ -54,8 +53,7 @@ function QualityProfileItems({
   const handleSelectMode = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       const next = event.currentTarget.dataset.modeKey as
-        | EditQualityProfileMode
-        | undefined;
+        EditQualityProfileMode | undefined;
 
       if (next) {
         onChangeMode(next);

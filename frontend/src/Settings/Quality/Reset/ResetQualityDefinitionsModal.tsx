@@ -5,8 +5,7 @@ import ResetQualityDefinitionsModalContent, {
   ResetQualityDefinitionsModalContentProps,
 } from './ResetQualityDefinitionsModalContent';
 
-interface ResetQualityDefinitionsModalProps
-  extends ResetQualityDefinitionsModalContentProps {
+interface ResetQualityDefinitionsModalProps extends ResetQualityDefinitionsModalContentProps {
   isOpen: boolean;
 }
 

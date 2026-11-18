@@ -5,8 +5,7 @@ import ExportCustomFormatModalContent, {
   ExportCustomFormatModalContentProps,
 } from './ExportCustomFormatModalContent';
 
-interface ExportCustomFormatModalProps
-  extends ExportCustomFormatModalContentProps {
+interface ExportCustomFormatModalProps extends ExportCustomFormatModalContentProps {
   isOpen: boolean;
 }
 

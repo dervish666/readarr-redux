@@ -74,8 +74,7 @@ function SelectIndexerFlagsModalContent(
   );
 }
 
-interface SelectIndexerFlagsModalProps
-  extends SelectIndexerFlagsModalContentProps {
+interface SelectIndexerFlagsModalProps extends SelectIndexerFlagsModalContentProps {
   isOpen: boolean;
 }
 
