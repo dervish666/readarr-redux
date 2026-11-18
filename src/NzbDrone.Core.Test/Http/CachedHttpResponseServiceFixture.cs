@@ -204,6 +204,25 @@ namespace NzbDrone.Core.Test.Http
         }
 
         [Test]
+        public void should_update_the_row_another_request_cached_meanwhile_instead_of_adding_a_second()
+        {
+            // Two requests for the same url both miss the cache, then both save. The second must not insert a duplicate.
+            Mocker.GetMock<ICachedHttpResponseRepository>()
+                .SetupSequence(s => s.FindByUrl(Url))
+                .Returns((CachedHttpResponse)null)
+                .Returns(new CachedHttpResponse { Id = 7, Url = Url, Value = "{\"id\":0}", StatusCode = 200 });
+
+            Mocker.GetMock<IHttpClient>()
+                .Setup(s => s.Get(It.IsAny<HttpRequest>()))
+                .Returns<HttpRequest>(r => new HttpResponse(r, new HttpHeader(), "{\"id\":1}"));
+
+            Subject.Get(SuppressedRequest(), true, TimeSpan.FromHours(1));
+
+            Mocker.GetMock<ICachedHttpResponseRepository>()
+                .Verify(v => v.Upsert(It.Is<CachedHttpResponse>(c => c.Id == 7 && c.Value == "{\"id\":1}")), Times.Once());
+        }
+
+        [Test]
         public void should_rethrow_timeout_when_nothing_is_cached()
         {
             Mocker.GetMock<IHttpClient>()
