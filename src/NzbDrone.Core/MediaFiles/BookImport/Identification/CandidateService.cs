@@ -14,6 +14,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
     public interface ICandidateService
     {
         List<CandidateEdition> GetDbCandidatesFromTags(LocalEdition localEdition, IdentificationOverrides idOverrides, bool includeExisting);
+        List<CandidateEdition> GetDbCandidatesFromTags(LocalEdition localEdition, IdentificationOverrides idOverrides, bool includeExisting, CandidateCache cache);
         IEnumerable<CandidateEdition> GetRemoteCandidates(LocalEdition localEdition, IdentificationOverrides idOverrides);
     }
 
@@ -43,7 +44,13 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
 
         public List<CandidateEdition> GetDbCandidatesFromTags(LocalEdition localEdition, IdentificationOverrides idOverrides, bool includeExisting)
         {
+            return GetDbCandidatesFromTags(localEdition, idOverrides, includeExisting, new CandidateCache());
+        }
+
+        public List<CandidateEdition> GetDbCandidatesFromTags(LocalEdition localEdition, IdentificationOverrides idOverrides, bool includeExisting, CandidateCache cache)
+        {
             var watch = System.Diagnostics.Stopwatch.StartNew();
+            cache.Trim();
 
             // Generally author, book and release are null.  But if they're not then limit candidates appropriately.
             // We've tried to make sure that tracks are all for a single release.
@@ -80,7 +87,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
                 }
                 else
                 {
-                    candidateReleases = GetDbCandidatesByBook(idOverrides.Book, includeExisting);
+                    candidateReleases = GetDbCandidatesByBook(idOverrides.Book, includeExisting, cache);
                 }
             }
             else if (idOverrides?.Author != null)
@@ -92,7 +99,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
                 }
                 else
                 {
-                    candidateReleases = GetDbCandidatesByAuthor(localEdition, idOverrides.Author, includeExisting);
+                    candidateReleases = GetDbCandidatesByAuthor(localEdition, idOverrides.Author, includeExisting, cache);
                 }
             }
             else
@@ -103,9 +110,11 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
                 }
                 else
                 {
-                    candidateReleases = GetDbCandidates(localEdition, includeExisting);
+                    candidateReleases = GetDbCandidates(localEdition, includeExisting, cache);
                 }
             }
+
+            candidateReleases = candidateReleases.DistinctBy(x => x.Edition.Id).ToList();
 
             watch.Stop();
             _logger.Debug($"Getting {candidateReleases.Count} candidates from tags for {localEdition.LocalBooks.Count} tracks took {watch.ElapsedMilliseconds}ms");
@@ -127,36 +136,39 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
             }).ToList();
         }
 
-        private List<CandidateEdition> GetDbCandidatesByBook(Book book, bool includeExisting)
+        private List<CandidateEdition> GetDbCandidatesByBook(Book book, bool includeExisting, CandidateCache cache)
         {
             // Sort by most voted so less likely to swap to a random release
-            return GetDbCandidatesByEdition(_editionService.GetEditionsByBook(book.Id)
+            return GetDbCandidatesByEdition(cache.Editions.Get(book.Id.ToString(), () => _editionService.GetEditionsByBook(book.Id))
                                             .OrderByDescending(x => x.Ratings.Popularity)
                                             .ToList(), includeExisting);
         }
 
-        private List<CandidateEdition> GetDbCandidatesByAuthor(LocalEdition localEdition, Author author, bool includeExisting)
+        private List<CandidateEdition> GetDbCandidatesByAuthor(LocalEdition localEdition, Author author, bool includeExisting, CandidateCache cache)
         {
             _logger.Trace("Getting candidates for {0}", author);
             var candidateReleases = new List<CandidateEdition>();
 
             var bookTag = localEdition.LocalBooks.MostCommon(x => x.FileTrackInfo.BookTitle) ?? "";
-            if (bookTag.IsNotNullOrWhiteSpace())
+            return cache.Candidates.Get($"{author.AuthorMetadataId}:{includeExisting}:{bookTag}", () =>
             {
-                var possibleBooks = _bookService.GetCandidates(author.AuthorMetadataId, bookTag);
-                foreach (var book in possibleBooks)
+                if (bookTag.IsNotNullOrWhiteSpace())
                 {
-                    candidateReleases.AddRange(GetDbCandidatesByBook(book, includeExisting));
+                    var possibleBooks = _bookService.GetCandidates(author.AuthorMetadataId, bookTag);
+                    foreach (var book in possibleBooks)
+                    {
+                        candidateReleases.AddRange(GetDbCandidatesByBook(book, includeExisting, cache));
+                    }
+
+                    var possibleEditions = _editionService.GetCandidates(author.AuthorMetadataId, bookTag);
+                    candidateReleases.AddRange(GetDbCandidatesByEdition(possibleEditions, includeExisting));
                 }
 
-                var possibleEditions = _editionService.GetCandidates(author.AuthorMetadataId, bookTag);
-                candidateReleases.AddRange(GetDbCandidatesByEdition(possibleEditions, includeExisting));
-            }
-
-            return candidateReleases;
+                return candidateReleases;
+            });
         }
 
-        private List<CandidateEdition> GetDbCandidates(LocalEdition localEdition, bool includeExisting)
+        private List<CandidateEdition> GetDbCandidates(LocalEdition localEdition, bool includeExisting, CandidateCache cache)
         {
             // most general version, nothing has been specified.
             // get all plausible authors, then all plausible books, then get releases for each of these.
@@ -168,7 +180,7 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
                 var va = _authorService.FindById(DistanceCalculator.VariousAuthorIds[0]);
                 if (va != null)
                 {
-                    candidateReleases.AddRange(GetDbCandidatesByAuthor(localEdition, va, includeExisting));
+                    candidateReleases.AddRange(GetDbCandidatesByAuthor(localEdition, va, includeExisting, cache));
                 }
             }
 
@@ -181,10 +193,10 @@ namespace NzbDrone.Core.MediaFiles.BookImport.Identification
                 {
                     if (authorTag.IsNotNullOrWhiteSpace())
                     {
-                        var possibleAuthors = _authorService.GetCandidates(authorTag);
+                        var possibleAuthors = cache.Authors.Get(authorTag, () => _authorService.GetCandidates(authorTag));
                         foreach (var author in possibleAuthors)
                         {
-                            candidateReleases.AddRange(GetDbCandidatesByAuthor(localEdition, author, includeExisting));
+                            candidateReleases.AddRange(GetDbCandidatesByAuthor(localEdition, author, includeExisting, cache));
                         }
                     }
                 }
