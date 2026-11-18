@@ -36,8 +36,7 @@ export interface QualityProfileItemDragSourceActionProps {
   onDragEnd: (didDrop: boolean) => void;
 }
 
-interface QualityProfileItemDragSourceProps
-  extends QualityProfileItemDragSourceActionProps {
+interface QualityProfileItemDragSourceProps extends QualityProfileItemDragSourceActionProps {
   mode: EditQualityProfileMode;
   groupId?: number;
   // A quality id can be 0 (Unknown Text), so test it against undefined.

@@ -74,8 +74,7 @@ function SelectReleaseGroupModalContent(
   );
 }
 
-interface SelectReleaseGroupModalProps
-  extends SelectReleaseGroupModalContentProps {
+interface SelectReleaseGroupModalProps extends SelectReleaseGroupModalContentProps {
   isOpen: boolean;
 }
 

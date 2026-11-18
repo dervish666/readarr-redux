@@ -5,8 +5,7 @@ import EditDownloadClientModalContent, {
   EditDownloadClientModalContentProps,
 } from './EditDownloadClientModalContent';
 
-interface EditDownloadClientModalProps
-  extends EditDownloadClientModalContentProps {
+interface EditDownloadClientModalProps extends EditDownloadClientModalContentProps {
   isOpen: boolean;
 }
 

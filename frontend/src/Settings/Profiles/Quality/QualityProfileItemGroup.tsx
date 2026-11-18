@@ -15,8 +15,7 @@ import QualityProfileItemDragSource, {
 import { QualityProfileQualityItem } from './useQualityProfiles';
 import styles from './QualityProfileItemGroup.module.css';
 
-interface QualityProfileItemGroupProps
-  extends QualityProfileItemDragSourceActionProps {
+interface QualityProfileItemGroupProps extends QualityProfileItemDragSourceActionProps {
   dragRef: ConnectDragSource;
   mode: EditQualityProfileMode;
   groupId: number;

@@ -1,12 +1,7 @@
 import ModelBase from 'App/ModelBase';
 
 export type LogEventLevel =
-  | 'trace'
-  | 'debug'
-  | 'info'
-  | 'warn'
-  | 'error'
-  | 'fatal';
+  'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal';
 
 // LogResource.
 interface LogEvent extends ModelBase {

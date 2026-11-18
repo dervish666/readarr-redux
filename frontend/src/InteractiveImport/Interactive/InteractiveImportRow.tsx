@@ -30,12 +30,7 @@ import InteractiveImportRowCellPlaceholder from './InteractiveImportRowCellPlace
 import styles from './InteractiveImportRow.module.css';
 
 type SelectType =
-  | 'author'
-  | 'book'
-  | 'releaseGroup'
-  | 'quality'
-  | 'indexerFlags'
-  | 'details';
+  'author' | 'book' | 'releaseGroup' | 'quality' | 'indexerFlags' | 'details';
 
 interface InteractiveImportRowProps {
   item: InteractiveImport;

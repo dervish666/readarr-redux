@@ -85,8 +85,7 @@ function AuthorIndex() {
   // Back/forward (or an explicit restore) returns to where the list was left.
   const [scrollTop] = useState(() => {
     const state = location.state as
-      | { restoreScrollPosition?: boolean }
-      | undefined;
+      { restoreScrollPosition?: boolean } | undefined;
 
     return navigationType === 'POP' || state?.restoreScrollPosition
       ? scrollPositions.authorIndex

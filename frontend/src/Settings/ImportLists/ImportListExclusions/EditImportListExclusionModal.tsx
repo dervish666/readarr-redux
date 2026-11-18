@@ -5,8 +5,7 @@ import EditImportListExclusionModalContent, {
   EditImportListExclusionModalContentProps,
 } from './EditImportListExclusionModalContent';
 
-interface EditImportListExclusionModalProps
-  extends EditImportListExclusionModalContentProps {
+interface EditImportListExclusionModalProps extends EditImportListExclusionModalContentProps {
   isOpen: boolean;
 }
 

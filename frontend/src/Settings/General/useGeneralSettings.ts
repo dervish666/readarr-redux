@@ -5,11 +5,7 @@ import {
 } from 'Settings/useSettings';
 
 export type UpdateMechanism =
-  | 'builtIn'
-  | 'script'
-  | 'external'
-  | 'apt'
-  | 'docker';
+  'builtIn' | 'script' | 'external' | 'apt' | 'docker';
 
 // Readarr.Api.V1/Config/HostConfigResource.
 export interface GeneralSettingsModel {

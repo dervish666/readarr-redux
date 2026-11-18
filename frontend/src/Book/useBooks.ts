@@ -250,7 +250,7 @@ export const useToggleBooksMonitored = () => {
   return {
     toggleBooksMonitored: mutate,
     isTogglingBooksMonitored: isPending,
-    togglingBookIds: isPending ? variables?.bookIds ?? [] : [],
+    togglingBookIds: isPending ? (variables?.bookIds ?? []) : [],
     toggleBooksMonitoredError: error,
   };
 };
