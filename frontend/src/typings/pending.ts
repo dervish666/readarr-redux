@@ -43,8 +43,7 @@ export type PendingSection<T> = {
 
 // A provider field with its own pending state, as ProviderFieldFormGroup takes it.
 export interface PendingField
-  extends Field,
-    Omit<Pending<Field['value']>, 'value' | 'previousValue'> {
+  extends Field, Omit<Pending<Field['value']>, 'value' | 'previousValue'> {
   pending: boolean;
   previousValue?: Field['value'];
 }

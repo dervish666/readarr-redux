@@ -4,8 +4,7 @@ import MonitoringOptionsModalContent, {
   MonitoringOptionsModalContentProps,
 } from './MonitoringOptionsModalContent';
 
-interface MonitoringOptionsModalProps
-  extends MonitoringOptionsModalContentProps {
+interface MonitoringOptionsModalProps extends MonitoringOptionsModalContentProps {
   isOpen: boolean;
 }
 

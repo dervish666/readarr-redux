@@ -108,7 +108,7 @@ function HistoryDetails({ eventType, sourceTitle, data }: HistoryDetailsProps) {
 
     const downloadClientNameInfo =
       eventType === 'grabbed'
-        ? downloadClientName ?? downloadClient
+        ? (downloadClientName ?? downloadClient)
         : downloadClient;
 
     return (

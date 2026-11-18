@@ -5,8 +5,7 @@ import ImportDestinationsModalContent, {
   ImportDestinationsModalContentProps,
 } from './ImportDestinationsModalContent';
 
-interface ImportDestinationsModalProps
-  extends ImportDestinationsModalContentProps {
+interface ImportDestinationsModalProps extends ImportDestinationsModalContentProps {
   isOpen: boolean;
 }
 
