@@ -31,16 +31,14 @@ namespace NzbDrone.Core.Test.ValidationTests
             public HashSet<int> Tags { get; set; }
         }
 
-        private static List<string> ValidateInt<TValidator>(TValidator validator, int value)
-            where TValidator : FluentValidation.Validators.IPropertyValidator
+        private static List<string> ValidateInt(NzbDronePropertyValidator validator, int value)
         {
             var testValidator = new TestValidator<Model> { v => v.RuleFor(s => s.ProfileId).SetValidator(validator) };
 
             return testValidator.Validate(new Model { ProfileId = value }).Describe();
         }
 
-        private static List<string> ValidateString<TValidator>(TValidator validator, string value)
-            where TValidator : FluentValidation.Validators.IPropertyValidator
+        private static List<string> ValidateString(NzbDronePropertyValidator validator, string value)
         {
             var testValidator = new TestValidator<Model> { v => v.RuleFor(s => s.Value).SetValidator(validator) };
 
@@ -318,7 +316,9 @@ namespace NzbDrone.Core.Test.ValidationTests
                 new ValidationFailure("Name", "Name is bad")
             });
 
-            exception.Message.Should().Be("Validation failed: \n -- Path: Path is bad\n -- Name: Name is bad".Replace("\n", System.Environment.NewLine));
+            // FluentValidation 10+ appends the severity to each failure in the exception message. This text
+            // only reaches logs and failed-command messages; the HTTP body is built from Errors instead.
+            exception.Message.Should().Be("Validation failed: \n -- Path: Path is bad Severity: Error\n -- Name: Name is bad Severity: Error".Replace("\n", System.Environment.NewLine));
         }
     }
 }

@@ -1,10 +1,10 @@
 ﻿using System.Collections.Generic;
-using FluentValidation.Validators;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Validation;
 
 namespace Readarr.Http.Validation
 {
-    public class EmptyCollectionValidator<T> : PropertyValidator
+    public class EmptyCollectionValidator<T> : NzbDronePropertyValidator
     {
         protected override string GetDefaultMessageTemplate() => "Collection Must Be Empty";
 

@@ -1,8 +1,8 @@
-using FluentValidation.Validators;
+using NzbDrone.Core.Validation;
 
 namespace NzbDrone.Core.ImportLists.Exclusions
 {
-    public class ImportListExclusionExistsValidator : PropertyValidator
+    public class ImportListExclusionExistsValidator : NzbDronePropertyValidator
     {
         private readonly IImportListExclusionService _importListExclusionService;
 

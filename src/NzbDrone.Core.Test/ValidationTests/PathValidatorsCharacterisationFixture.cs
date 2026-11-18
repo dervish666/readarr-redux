@@ -27,8 +27,7 @@ namespace NzbDrone.Core.Test.ValidationTests
         private static readonly string BooksParentPath = @"C:\Test".AsOsAgnostic();
         private static readonly string OtherPath = @"C:\Other".AsOsAgnostic();
 
-        private static List<string> Validate<TValidator>(TValidator validator, string path, int id = 1)
-            where TValidator : FluentValidation.Validators.IPropertyValidator
+        private static List<string> Validate(NzbDronePropertyValidator validator, string path, int id = 1)
         {
             var testValidator = new TestValidator<Author>
             {

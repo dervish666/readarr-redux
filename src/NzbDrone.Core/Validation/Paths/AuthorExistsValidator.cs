@@ -1,9 +1,8 @@
-﻿using FluentValidation.Validators;
-using NzbDrone.Core.Books;
+﻿using NzbDrone.Core.Books;
 
 namespace NzbDrone.Core.Validation.Paths
 {
-    public class AuthorExistsValidator : PropertyValidator
+    public class AuthorExistsValidator : NzbDronePropertyValidator
     {
         private readonly IAuthorService _authorService;
 

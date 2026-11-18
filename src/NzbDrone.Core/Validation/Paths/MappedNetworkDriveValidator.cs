@@ -1,12 +1,11 @@
 ﻿using System.IO;
 using System.Text.RegularExpressions;
-using FluentValidation.Validators;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
 
 namespace NzbDrone.Core.Validation.Paths
 {
-    public class MappedNetworkDriveValidator : PropertyValidator
+    public class MappedNetworkDriveValidator : NzbDronePropertyValidator
     {
         private readonly IRuntimeInfo _runtimeInfo;
         private readonly IDiskProvider _diskProvider;

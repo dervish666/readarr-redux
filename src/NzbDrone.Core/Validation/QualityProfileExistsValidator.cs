@@ -1,9 +1,8 @@
-using FluentValidation.Validators;
 using NzbDrone.Core.Profiles.Qualities;
 
 namespace NzbDrone.Core.Validation
 {
-    public class QualityProfileExistsValidator : PropertyValidator
+    public class QualityProfileExistsValidator : NzbDronePropertyValidator
     {
         private readonly IQualityProfileService _qualityProfileService;
 

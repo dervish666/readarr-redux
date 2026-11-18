@@ -1,9 +1,8 @@
-using FluentValidation.Validators;
 using NzbDrone.Common.Disk;
 
 namespace NzbDrone.Core.Validation.Paths
 {
-    public class FileExistsValidator : PropertyValidator
+    public class FileExistsValidator : NzbDronePropertyValidator
     {
         private readonly IDiskProvider _diskProvider;
 

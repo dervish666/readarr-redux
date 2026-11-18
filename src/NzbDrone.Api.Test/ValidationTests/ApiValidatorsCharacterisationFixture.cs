@@ -10,6 +10,7 @@ using NzbDrone.Core.Organizer;
 using NzbDrone.Core.Profiles.Metadata;
 using NzbDrone.Core.Profiles.Qualities;
 using NzbDrone.Core.RootFolders;
+using NzbDrone.Core.Validation;
 using NzbDrone.Test.Common;
 using Readarr.Api.V1.Author;
 using Readarr.Api.V1.Config;

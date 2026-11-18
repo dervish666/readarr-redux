@@ -1,5 +1,4 @@
 ﻿using FluentValidation;
-using FluentValidation.Validators;
 using NzbDrone.Common.Extensions;
 
 namespace NzbDrone.Core.Validation
@@ -12,7 +11,7 @@ namespace NzbDrone.Core.Validation
         }
     }
 
-    public class UrlValidator : PropertyValidator
+    public class UrlValidator : NzbDronePropertyValidator
     {
         protected override string GetDefaultMessageTemplate() => "Invalid Url: '{url}'";
 

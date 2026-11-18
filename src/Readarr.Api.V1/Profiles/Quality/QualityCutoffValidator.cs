@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using FluentValidation;
-using FluentValidation.Validators;
+using NzbDrone.Core.Validation;
 
 namespace Readarr.Api.V1.Profiles.Quality
 {
@@ -13,14 +13,14 @@ namespace Readarr.Api.V1.Profiles.Quality
         }
     }
 
-    public class ValidCutoffValidator<T> : PropertyValidator
+    public class ValidCutoffValidator<T> : NzbDronePropertyValidator
     {
         protected override string GetDefaultMessageTemplate() => "Cutoff must be an allowed quality or group";
 
         protected override bool IsValid(PropertyValidatorContext context)
         {
             var cutoff = (int)context.PropertyValue;
-            dynamic instance = context.ParentContext.InstanceToValidate;
+            dynamic instance = context.InstanceToValidate;
             var items = instance.Items as IList<QualityProfileQualityItemResource>;
 
             var cutoffItem = items?.SingleOrDefault(i => (i.Quality == null && i.Id == cutoff) || i.Quality?.Id == cutoff);

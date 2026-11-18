@@ -1,9 +1,8 @@
-﻿using FluentValidation.Validators;
-using NzbDrone.Core.Download;
+﻿using NzbDrone.Core.Download;
 
 namespace NzbDrone.Core.Validation
 {
-    public class DownloadClientExistsValidator : PropertyValidator
+    public class DownloadClientExistsValidator : NzbDronePropertyValidator
     {
         private readonly IDownloadClientFactory _downloadClientFactory;
 
