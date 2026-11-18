@@ -37,6 +37,16 @@ namespace NzbDrone.Core.Indexers
             return base.Active().Where(c => c.Enable).ToList();
         }
 
+        public override IEnumerable<IndexerDefinition> GetDefaultDefinitions()
+        {
+            return base.GetDefaultDefinitions().Select(SetDefaultFailDownloads);
+        }
+
+        public override IEnumerable<IndexerDefinition> GetPresetDefinitions(IndexerDefinition providerDefinition)
+        {
+            return base.GetPresetDefinitions(providerDefinition).Select(SetDefaultFailDownloads);
+        }
+
         public override void SetProviderCharacteristics(IIndexer provider, IndexerDefinition definition)
         {
             base.SetProviderCharacteristics(provider, definition);
@@ -117,6 +127,20 @@ namespace NzbDrone.Core.Indexers
             }
 
             return result;
+        }
+
+        // A new indexer added in the UI starts with the indexer type's default Fail Downloads. One added through the
+        // API, such as by Prowlarr, keeps whatever it was sent.
+        private IndexerDefinition SetDefaultFailDownloads(IndexerDefinition definition)
+        {
+            var provider = _providers.First(v => v.GetType().Name == definition.Implementation);
+
+            if (definition.Settings is IIndexerSettings settings)
+            {
+                settings.FailDownloads = provider.DefaultFailDownloads.Select(f => (int)f).ToList();
+            }
+
+            return definition;
         }
     }
 }

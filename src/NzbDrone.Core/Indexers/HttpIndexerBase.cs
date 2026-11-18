@@ -4,10 +4,13 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Xml;
+using System.Xml.Linq;
 using FluentValidation.Results;
 using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
+using NzbDrone.Common.Instrumentation;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Http.CloudFlare;
 using NzbDrone.Core.Indexers.Exceptions;
@@ -320,7 +323,15 @@ namespace NzbDrone.Core.Indexers
 
         protected override async Task Test(List<ValidationFailure> failures)
         {
-            failures.AddIfNotNull(await TestConnection());
+            var failure = await TestConnection();
+
+            if (failure != null)
+            {
+                // Exception text appended to the failure can carry the indexer URL, and the UI shows it
+                failure.ErrorMessage = CleanseLogMessage.Cleanse(failure.ErrorMessage);
+            }
+
+            failures.AddIfNotNull(failure);
         }
 
         protected virtual async Task<ValidationFailure> TestConnection()
@@ -377,6 +388,12 @@ namespace NzbDrone.Core.Indexers
                 _logger.Warn(ex, "Unable to connect to indexer");
 
                 return new ValidationFailure(string.Empty, "Unable to connect to indexer. " + ex.Message);
+            }
+            catch (TooManyRequestsException ex)
+            {
+                _logger.Warn(ex, "Indexer rejected the test with 429 Too Many Requests");
+
+                return new ValidationFailure(string.Empty, GetTooManyRequestsMessage(ex));
             }
             catch (HttpException ex)
             {
@@ -435,6 +452,38 @@ namespace NzbDrone.Core.Indexers
             }
 
             return null;
+        }
+
+        private string GetTooManyRequestsMessage(TooManyRequestsException ex)
+        {
+            string description = null;
+
+            try
+            {
+                if (ex.Response.Content.IsNotNullOrWhiteSpace())
+                {
+                    // Newznab and Torznab errors look like <error code="429" description="..."/>, which is how Prowlarr says an indexer is disabled
+                    var error = XDocument.Parse(ex.Response.Content).Descendants("error").FirstOrDefault();
+                    description = error?.Attribute("description")?.Value.Trim().TrimEnd('.');
+                }
+            }
+            catch (XmlException xmlException)
+            {
+                _logger.Debug(xmlException, "429 response body is not a Newznab error, using the generic message");
+            }
+
+            var message = description.IsNullOrWhiteSpace()
+                ? "Indexer is rate limiting requests or is disabled (HTTP 429)."
+                : $"Indexer is rate limiting requests or is disabled: {description}.";
+
+            if (ex.RetryAfter > TimeSpan.Zero)
+            {
+                var minutes = (int)Math.Ceiling(ex.RetryAfter.TotalMinutes);
+
+                return $"{message} Try again in {minutes} minute{(minutes == 1 ? "" : "s")}.";
+            }
+
+            return $"{message} Try again later.";
         }
     }
 }

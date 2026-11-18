@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using FluentValidation;
 using NzbDrone.Core.Annotations;
 using NzbDrone.Core.Validation;
@@ -22,6 +24,7 @@ namespace NzbDrone.Core.Indexers.Gazelle
 
         public GazelleSettings()
         {
+            FailDownloads = Array.Empty<int>();
             MinimumSeeders = IndexerDefaults.MINIMUM_SEEDERS;
         }
 
@@ -51,6 +54,12 @@ namespace NzbDrone.Core.Indexers.Gazelle
 
         [FieldDefinition(7, Type = FieldType.Checkbox, Label = "Reject Blocklisted Torrent Hashes While Grabbing", HelpText = "If a torrent is blocked by hash it may not properly be rejected during RSS/Search for some indexers, enabling this will allow it to be rejected after the torrent is grabbed, but before it is sent to the client.", Advanced = true)]
         public bool RejectBlocklistedTorrentHashesWhileGrabbing { get; set; }
+
+        [FieldDefinition(8, Type = FieldType.Select, SelectOptions = typeof(FailDownloads), Label = "IndexerSettingsFailDownloads", HelpText = "IndexerSettingsFailDownloadsHelpText")]
+        public IEnumerable<int> FailDownloads { get; set; }
+
+        [FieldDefinition(9, Type = FieldType.Checkbox, Label = "IndexerSettingsRejectTorrentFilesWithBlockedExtensions", HelpText = "IndexerSettingsRejectTorrentFilesWithBlockedExtensionsHelpText")]
+        public bool RejectTorrentFilesWithBlockedExtensionsWhileGrabbing { get; set; }
 
         public NzbDroneValidationResult Validate()
         {

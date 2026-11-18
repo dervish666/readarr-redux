@@ -5,6 +5,7 @@ using System.Security.Cryptography.X509Certificates;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Common.Network;
 using NzbDrone.Core.Authentication;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Update;
@@ -41,7 +42,12 @@ namespace Readarr.Api.V1.Config
 
             SharedValidator.RuleFor(c => c.Port).ValidPort();
 
+            SharedValidator.RuleFor(c => c.AllowedHosts)
+                           .ValidHosts()
+                           .When(c => c.AllowedHosts.IsNotNullOrWhiteSpace());
+
             SharedValidator.RuleFor(c => c.UrlBase).ValidUrlBase();
+            SharedValidator.RuleFor(c => c.TrustedNetworks).ValidIpNetworks();
             SharedValidator.RuleFor(c => c.InstanceName).ContainsReadarr().When(c => c.InstanceName.IsNotNullOrWhiteSpace());
 
             SharedValidator.RuleFor(c => c.Username).NotEmpty().When(c => c.AuthenticationMethod == AuthenticationType.Basic ||
@@ -76,7 +82,9 @@ namespace Readarr.Api.V1.Config
             X509Certificate2 cert;
             try
             {
-                cert = X509CertificateLoader.LoadPkcs12FromFile(resource.SslCertPath, resource.SslCertPassword, X509KeyStorageFlags.DefaultKeySet);
+                var password = resource.SslCertPassword == PasswordPlaceholder ? _configFileProvider.SslCertPassword : resource.SslCertPassword;
+
+                cert = X509CertificateLoader.LoadPkcs12FromFile(resource.SslCertPath, password, X509KeyStorageFlags.DefaultKeySet);
             }
             catch
             {
@@ -120,15 +128,33 @@ namespace Readarr.Api.V1.Config
             resource.Password = user != null ? PasswordPlaceholder : string.Empty;
             resource.PasswordConfirmation = string.Empty;
 
+            // Secrets go out as the placeholder and are swapped back for the stored value on save
+            resource.SslCertPassword = resource.SslCertPassword.IsNullOrWhiteSpace() ? string.Empty : PasswordPlaceholder;
+            resource.ProxyPassword = resource.ProxyPassword.IsNullOrWhiteSpace() ? string.Empty : PasswordPlaceholder;
+
             return resource;
         }
 
         [RestPutById]
         public ActionResult<HostConfigResource> SaveHostConfig(HostConfigResource resource)
         {
+            // A client that predates these settings leaves them out; keep what is stored rather than clear it
+            resource.AllowedHosts = string.Join(", ", AllowedHostsParser.Parse(resource.AllowedHosts ?? _configFileProvider.AllowedHosts));
+            resource.TrustedNetworks = IPNetworkParser.NormalizeList(resource.TrustedNetworks ?? _configFileProvider.TrustedNetworks);
+
             var dictionary = resource.GetType()
                                      .GetProperties(BindingFlags.Instance | BindingFlags.Public)
                                      .ToDictionary(prop => prop.Name, prop => prop.GetValue(resource, null));
+
+            if (resource.SslCertPassword == PasswordPlaceholder)
+            {
+                dictionary[nameof(HostConfigResource.SslCertPassword)] = _configFileProvider.SslCertPassword;
+            }
+
+            if (resource.ProxyPassword == PasswordPlaceholder)
+            {
+                dictionary[nameof(HostConfigResource.ProxyPassword)] = _configService.ProxyPassword;
+            }
 
             _configFileProvider.SaveConfigDictionary(dictionary);
             _configService.SaveConfigDictionary(dictionary);

@@ -467,6 +467,8 @@ namespace NzbDrone.Core.MediaFiles.BookImport
                 _bookFileUpgrader.RemoveSetAsideFiles(bookSetAsideFiles.Value);
             }
 
+            _bookFileUpgrader.CompleteCalibreImports(moveResults);
+
             RemoveEarlierCopies(downloadedFiles, downloadClientItem, downloadHistory);
 
             // now that trackfiles have been inserted and ids generated, publish the import events

@@ -49,9 +49,11 @@ namespace Readarr.Api.V1.Calendar
             calendar.AddProperty(new CalendarProperty("NAME", calendarName));
             calendar.AddProperty(new CalendarProperty("X-WR-CALNAME", calendarName));
 
+            var authors = _authorService.GetAuthors(books.Select(b => b.AuthorId).Distinct()).ToDictionary(a => a.Id);
+
             foreach (var book in books.OrderBy(v => v.ReleaseDate.Value))
             {
-                var author = _authorService.GetAuthor(book.AuthorId); // Temp fix TODO: Figure out why Book.Author is not populated during BooksBetweenDates Query
+                var author = authors[book.AuthorId];
 
                 if (tags.Any() && tags.None(author.Tags.Contains))
                 {

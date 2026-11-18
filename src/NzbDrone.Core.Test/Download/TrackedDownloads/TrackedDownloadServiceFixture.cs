@@ -6,6 +6,7 @@ using NUnit.Framework;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Books.Events;
 using NzbDrone.Core.Download;
+using NzbDrone.Core.Download.History;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.History;
 using NzbDrone.Core.Indexers;
@@ -247,6 +248,134 @@ namespace NzbDrone.Core.Test.Download.TrackedDownloads
             var trackedDownloads = Subject.GetTrackedDownloads();
             trackedDownloads.Should().HaveCount(1);
             trackedDownloads.First().RemoteBook.Should().BeNull();
+        }
+
+        [TestCase(DownloadHistoryEventType.DownloadImported)]
+        [TestCase(DownloadHistoryEventType.DownloadFailed)]
+        [TestCase(DownloadHistoryEventType.DownloadIgnored)]
+        public void should_retrack_as_downloading_when_grabbed_again_after_finishing(DownloadHistoryEventType finishedEvent)
+        {
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(It.Is<string>(sr => sr == "35238")))
+                .Returns(new List<EntityHistory>());
+
+            Mocker.GetMock<IDownloadHistoryService>()
+                .Setup(s => s.GetLatestDownloadHistoryItem(It.Is<string>(sr => sr == "35238")))
+                .Returns(new DownloadHistory
+                {
+                    AuthorId = 5,
+                    EventType = finishedEvent
+                });
+
+            var remoteBook = new RemoteBook
+            {
+                Author = new Author { Id = 5 },
+                Books = new List<Book> { new Book { Id = 4 } },
+                ParsedBookInfo = new ParsedBookInfo
+                {
+                    BookTitle = "Audio Book",
+                    AuthorName = "Audio Author"
+                }
+            };
+
+            var client = new DownloadClientDefinition
+            {
+                Id = 1,
+                Protocol = DownloadProtocol.Torrent
+            };
+
+            var item = new DownloadClientItem
+            {
+                Title = "Audio Author - Audio Book [2018 - FLAC]",
+                DownloadId = "35238",
+                DownloadClientInfo = new DownloadClientItemClientInfo
+                {
+                    Protocol = client.Protocol,
+                    Id = client.Id,
+                    Name = client.Name
+                }
+            };
+
+            var finished = Subject.TrackDownload(client, item);
+            finished.State.Should().NotBe(TrackedDownloadState.Downloading);
+
+            Subject.Handle(new BookGrabbedEvent(remoteBook) { DownloadId = "35238" });
+
+            Mocker.GetMock<IDownloadHistoryService>()
+                .Setup(s => s.GetLatestDownloadHistoryItem(It.Is<string>(sr => sr == "35238")))
+                .Returns(new DownloadHistory
+                {
+                    AuthorId = 5,
+                    EventType = DownloadHistoryEventType.DownloadGrabbed
+                });
+
+            var regrabbed = Subject.TrackDownload(client, item);
+            regrabbed.State.Should().Be(TrackedDownloadState.Downloading);
+        }
+
+        [Test]
+        public void should_keep_tracking_when_grabbed_event_has_no_download_id()
+        {
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(It.IsAny<string>()))
+                .Returns(new List<EntityHistory>());
+
+            Mocker.GetMock<IDownloadHistoryService>()
+                .Setup(s => s.GetLatestDownloadHistoryItem(It.IsAny<string>()))
+                .Returns(new DownloadHistory { EventType = DownloadHistoryEventType.DownloadImported });
+
+            var client = new DownloadClientDefinition { Id = 1, Protocol = DownloadProtocol.Torrent };
+            var item = new DownloadClientItem
+            {
+                Title = "Unparsable",
+                DownloadId = "35238",
+                DownloadClientInfo = new DownloadClientItemClientInfo { Protocol = client.Protocol, Id = client.Id }
+            };
+
+            Subject.TrackDownload(client, item);
+            Subject.Handle(new BookGrabbedEvent(new RemoteBook()));
+
+            Subject.Find("35238").State.Should().Be(TrackedDownloadState.Imported);
+        }
+
+        [Test]
+        public void should_stop_tracking_downloads_missing_from_their_download_client()
+        {
+            Mocker.GetMock<IHistoryService>()
+                .Setup(s => s.FindByDownloadId(It.IsAny<string>()))
+                .Returns(new List<EntityHistory>());
+
+            GivenTrackedDownload(1, "present");
+            GivenTrackedDownload(1, "missing");
+            GivenTrackedDownload(2, "other");
+
+            Subject.StopTrackingMissing(1, new List<string> { "present" });
+
+            Subject.Find("present").Should().NotBeNull();
+            Subject.Find("missing").Should().BeNull();
+            Subject.Find("other").Should().NotBeNull();
+        }
+
+        private void GivenTrackedDownload(int downloadClientId, string downloadId)
+        {
+            var client = new DownloadClientDefinition
+            {
+                Id = downloadClientId,
+                Protocol = DownloadProtocol.Torrent
+            };
+
+            var item = new DownloadClientItem
+            {
+                Title = "Unparsable",
+                DownloadId = downloadId,
+                DownloadClientInfo = new DownloadClientItemClientInfo
+                {
+                    Protocol = client.Protocol,
+                    Id = client.Id
+                }
+            };
+
+            Subject.TrackDownload(client, item);
         }
     }
 }

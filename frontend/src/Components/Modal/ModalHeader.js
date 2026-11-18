@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
+import ModalTitleContext from './ModalTitleContext';
 import styles from './ModalHeader.module.css';
 
 class ModalHeader extends Component {
@@ -15,6 +16,7 @@ class ModalHeader extends Component {
 
     return (
       <div
+        id={this.context}
         className={styles.modalHeader}
         {...otherProps}
       >
@@ -24,6 +26,8 @@ class ModalHeader extends Component {
   }
 
 }
+
+ModalHeader.contextType = ModalTitleContext;
 
 ModalHeader.propTypes = {
   children: PropTypes.node

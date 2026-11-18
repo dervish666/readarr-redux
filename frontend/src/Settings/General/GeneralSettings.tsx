@@ -32,6 +32,8 @@ const requiresRestartKeys: (keyof GeneralSettingsModel)[] = [
   'bindAddress',
   'port',
   'urlBase',
+  'allowedHosts',
+  'trustedNetworks',
   'enableSsl',
   'sslPort',
   'sslCertPath',

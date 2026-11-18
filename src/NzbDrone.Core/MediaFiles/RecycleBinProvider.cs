@@ -50,7 +50,7 @@ namespace NzbDrone.Core.MediaFiles
             }
             else
             {
-                var destination = Path.Combine(recyclingBin, new DirectoryInfo(path).Name);
+                var destination = Path.Combine(recyclingBin, $"{new DirectoryInfo(path).Name}.{Guid.NewGuid():N}");
 
                 _logger.Debug("Moving '{0}' to '{1}'", path, destination);
                 _diskTransferService.TransferFolder(path, destination, TransferMode.Move);

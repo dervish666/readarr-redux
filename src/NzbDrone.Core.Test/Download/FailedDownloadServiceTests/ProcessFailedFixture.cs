@@ -82,6 +82,19 @@ namespace NzbDrone.Core.Test.Download.FailedDownloadServiceTests
             AssertDownloadFailed();
         }
 
+        [Test]
+        public void should_mark_failed_with_the_reason_import_failed_it()
+        {
+            _trackedDownload.Fail(new TrackedDownloadStatusMessage(_trackedDownload.DownloadItem.Title, "Caution: Found executable file with extension: .exe"));
+
+            Subject.ProcessFailed(_trackedDownload);
+
+            Mocker.GetMock<IEventAggregator>()
+                  .Verify(v => v.PublishEvent(It.Is<DownloadFailedEvent>(c => c.Message == "Caution: Found executable file with extension: .exe")), Times.Once());
+
+            AssertDownloadFailed();
+        }
+
         private void AssertDownloadNotFailed()
         {
             Mocker.GetMock<IEventAggregator>()

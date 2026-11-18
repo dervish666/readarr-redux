@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
@@ -60,7 +62,7 @@ namespace Readarr.Http.Authentication
                 return Task.FromResult(AuthenticateResult.NoResult());
             }
 
-            if (_apiKey == providedApiKey)
+            if (IsMatchingApiKey(providedApiKey))
             {
                 var claims = new List<Claim>
                 {
@@ -76,6 +78,17 @@ namespace Readarr.Http.Authentication
             }
 
             return Task.FromResult(AuthenticateResult.NoResult());
+        }
+
+        // Constant time, so the response time doesn't reveal how much of a guessed key was right
+        private bool IsMatchingApiKey(string providedApiKey)
+        {
+            if (string.IsNullOrEmpty(_apiKey))
+            {
+                return false;
+            }
+
+            return CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(_apiKey), Encoding.UTF8.GetBytes(providedApiKey));
         }
 
         protected override Task HandleChallengeAsync(AuthenticationProperties properties)

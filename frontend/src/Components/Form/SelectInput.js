@@ -1,6 +1,7 @@
 import classNames from 'classnames';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
+import FormFieldContext, { getFormInputId } from './FormFieldContext';
 import styles from './SelectInput.module.css';
 
 class SelectInput extends Component {
@@ -34,6 +35,8 @@ class SelectInput extends Component {
 
     return (
       <select
+        id={getFormInputId(this.context, this.props.name)}
+        aria-labelledby={this.context ? `${this.context.id}-label` : undefined}
         className={classNames(
           className,
           hasError && styles.hasError,
@@ -72,6 +75,8 @@ class SelectInput extends Component {
     );
   }
 }
+
+SelectInput.contextType = FormFieldContext;
 
 SelectInput.propTypes = {
   className: PropTypes.string,

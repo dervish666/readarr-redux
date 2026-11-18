@@ -1,6 +1,7 @@
 import classNames from 'classnames';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
+import FormFieldContext, { getFormInputId } from './FormFieldContext';
 import styles from './TextArea.module.css';
 
 class TextArea extends Component {
@@ -123,6 +124,8 @@ class TextArea extends Component {
 
     return (
       <textarea
+        id={getFormInputId(this.context, this.props.name)}
+        aria-labelledby={this.context ? `${this.context.id}-label` : undefined}
         ref={this.setInputRef}
         readOnly={readOnly}
         autoFocus={autoFocus}
@@ -145,6 +148,8 @@ class TextArea extends Component {
     );
   }
 }
+
+TextArea.contextType = FormFieldContext;
 
 TextArea.propTypes = {
   className: PropTypes.string.isRequired,

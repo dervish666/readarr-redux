@@ -3,6 +3,7 @@ using System.Linq;
 using DryIoc;
 using DryIoc.Microsoft.DependencyInjection;
 using FluentAssertions;
+using Microsoft.AspNetCore.HostFiltering;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -54,6 +55,14 @@ namespace NzbDrone.App.Test
             container.RegisterInstance<IOptions<LogOptions>>(new Mock<IOptions<LogOptions>>().Object);
 
             _container = container.GetServiceProvider();
+        }
+
+        [Test]
+        public void should_register_allowed_hosts_with_host_filtering_once()
+        {
+            _container.GetServices<IConfigureOptions<HostFilteringOptions>>()
+                .OfType<ConfigureHostFilteringOptions>()
+                .Should().ContainSingle();
         }
 
         [Test]

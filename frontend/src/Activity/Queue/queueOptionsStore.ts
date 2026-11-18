@@ -120,6 +120,7 @@ const { useOptions, useOption, setOptions, setOption, setSort } =
           name: 'actions',
           label: '',
           columnLabel: () => translate('Actions'),
+          isSortable: true,
           isVisible: true,
           isModifiable: false,
         },

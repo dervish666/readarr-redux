@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using NzbDrone.Core.Books.Calibre;
 
 namespace NzbDrone.Core.MediaFiles
 {
@@ -24,6 +25,8 @@ namespace NzbDrone.Core.MediaFiles
 
     public class SetAsideBookFile
     {
+        public int CalibreId { get; set; }
+        public CalibreSettings CalibreSettings { get; set; }
         public string OriginalPath { get; set; }
         public string Path { get; set; }
         public string RecycleBinSubfolder { get; set; }

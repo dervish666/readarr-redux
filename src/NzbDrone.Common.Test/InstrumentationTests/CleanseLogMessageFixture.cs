@@ -28,6 +28,7 @@ namespace NzbDrone.Common.Test.InstrumentationTests
 
         // Sabnzbd
         [TestCase(@"http://127.0.0.1:1234/api/call?vv=1&apikey=mySecret")]
+        [TestCase(@"http://127.0.0.1:1234/api/call?vv=1&api_key=mySecret")]
         [TestCase(@"http://127.0.0.1:1234/api/call?vv=1&ma_username=mySecret&ma_password=mySecret")]
         [TestCase(@"""config"":{""newzbin"":{""username"":""mySecret"",""password"":""mySecret""}")]
         [TestCase(@"""nzbxxx"":{""username"":""mySecret"",""apikey"":""mySecret""}")]
@@ -129,6 +130,17 @@ namespace NzbDrone.Common.Test.InstrumentationTests
 
             cleansedMessage.Should().NotContain("mytokensecret");
             cleansedMessage.Should().NotContain("mytoken");
+        }
+
+        [TestCase(@"User 'mySecret@example.com' is not authorized to access this application")]
+        [TestCase(@"Auth-Logout ip 127.0.0.1 username 'mySecret@example.com'")]
+        [TestCase(@"Sending email to mySecret@sub.example.co.uk failed")]
+        public void should_clean_email(string message)
+        {
+            var cleansedMessage = CleanseLogMessage.Cleanse(message);
+
+            cleansedMessage.Should().NotContain("mySecret");
+            cleansedMessage.Should().Contain("(removed)@");
         }
 
         [TestCase(@"Some message (from 32.2.3.5 user agent)")]

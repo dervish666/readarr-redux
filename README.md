@@ -8,7 +8,7 @@ Readarr Redux is not affiliated with or supported by the Servarr team. Please do
 
 - One person ([@dervish666](https://github.com/dervish666)) maintains it for his own library. Issues and pull requests are welcome; replies are best effort.
 - The supported install is the Docker image for Linux amd64 and arm64. You can build from source on macOS or Windows, but CI only builds and tests Linux.
-- Claude Code wrote most of the changes since the fork, and every fork commit carries a `Claude-Session` trailer.
+- Claude Code and Codex wrote many of the changes since the fork.
 - The app still calls itself Readarr, and its data folders, database names and assembly names are unchanged, so an existing install can move over (see below).
 
 ## You need a metadata source
@@ -99,7 +99,7 @@ dotnet _output/net10.0/Readarr.dll -nobrowser -data=/tmp/readarr-dev
 
 Then open http://localhost:8787. Restore needs no private feeds; the packages that only existed on Servarr's feeds are vendored in [src/Libraries/nuget](src/Libraries/nuget/README.md). [CONTRIBUTING.md](CONTRIBUTING.md) has the test commands.
 
-A Release build (including `docker build`) needs `SIXLABORS_LICENSE_KEY` set to the full contents of a Six Labors licence file, because ImageSharp 4 refuses to build in Release without one. Debug builds only warn. CI reads the key from the repository secret of that name. Pull requests from forks get no secrets, so their backend CI job fails at the licence check; the maintainer checks those builds.
+A Release build (including `docker build`) needs `SIXLABORS_LICENSE_KEY` set to the full contents of a Six Labors licence file, because ImageSharp 4 refuses to build in Release without one. Debug builds only warn. CI reads the key from the repository secret of that name. Pull requests run a Debug backend build and unit tests without secrets. Trusted branch and tag builds run licensed Release packaging.
 
 The [upstream wiki](https://wiki.servarr.com/readarr) still describes most settings correctly.
 

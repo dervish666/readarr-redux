@@ -1,8 +1,8 @@
-using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NzbDrone.Common;
 using NzbDrone.Common.EnvironmentInfo;
+using NzbDrone.Common.Serializer;
 using NzbDrone.Core.Analytics;
 using NzbDrone.Core.Configuration;
 
@@ -43,22 +43,20 @@ namespace Readarr.Http.Frontend
                 return _generatedContent;
             }
 
-            var builder = new StringBuilder();
-            builder.AppendLine("{");
-            builder.AppendLine($"  \"apiRoot\": \"{_urlBase}/api/v1\",");
-            builder.AppendLine($"  \"apiKey\": \"{_apiKey}\",");
-            builder.AppendLine($"  \"release\": \"{BuildInfo.Release}\",");
-            builder.AppendLine($"  \"version\": \"{BuildInfo.Version.ToString()}\",");
-            builder.AppendLine($"  \"instanceName\": \"{_configFileProvider.InstanceName.ToString()}\",");
-            builder.AppendLine($"  \"theme\": \"{_configFileProvider.Theme.ToString()}\",");
-            builder.AppendLine($"  \"branch\": \"{_configFileProvider.Branch.ToLower()}\",");
-            builder.AppendLine($"  \"analytics\": {_analyticsService.IsEnabled.ToString().ToLowerInvariant()},");
-            builder.AppendLine($"  \"userHash\": \"{HashUtil.AnonymousToken()}\",");
-            builder.AppendLine($"  \"urlBase\": \"{_urlBase}\",");
-            builder.AppendLine($"  \"isProduction\": {RuntimeInfo.IsProduction.ToString().ToLowerInvariant()}");
-            builder.AppendLine("}");
-
-            _generatedContent = builder.ToString();
+            _generatedContent = STJson.ToJson(new
+            {
+                apiRoot = $"{_urlBase}/api/v1",
+                apiKey = _apiKey,
+                release = BuildInfo.Release,
+                version = BuildInfo.Version.ToString(),
+                instanceName = _configFileProvider.InstanceName,
+                theme = _configFileProvider.Theme,
+                branch = _configFileProvider.Branch.ToLowerInvariant(),
+                analytics = _analyticsService.IsEnabled,
+                userHash = HashUtil.AnonymousToken(),
+                urlBase = _urlBase,
+                isProduction = RuntimeInfo.IsProduction
+            });
 
             return _generatedContent;
         }

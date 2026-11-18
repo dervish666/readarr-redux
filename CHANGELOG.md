@@ -4,7 +4,39 @@ Changes in Readarr Redux since it forked from Readarr (upstream commit `0b79d300
 
 Releases come from `vX.Y.Z` git tags and publish the images `X.Y.Z`, `X.Y` and `X.Y.Z.<CI run number>`. Builds from `develop` are `0.5.0.<CI run number>`, and the entries before 0.6.0 are those builds, so their numbers have gaps. Each entry is the version and the day it was published. The commit messages explain each fix in detail.
 
-## Unreleased
+## 0.7.0 (2026-11-08)
+
+- Fixed: Calibre imports wait for conversion success before committing. A failed or unreachable conversion leaves the import failed and keeps recovery copies of the original formats.
+
+- Fixed: A failed Calibre upgrade keeps recoverable copies of the existing formats, including when the new library rows fail to save. Other formats are retained, and Readarr keeps the imported format selected.
+- Fixed: Recycling two author folders with the same name no longer overwrites the earlier recovery copy. Manual metadata edits survive concurrent author refreshes, and series edits roll back completely if a write fails.
+- Security: The local address exception cannot skip the first-run setup code. Unexpected API errors no longer send exception details to clients.
+- Fixed: Instance names containing quotes or backslashes no longer prevent the UI loading. Settings edits made during a save are retained, and a failed initial live-update connection is retried.
+- Accessibility: Shared form controls have associated labels; dialogs announce their title and name the close button.
+- Development: Fork pull requests run backend tests without a private build licence. Frontend regression tests and dead-code tooling are available locally; dependency updates cover npm and NuGet.
+
+- Security: Forwarded headers were trusted from every private range, so any device on the LAN could fake the client address the login throttle and the local address bypass see. A new Trusted Networks setting (Settings > General > Security) lists the proxies whose forwarded headers count, plus loopback. A new install trusts none; an existing config with no TrustedNetworks key is seeded with the old private ranges, so a LAN proxy keeps working. Needs a restart.
+- Security: A new Allowed Hosts setting (Settings > General > Host) answers 400 to requests for any other host name. localhost, loopback and the server's own name always work, and empty allows every host as before. A health check warns when authentication is off for local addresses and Allowed Hosts is empty. Needs a restart. Behind a reverse proxy, don't use "Disabled for Local Addresses" unless the proxy sends X-Forwarded-For, since without it every request looks like it comes from the proxy's LAN address.
+- Security: The DNS rebinding fix in 0.6.1 could be walked around. A page in a browser on a trusted network can add its own `X-Forwarded-Host: localhost`, and the local address bypass judged that forwarded host. It now judges the host the request arrived with, which the browser sets and script can't change. A reverse proxy's forwarded client address still counts for the bypass, the login throttle and the logs.
+- Security: Host settings no longer send the proxy and SSL certificate passwords back in plain text.
+- Security: The API key and the legacy password hash are compared in constant time, and an empty API key matches nothing.
+- Security: A failed indexer test showed the request URL with the indexer's API key in plain text, for example a 429 from Prowlarr on `t=caps`. HTTP error messages now mask `apikey`, `api_key`, `passkey`, `token` and the other secrets the log cleanser knows, and indexer test failures are cleansed before the UI sees them.
+- Added: A download holding an executable or potentially dangerous file (.exe, .bat, .cmd, .sh, .lnk, .ps1, .vbs, .zipx) and no book is rejected at import. Each indexer's new Fail Downloads setting picks which kinds fail the download, so it is blocklisted, removed and searched again; anything else is blocked with a warning in the queue. When qBittorrent skipped the blocked files, Readarr reads the torrent's file list to find them.
+- Added: Fail Downloads is on (Executables and Potentially Dangerous) for new Newznab, Torznab, Nyaa and Torrent RSS indexers, and the upgrade turns it on for existing ones that have no value yet. Private trackers start with it off.
+- Added: Torrent indexers can reject a grabbed .torrent whose file list holds a type their Fail Downloads covers, before it reaches the client, so a torrent with a book and an executable side by side is skipped. Magnet links can't be checked.
+- Fixed: Restoring a backup deleted the live database before checking the restored one, so a bad upload left nothing to start from. Files are checked first, the current database is kept as `.pre-restore` until the restored one starts (and put back automatically if the restored one fails to open, which is kept as `.restore-failed`), and an uploaded `config.xml` replaces the config instead of being staged as the database.
+- Fixed: A torrent grabbed again after it had been imported never imported again.
+- Fixed: Downloads removed from the download client stayed tracked in the queue.
+- Fixed: A blocklisted NZB hid the same release on every other indexer. A usenet blocklist entry now matches only its own indexer.
+- Fixed: Newznab and Torznab page size never went past 100 even when the indexer recommends more.
+- Fixed: SQLite gave up on a busy database after 100ms with "database is locked". It now waits up to a second.
+- Fixed: A saved list option holding a list of values came back with the defaults appended to it.
+- Fixed: Expired cache entries stayed in memory until read again. A Clear Expired Cache task sweeps them every 5 minutes.
+- Fixed: HTTP basic auth credentials with characters outside Latin-1 were sent as `?`.
+- Fixed: Pooled HTTP connections lived forever and kept dialling a host's old address after a DNS change. They are recycled every 30 minutes.
+- Fixed: Email addresses in log messages are masked as `(removed)@example.com`.
+- Fixed: An indexer test that got 429 Too Many Requests said only "HTTP request failed". It now shows the indexer's own reason when it sends a Newznab error, such as Prowlarr's "Indexer is disabled till ... due to recent failures", and how long Retry-After says to wait.
+- Changed: .NET runtime 10.0.14, SDK 10.0.403.
 
 ## 0.6.1 (2026-10-28)
 

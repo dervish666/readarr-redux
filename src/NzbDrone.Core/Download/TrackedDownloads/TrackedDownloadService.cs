@@ -24,9 +24,11 @@ namespace NzbDrone.Core.Download.TrackedDownloads
         TrackedDownload TrackDownload(DownloadClientDefinition downloadClient, DownloadClientItem downloadItem);
         List<TrackedDownload> GetTrackedDownloads();
         void UpdateTrackable(List<TrackedDownload> trackedDownloads);
+        void StopTrackingMissing(int downloadClientId, List<string> downloadIds);
     }
 
     public class TrackedDownloadService : ITrackedDownloadService,
+                                          IHandle<BookGrabbedEvent>,
                                           IHandle<BookInfoRefreshedEvent>,
                                           IHandle<AuthorDeletedEvent>
     {
@@ -240,6 +242,19 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             }
         }
 
+        public void StopTrackingMissing(int downloadClientId, List<string> downloadIds)
+        {
+            var present = downloadIds.ToHashSet();
+            var missing = GetTrackedDownloads()
+                .Where(t => t.DownloadClient == downloadClientId && !present.Contains(t.DownloadItem.DownloadId))
+                .ToList();
+
+            foreach (var trackedDownload in missing)
+            {
+                _cache.Remove(trackedDownload.DownloadItem.DownloadId);
+            }
+        }
+
         private void LogItemChange(TrackedDownload trackedDownload, DownloadClientItem existingItem, DownloadClientItem downloadItem)
         {
             if (existingItem == null ||
@@ -279,6 +294,24 @@ namespace NzbDrone.Core.Download.TrackedDownloads
                     return TrackedDownloadState.Ignored;
                 default:
                     return TrackedDownloadState.Downloading;
+            }
+        }
+
+        public void Handle(BookGrabbedEvent message)
+        {
+            if (message.DownloadId.IsNullOrWhiteSpace())
+            {
+                return;
+            }
+
+            var trackedDownload = _cache.Find(message.DownloadId);
+
+            // A torrent grabbed again keeps its hash, so drop the finished entry and let the next poll track it afresh
+            if (trackedDownload is { State: TrackedDownloadState.Imported or
+                                            TrackedDownloadState.DownloadFailed or
+                                            TrackedDownloadState.Ignored })
+            {
+                _cache.Remove(message.DownloadId);
             }
         }
 

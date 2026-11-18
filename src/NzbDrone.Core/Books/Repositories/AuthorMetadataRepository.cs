@@ -29,44 +29,47 @@ namespace NzbDrone.Core.Books
 
         public bool UpsertMany(List<AuthorMetadata> data)
         {
-            var existingMetadata = FindById(data.Select(x => x.ForeignAuthorId).ToList());
-            var updateMetadataList = new List<AuthorMetadata>();
-            var addMetadataList = new List<AuthorMetadata>();
-            var upToDateMetadataCount = 0;
-
-            foreach (var meta in data)
+            lock (AuthorMetadataService.EditLock)
             {
-                var existing = existingMetadata.SingleOrDefault(x => x.ForeignAuthorId == meta.ForeignAuthorId);
-                if (existing != null)
+                var existingMetadata = FindById(data.Select(x => x.ForeignAuthorId).ToList());
+                var updateMetadataList = new List<AuthorMetadata>();
+                var addMetadataList = new List<AuthorMetadata>();
+                var upToDateMetadataCount = 0;
+
+                foreach (var meta in data)
                 {
-                    // populate Id in remote data
-                    meta.UseDbFieldsFrom(existing);
-
-                    // and the user's values over the source's, so a kept override reads as no change
-                    meta.MetadataOverrides?.ApplyTo(meta);
-
-                    // responses vary, so try adding remote to what we have
-                    if (!meta.Equals(existing))
+                    var existing = existingMetadata.SingleOrDefault(x => x.ForeignAuthorId == meta.ForeignAuthorId);
+                    if (existing != null)
                     {
-                        updateMetadataList.Add(meta);
+                        // populate Id in remote data
+                        meta.UseDbFieldsFrom(existing);
+
+                        // and the user's values over the source's, so a kept override reads as no change
+                        meta.MetadataOverrides?.ApplyTo(meta);
+
+                        // responses vary, so try adding remote to what we have
+                        if (!meta.Equals(existing))
+                        {
+                            updateMetadataList.Add(meta);
+                        }
+                        else
+                        {
+                            upToDateMetadataCount++;
+                        }
                     }
                     else
                     {
-                        upToDateMetadataCount++;
+                        addMetadataList.Add(meta);
                     }
                 }
-                else
-                {
-                    addMetadataList.Add(meta);
-                }
+
+                UpdateMany(updateMetadataList);
+                InsertMany(addMetadataList);
+
+                _logger.Debug($"{upToDateMetadataCount} author metadata up to date; Updating {updateMetadataList.Count}, Adding {addMetadataList.Count} author metadata entries.");
+
+                return updateMetadataList.Count > 0 || addMetadataList.Count > 0;
             }
-
-            UpdateMany(updateMetadataList);
-            InsertMany(addMetadataList);
-
-            _logger.Debug($"{upToDateMetadataCount} author metadata up to date; Updating {updateMetadataList.Count}, Adding {addMetadataList.Count} author metadata entries.");
-
-            return updateMetadataList.Count > 0 || addMetadataList.Count > 0;
         }
     }
 }

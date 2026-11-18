@@ -1,28 +1,49 @@
-using System.Net;
+using System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.HttpOverrides;
+using NLog;
+using NzbDrone.Common.Extensions;
+using NzbDrone.Common.Instrumentation;
+using NzbDrone.Common.Network;
+using NzbDrone.Core.Configuration;
 using IPNetwork = System.Net.IPNetwork;
 
 namespace NzbDrone.Host
 {
     public static class ForwardedHeadersConfigurator
     {
-        public static void Configure(ForwardedHeadersOptions options)
+        private static readonly Logger Logger = NzbDroneLogger.GetLogger(typeof(ForwardedHeadersConfigurator));
+
+        public static void Configure(ForwardedHeadersOptions options, IConfigFileProvider configFileProvider)
         {
             options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
 
             // Walk the whole chain of trusted proxies instead of stopping after one hop, so a second
-            // proxy appending a private address can't stand in for the real client.
+            // proxy appending a trusted address can't stand in for the real client.
             options.ForwardLimit = null;
 
-            // Loopback (127.0.0.0/8 and ::1) is trusted by default; add the private ranges a reverse
-            // proxy or tunnel on the LAN or a Docker network would connect from. Forwarded headers
-            // from any other peer are left unprocessed.
-            options.KnownIPNetworks.Add(new IPNetwork(IPAddress.Parse("10.0.0.0"), 8));
-            options.KnownIPNetworks.Add(new IPNetwork(IPAddress.Parse("172.16.0.0"), 12));
-            options.KnownIPNetworks.Add(new IPNetwork(IPAddress.Parse("192.168.0.0"), 16));
-            options.KnownIPNetworks.Add(new IPNetwork(IPAddress.Parse("fc00::"), 7));
-            options.KnownIPNetworks.Add(new IPNetwork(IPAddress.Parse("fe80::"), 10));
+            // Loopback (127.0.0.0/8 and ::1) is trusted by default. Forwarded headers from any other
+            // peer are only processed when it is on one of the Trusted Networks.
+            var trustedNetworks = configFileProvider.TrustedNetworks;
+
+            if (trustedNetworks.IsNullOrWhiteSpace())
+            {
+                return;
+            }
+
+            foreach (var entry in trustedNetworks.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (IPNetworkParser.TryParse(entry, out var address, out var prefixLength))
+                {
+                    options.KnownIPNetworks.Add(new IPNetwork(address, prefixLength));
+
+                    Logger.Info("Trusting forwarded headers from {0}/{1}", address, prefixLength);
+                }
+                else
+                {
+                    Logger.Warn("Invalid trusted network '{0}', forwarded headers from it will not be trusted", entry);
+                }
+            }
         }
     }
 }

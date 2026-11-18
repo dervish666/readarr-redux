@@ -20,6 +20,7 @@ namespace NzbDrone.Core.Indexers.Torznab
         public override string Name => "Torznab";
 
         public override DownloadProtocol Protocol => DownloadProtocol.Torrent;
+        public override IEnumerable<FailDownloads> DefaultFailDownloads => new[] { FailDownloads.Executables, FailDownloads.PotentiallyDangerous };
         public override int PageSize => GetProviderPageSize();
 
         public Torznab(INewznabCapabilitiesProvider capabilitiesProvider, IHttpClient httpClient, IIndexerStatusService indexerStatusService, IConfigService configService, IParsingService parsingService, Logger logger)
@@ -154,7 +155,13 @@ namespace NzbDrone.Core.Indexers.Torznab
         {
             try
             {
-                return Math.Min(100, Math.Max(_capabilitiesProvider.GetCapabilities(Settings).DefaultPageSize, _capabilitiesProvider.GetCapabilities(Settings).MaxPageSize));
+                var capabilities = _capabilitiesProvider.GetCapabilities(Settings);
+
+                // Use the indexer's default when it reports one above 100, otherwise go as high as 100 if allowed
+                return Math.Clamp(
+                    capabilities.DefaultPageSize,
+                    Math.Min(100, capabilities.MaxPageSize),
+                    capabilities.MaxPageSize);
             }
             catch
             {

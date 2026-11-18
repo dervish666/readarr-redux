@@ -27,6 +27,7 @@ namespace NzbDrone.Core.Indexers
 
         public abstract bool SupportsRss { get; }
         public abstract bool SupportsSearch { get; }
+        public virtual IEnumerable<FailDownloads> DefaultFailDownloads => Array.Empty<FailDownloads>();
 
         public IndexerBase(IIndexerStatusService indexerStatusService, IConfigService configService, IParsingService parsingService, Logger logger)
         {

@@ -95,6 +95,7 @@ function SecuritySettings({
     passwordConfirmation,
     apiKey,
     certificateValidation,
+    trustedNetworks,
   } = settings;
 
   const [isConfirmApiKeyResetModalOpen, setIsConfirmApiKeyResetModalOpen] =
@@ -231,6 +232,19 @@ function SecuritySettings({
           helpText={translate('CertificateValidationHelpText')}
           onChange={onInputChange}
           {...certificateValidation}
+        />
+      </FormGroup>
+
+      <FormGroup>
+        <FormLabel>{translate('TrustedNetworks')}</FormLabel>
+
+        <FormInputGroup
+          type={inputTypes.TEXT}
+          name="trustedNetworks"
+          helpText={translate('TrustedNetworksHelpText')}
+          helpTextWarning={translate('RestartRequiredHelpTextWarning')}
+          onChange={onInputChange}
+          {...trustedNetworks}
         />
       </FormGroup>
 

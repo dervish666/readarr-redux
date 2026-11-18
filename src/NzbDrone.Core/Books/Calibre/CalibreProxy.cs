@@ -29,6 +29,7 @@ namespace NzbDrone.Core.Books.Calibre
         BookFile AddAndConvert(BookFile file, CalibreSettings settings);
         void DeleteBook(BookFile book, CalibreSettings settings);
         void DeleteBooks(List<BookFile> books, CalibreSettings settings);
+        void AddFormat(BookFile file, CalibreSettings settings);
         void RemoveFormats(int calibreId, IEnumerable<string> formats, CalibreSettings settings);
         void SetFields(BookFile file, CalibreSettings settings, bool updateCover = true, bool embed = false);
         List<string> GetAllBookFilePaths(CalibreSettings settings);
@@ -69,8 +70,14 @@ namespace NzbDrone.Core.Books.Calibre
             _logger = logger;
         }
 
-        public static string GetOriginalFormat(Dictionary<string, CalibreBookFormat> formats)
+        public static string GetOriginalFormat(Dictionary<string, CalibreBookFormat> formats, string preferredFormat = null)
         {
+            var preferred = formats.FirstOrDefault(x => x.Key.Equals(preferredFormat, StringComparison.OrdinalIgnoreCase)).Value?.Path;
+            if (preferred.IsNotNullOrWhiteSpace())
+            {
+                return preferred;
+            }
+
             return formats
                 .Where(x => MediaFileExtensions.TextExtensions.Contains("." + x.Key))
                 .OrderBy(f => f.Value.LastModified)
@@ -172,7 +179,7 @@ namespace NzbDrone.Core.Books.Calibre
             _httpClient.Post(request);
         }
 
-        private void AddFormat(BookFile file, CalibreSettings settings)
+        public void AddFormat(BookFile file, CalibreSettings settings)
         {
             var format = Path.GetExtension(file.Path);
             var bookData = Convert.ToBase64String(File.ReadAllBytes(file.Path));
@@ -275,7 +282,7 @@ namespace NzbDrone.Core.Books.Calibre
             // updating the calibre metadata may have renamed the file, so track that
             var updated = GetBook(file.CalibreId, settings);
 
-            var updatedPath = GetOriginalFormat(updated.Formats);
+            var updatedPath = GetOriginalFormat(updated.Formats, Path.GetExtension(file.Path).TrimStart('.'));
 
             _logger.Trace("File path from Calibre: '{0}'", updatedPath);
 
@@ -376,7 +383,7 @@ namespace NzbDrone.Core.Books.Calibre
             }
         }
 
-        private long ConvertBook(int calibreId, CalibreConversionOptions options, CalibreSettings settings)
+        internal long ConvertBook(int calibreId, CalibreConversionOptions options, CalibreSettings settings)
         {
             try
             {
@@ -387,8 +394,8 @@ namespace NzbDrone.Core.Books.Calibre
 
                 var jobId = _httpClient.Post<long>(request).Resource;
 
-                // Poll in the background until the conversion finishes, logging the outcome
-                _ = Task.Run(() => PollConvertStatus(jobId, settings));
+                // Import must keep its recovery copies until conversion has actually succeeded.
+                PollConvertStatus(jobId, settings).GetAwaiter().GetResult();
 
                 return jobId;
             }
@@ -595,19 +602,24 @@ namespace NzbDrone.Core.Books.Calibre
                         if (!status.Ok)
                         {
                             _logger.Warn("Calibre conversion {0} failed.\n{1}\n{2}", jobId, status.Traceback, status.Log);
+                            throw new CalibreException($"Calibre conversion {jobId} failed; import was not committed");
                         }
 
                         return;
                     }
 
-                    await Task.Delay(2000);
+                    await Task.Delay(2000).ConfigureAwait(false);
                 }
 
-                _logger.Warn("Calibre conversion {0} still running after an hour, no longer checking it", jobId);
+                throw new CalibreException($"Calibre conversion {jobId} still running after an hour; import was not committed");
+            }
+            catch (CalibreException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
-                _logger.Warn(ex, "Unable to check Calibre conversion {0}", jobId);
+                throw new CalibreException("Unable to check Calibre conversion {0}; import was not committed", ex, jobId);
             }
         }
 

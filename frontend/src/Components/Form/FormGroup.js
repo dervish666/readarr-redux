@@ -1,11 +1,13 @@
 import classNames from 'classnames';
 import PropTypes from 'prop-types';
-import React from 'react';
+import React, { useId } from 'react';
 import { map } from 'Helpers/elementChildren';
 import { sizes } from 'Helpers/Props';
+import FormFieldContext from './FormFieldContext';
 import styles from './FormGroup.module.css';
 
 function FormGroup(props) {
+  const id = useId();
   const {
     className,
     children,
@@ -19,22 +21,26 @@ function FormGroup(props) {
     return null;
   }
 
+  const input = React.Children.toArray(children).find((child) => React.isValidElement(child) && child.props.name);
+  const field = { id, name: input?.props.name };
   const childProps = isAdvanced ? { isAdvanced } : {};
 
   return (
-    <div
-      className={classNames(
-        className,
-        styles[size]
-      )}
-      {...otherProps}
-    >
-      {
-        map(children, (child) => {
-          return React.cloneElement(child, childProps);
-        })
-      }
-    </div>
+    <FormFieldContext.Provider value={field}>
+      <div
+        className={classNames(
+          className,
+          styles[size]
+        )}
+        {...otherProps}
+      >
+        {
+          map(children, (child) => {
+            return React.cloneElement(child, childProps);
+          })
+        }
+      </div>
+    </FormFieldContext.Provider>
   );
 }
 

@@ -110,7 +110,7 @@ function SignalRListener() {
 
     setAppValue({
       isConnected: false,
-      isReconnecting: false,
+      isReconnecting: true,
       isDisconnected: false,
       isRestarting: false,
     });
@@ -357,12 +357,41 @@ function SignalRListener() {
 
     connection.current.on('receiveMessage', handleReceiveMessage.current);
 
-    connection.current
-      .start()
-      .then(handleStart.current, handleStartFail.current);
+    const hub = connection.current;
+    let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined = undefined;
+    let attempts = 0;
+
+    const start = async () => {
+      try {
+        await hub.start();
+        if (!cancelled) {
+          handleStart.current();
+        }
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        handleStartFail.current(error);
+        attempts += 1;
+        if (attempts >= 10) {
+          setAppValue({ isReconnecting: false, isDisconnected: true });
+          return;
+        }
+
+        retryTimer = setTimeout(start, Math.min(attempts, 10) * 1000);
+      }
+    };
+
+    start();
 
     return () => {
-      connection.current?.stop();
+      cancelled = true;
+      clearTimeout(retryTimer);
+      hub
+        .stop()
+        .catch((error) => console.error('[signalR] failed to stop', error));
       connection.current = null;
     };
   }, []);

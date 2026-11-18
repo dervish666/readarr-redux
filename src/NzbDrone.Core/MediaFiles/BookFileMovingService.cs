@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using NLog;
 using NzbDrone.Common.Disk;
@@ -123,7 +124,9 @@ namespace NzbDrone.Core.MediaFiles
             }
 
             _rootFolderWatchingService.ReportFileSystemChangeBeginning(bookFilePath, destinationFilePath);
-            _diskTransferService.TransferFile(bookFilePath, destinationFilePath, mode);
+            var watch = Stopwatch.StartNew();
+            var transferMode = _diskTransferService.TransferFile(bookFilePath, destinationFilePath, mode);
+            _logger.Debug("Book file transfer took {0}ms ({1}, {2} bytes): {3}", watch.ElapsedMilliseconds, transferMode, bookFile.Size, destinationFilePath);
 
             bookFile.Path = destinationFilePath;
 

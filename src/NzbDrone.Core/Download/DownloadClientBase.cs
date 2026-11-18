@@ -95,6 +95,11 @@ namespace NzbDrone.Core.Download
         public abstract Task<string> Download(RemoteBook remoteBook, IIndexer indexer);
         public abstract IEnumerable<DownloadClientItem> GetItems();
 
+        public virtual IEnumerable<DownloadClientFile> GetFiles(DownloadClientItem item)
+        {
+            return Array.Empty<DownloadClientFile>();
+        }
+
         public virtual DownloadClientItem GetImportItem(DownloadClientItem item, DownloadClientItem previousImportAttempt)
         {
             return item;

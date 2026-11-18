@@ -37,7 +37,7 @@ function SettingsToolbar({
       (e) => {
         e.preventDefault();
 
-        if (hasPendingChanges) {
+        if (hasPendingChanges && !isSaving) {
           onSavePress?.();
         }
       },
@@ -47,7 +47,7 @@ function SettingsToolbar({
     return () => {
       unbindShortcut('SAVE_SETTINGS');
     };
-  }, [hasPendingChanges, onSavePress, bindShortcut, unbindShortcut]);
+  }, [hasPendingChanges, isSaving, onSavePress, bindShortcut, unbindShortcut]);
 
   const handleConfirmNavigation = useCallback(() => {
     blocker.proceed?.();
@@ -75,7 +75,7 @@ function SettingsToolbar({
             }
             iconName={icons.SAVE}
             isSpinning={isSaving}
-            isDisabled={!hasPendingChanges}
+            isDisabled={!hasPendingChanges || isSaving}
             onPress={handleSavePress}
           />
         ) : null}
