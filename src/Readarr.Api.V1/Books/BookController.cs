@@ -54,11 +54,13 @@ namespace Readarr.Api.V1.Books
             _editionService = editionService;
             _addBookService = addBookService;
 
+            // FluentValidation 9 displayed nested members as "Author. Foreign Author Id"; 10+ drops the
+            // period. WithName keeps the messages API clients have always received.
             PostValidator.RuleFor(s => s.ForeignBookId).NotEmpty();
-            PostValidator.RuleFor(s => s.Author.QualityProfileId).SetValidator(qualityProfileExistsValidator);
-            PostValidator.RuleFor(s => s.Author.MetadataProfileId).SetValidator(metadataProfileExistsValidator);
-            PostValidator.RuleFor(s => s.Author.RootFolderPath).IsValidPath().When(s => s.Author.Path.IsNullOrWhiteSpace());
-            PostValidator.RuleFor(s => s.Author.ForeignAuthorId).NotEmpty();
+            PostValidator.RuleFor(s => s.Author.QualityProfileId).SetValidator(qualityProfileExistsValidator).WithName("Author. Quality Profile Id");
+            PostValidator.RuleFor(s => s.Author.MetadataProfileId).SetValidator(metadataProfileExistsValidator).WithName("Author. Metadata Profile Id");
+            PostValidator.RuleFor(s => s.Author.RootFolderPath).IsValidPath().When(s => s.Author.Path.IsNullOrWhiteSpace()).WithName("Author. Root Folder Path");
+            PostValidator.RuleFor(s => s.Author.ForeignAuthorId).NotEmpty().WithName("Author. Foreign Author Id");
         }
 
         [HttpGet]
