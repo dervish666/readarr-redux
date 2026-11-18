@@ -19,9 +19,11 @@ namespace NzbDrone.Core.Http
 
         public CachedHttpResponse FindByUrl(string url)
         {
-            var edition = Query(x => x.Url == url).SingleOrDefault();
-
-            return edition;
+            // Migration 046 made Url unique, but take the newest row rather than throw should a duplicate get in again
+            return Query(x => x.Url == url)
+                .OrderByDescending(x => x.LastRefresh)
+                .ThenByDescending(x => x.Id)
+                .FirstOrDefault();
         }
     }
 }
