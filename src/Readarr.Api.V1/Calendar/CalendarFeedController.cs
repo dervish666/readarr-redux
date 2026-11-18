@@ -67,9 +67,10 @@ namespace Readarr.Api.V1.Calendar
                 occurrence.Description = book.Editions.Value.Single(x => x.Monitored).Overview;
                 occurrence.Categories = book.Genres;
 
-                occurrence.Start = new CalDateTime(book.ReleaseDate.Value.ToLocalTime()) { HasTime = false };
-                occurrence.End = occurrence.Start;
-                occurrence.IsAllDay = true;
+                // Ical.Net 5: a DATE value makes the event all-day, and DTEND is exclusive.
+                // CalDateTime(DateTime) rejects DateTimeKind.Local, so go through DateOnly.
+                occurrence.Start = new CalDateTime(DateOnly.FromDateTime(book.ReleaseDate.Value.ToLocalTime()));
+                occurrence.End = occurrence.Start.AddDays(1);
 
                 occurrence.Summary = $"{author.Name} - {book.Title}";
             }
