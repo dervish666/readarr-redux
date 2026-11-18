@@ -1,10 +1,9 @@
-using FluentValidation.Validators;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
 
 namespace NzbDrone.Core.Validation
 {
-    public class FolderValidator : PropertyValidator
+    public class FolderValidator : NzbDronePropertyValidator
     {
         protected override string GetDefaultMessageTemplate() => "Invalid Path: '{path}'";
 

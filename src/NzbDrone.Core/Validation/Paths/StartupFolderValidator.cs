@@ -1,10 +1,9 @@
-﻿using FluentValidation.Validators;
-using NzbDrone.Common.EnvironmentInfo;
+﻿using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
 
 namespace NzbDrone.Core.Validation.Paths
 {
-    public class StartupFolderValidator : PropertyValidator
+    public class StartupFolderValidator : NzbDronePropertyValidator
     {
         private readonly IAppFolderInfo _appFolderInfo;
 

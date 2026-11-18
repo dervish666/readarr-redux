@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using FluentValidation;
-using FluentValidation.Internal;
 using Readarr.Http.ClientSchema;
 
 namespace Readarr.Http.REST
@@ -12,19 +11,24 @@ namespace Readarr.Http.REST
     {
         public IRuleBuilderInitial<TResource, TProperty> RuleForField<TProperty>(Expression<Func<TResource, IEnumerable<Field>>> fieldListAccessor, string fieldName)
         {
-            var rule = new PropertyRule(fieldListAccessor.GetMember(), c => GetValue(c, fieldListAccessor.Compile(), fieldName), null, () => CascadeMode.Continue, typeof(TProperty), typeof(TResource));
-            rule.PropertyName = fieldName;
-            rule.SetDisplayName(fieldName);
+            var accessor = fieldListAccessor.Compile();
 
-            AddRule(rule);
-            return new RuleBuilder<TResource, TProperty>(rule, this);
+            // The field value is not a member access, so name the rule after the field explicitly,
+            // as the FluentValidation 9 PropertyRule construction did.
+            return RuleFor(c => GetValue<TProperty>(c, accessor, fieldName))
+                .Configure(rule =>
+                {
+                    rule.PropertyName = fieldName;
+                    rule.SetDisplayName(fieldName);
+                    rule.CascadeMode = CascadeMode.Continue;
+                });
         }
 
-        private static object GetValue(object container, Func<TResource, IEnumerable<Field>> fieldListAccessor, string fieldName)
+        private static TProperty GetValue<TProperty>(TResource container, Func<TResource, IEnumerable<Field>> fieldListAccessor, string fieldName)
         {
-            var resource = fieldListAccessor((TResource)container).SingleOrDefault(c => c.Name == fieldName);
+            var resource = fieldListAccessor(container).SingleOrDefault(c => c.Name == fieldName);
 
-            return resource?.Value;
+            return resource?.Value is TProperty value ? value : default;
         }
     }
 }

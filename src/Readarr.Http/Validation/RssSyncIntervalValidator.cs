@@ -1,8 +1,8 @@
-﻿using FluentValidation.Validators;
+﻿using NzbDrone.Core.Validation;
 
 namespace Readarr.Http.Validation
 {
-    public class RssSyncIntervalValidator : PropertyValidator
+    public class RssSyncIntervalValidator : NzbDronePropertyValidator
     {
         protected override string GetDefaultMessageTemplate() => "Must be between 10 and 120 or 0 to disable";
 

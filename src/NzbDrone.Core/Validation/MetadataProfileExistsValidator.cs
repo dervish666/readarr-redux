@@ -1,9 +1,8 @@
-using FluentValidation.Validators;
 using NzbDrone.Core.Profiles.Metadata;
 
 namespace NzbDrone.Core.Validation
 {
-    public class MetadataProfileExistsValidator : PropertyValidator
+    public class MetadataProfileExistsValidator : NzbDronePropertyValidator
     {
         private readonly IMetadataProfileService _profileService;
 

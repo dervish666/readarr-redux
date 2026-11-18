@@ -1,10 +1,9 @@
-using FluentValidation.Validators;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Configuration;
 
 namespace NzbDrone.Core.Validation.Paths
 {
-    public class RecycleBinValidator : PropertyValidator
+    public class RecycleBinValidator : NzbDronePropertyValidator
     {
         private readonly IConfigService _configService;
 

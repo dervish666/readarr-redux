@@ -1,9 +1,8 @@
-using FluentValidation.Validators;
 using NzbDrone.Common.Disk;
 
 namespace NzbDrone.Core.Validation
 {
-    public class FolderChmodValidator : PropertyValidator
+    public class FolderChmodValidator : NzbDronePropertyValidator
     {
         private readonly IDiskProvider _diskProvider;
 

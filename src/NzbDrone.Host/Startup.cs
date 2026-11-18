@@ -31,6 +31,7 @@ using Readarr.Http.ClientSchema;
 using Readarr.Http.ErrorManagement;
 using Readarr.Http.Frontend;
 using Readarr.Http.Middleware;
+using Readarr.Http.Validation;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 
 namespace NzbDrone.Host
@@ -90,6 +91,7 @@ namespace NzbDrone.Host
             .AddJsonOptions(options =>
             {
                 STJson.ApplySerializerSettings(options.JsonSerializerOptions);
+                ValidationFailureJsonCompatibility.Apply(options.JsonSerializerOptions);
             })
             .AddControllersAsServices();
 

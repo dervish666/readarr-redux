@@ -1,11 +1,11 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using FluentValidation.Validators;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Validation;
 
 namespace NzbDrone.Core.Profiles.Delay
 {
-    public class DelayProfileTagInUseValidator : PropertyValidator
+    public class DelayProfileTagInUseValidator : NzbDronePropertyValidator
     {
         private readonly IDelayProfileService _delayProfileService;
 
@@ -23,7 +23,7 @@ namespace NzbDrone.Core.Profiles.Delay
                 return true;
             }
 
-            dynamic instance = context.ParentContext.InstanceToValidate;
+            dynamic instance = context.InstanceToValidate;
             var instanceId = (int)instance.Id;
 
             if (context.PropertyValue is not HashSet<int> collection || collection.Empty())

@@ -1,9 +1,8 @@
 using System;
-using FluentValidation.Validators;
 
 namespace NzbDrone.Core.Validation
 {
-    public class GuidValidator : PropertyValidator
+    public class GuidValidator : NzbDronePropertyValidator
     {
         protected override string GetDefaultMessageTemplate() => "String is not a valid Guid";
 

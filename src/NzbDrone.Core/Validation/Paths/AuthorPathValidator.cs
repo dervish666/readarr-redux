@@ -1,11 +1,10 @@
 using System.Linq;
-using FluentValidation.Validators;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Books;
 
 namespace NzbDrone.Core.Validation.Paths
 {
-    public class AuthorPathValidator : PropertyValidator
+    public class AuthorPathValidator : NzbDronePropertyValidator
     {
         private readonly IAuthorService _authorService;
 
@@ -25,7 +24,7 @@ namespace NzbDrone.Core.Validation.Paths
 
             context.MessageFormatter.AppendArgument("path", context.PropertyValue.ToString());
 
-            dynamic instance = context.ParentContext.InstanceToValidate;
+            dynamic instance = context.InstanceToValidate;
             var instanceId = (int)instance.Id;
 
             return !_authorService.AllAuthorPaths().Any(s => s.Value.PathEquals(context.PropertyValue.ToString()) && s.Key != instanceId);

@@ -1,5 +1,6 @@
 using System.Data.SQLite;
 using System.Net;
+using System.Text.Json;
 using System.Threading.Tasks;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
@@ -9,11 +10,14 @@ using NzbDrone.Common.Serializer;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Exceptions;
 using Readarr.Http.Exceptions;
+using Readarr.Http.Validation;
 
 namespace Readarr.Http.ErrorManagement
 {
     public class ReadarrErrorPipeline
     {
+        private static readonly JsonSerializerOptions ValidationSerializerSettings = GetValidationSerializerSettings();
+
         private readonly Logger _logger;
 
         public ReadarrErrorPipeline(Logger logger)
@@ -49,7 +53,7 @@ namespace Readarr.Http.ErrorManagement
 
                 response.StatusCode = (int)HttpStatusCode.BadRequest;
                 response.ContentType = "application/json";
-                await response.WriteAsync(STJson.ToJson(validationException.Errors));
+                await response.WriteAsync(JsonSerializer.Serialize<object>(validationException.Errors, ValidationSerializerSettings));
                 return;
             }
             else if (exception is NzbDroneClientException clientException)
@@ -92,6 +96,14 @@ namespace Readarr.Http.ErrorManagement
             }
 
             await errorModel.WriteToResponse(response, statusCode);
+        }
+
+        private static JsonSerializerOptions GetValidationSerializerSettings()
+        {
+            var settings = STJson.GetSerializerSettings();
+            ValidationFailureJsonCompatibility.Apply(settings);
+
+            return settings;
         }
     }
 }

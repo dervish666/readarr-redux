@@ -1,5 +1,4 @@
 using FluentValidation;
-using FluentValidation.Validators;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
 
@@ -13,7 +12,7 @@ namespace NzbDrone.Core.Validation.Paths
         }
     }
 
-    public class PathValidator : PropertyValidator
+    public class PathValidator : NzbDronePropertyValidator
     {
         protected override string GetDefaultMessageTemplate() => "Invalid Path: '{path}'";
 

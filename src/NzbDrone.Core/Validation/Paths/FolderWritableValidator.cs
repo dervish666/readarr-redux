@@ -1,10 +1,9 @@
 ﻿using System;
-using FluentValidation.Validators;
 using NzbDrone.Common.Disk;
 
 namespace NzbDrone.Core.Validation.Paths
 {
-    public class FolderWritableValidator : PropertyValidator
+    public class FolderWritableValidator : NzbDronePropertyValidator
     {
         private readonly IDiskProvider _diskProvider;
 

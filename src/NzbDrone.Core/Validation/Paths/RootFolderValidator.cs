@@ -1,10 +1,9 @@
-﻿using FluentValidation.Validators;
-using NzbDrone.Common.Extensions;
+﻿using NzbDrone.Common.Extensions;
 using NzbDrone.Core.RootFolders;
 
 namespace NzbDrone.Core.Validation.Paths
 {
-    public class RootFolderValidator : PropertyValidator
+    public class RootFolderValidator : NzbDronePropertyValidator
     {
         private readonly IRootFolderService _rootFolderService;
 

@@ -1,12 +1,12 @@
 using System;
 using System.IO;
-using FluentValidation.Validators;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Organizer;
+using NzbDrone.Core.Validation;
 
 namespace Readarr.Api.V1.Author
 {
-    public class AuthorFolderAsRootFolderValidator : PropertyValidator
+    public class AuthorFolderAsRootFolderValidator : NzbDronePropertyValidator
     {
         private readonly IBuildFileNames _fileNameBuilder;
 
@@ -24,7 +24,7 @@ namespace Readarr.Api.V1.Author
                 return true;
             }
 
-            if (context.ParentContext.InstanceToValidate is not AuthorResource authorResource)
+            if (context.InstanceToValidate is not AuthorResource authorResource)
             {
                 return true;
             }
