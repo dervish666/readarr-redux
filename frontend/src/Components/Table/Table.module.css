@@ -21,3 +21,12 @@
     }
   }
 }
+
+.sortLabel {
+  margin-right: 8px;
+  color: var(--inkMuted);
+
+  &:hover {
+    color: var(--ink);
+  }
+}

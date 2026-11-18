@@ -2,10 +2,12 @@ import classNames from 'classnames';
 import _ from 'lodash';
 import PropTypes from 'prop-types';
 import React from 'react';
+import Icon from 'Components/Icon';
 import IconButton from 'Components/Link/IconButton';
+import Link from 'Components/Link/Link';
 import Scroller from 'Components/Scroller/Scroller';
 import TableOptionsModalWrapper from 'Components/Table/TableOptions/TableOptionsModalWrapper';
-import { icons, scrollDirections } from 'Helpers/Props';
+import { icons, scrollDirections, sortDirections } from 'Helpers/Props';
 import TableHeader from './TableHeader';
 import TableHeaderCell from './TableHeaderCell';
 import TableSelectAllHeaderCell from './TableSelectAllHeaderCell';
@@ -24,6 +26,16 @@ function getTableHeaderCellProps(props) {
 
     return result;
   }, {});
+}
+
+function getSortIcon(name, { sortKey, sortDirection }) {
+  if (sortKey !== name) {
+    return icons.SORT;
+  }
+
+  return sortDirection === sortDirections.ASCENDING ?
+    icons.SORT_ASCENDING :
+    icons.SORT_DESCENDING;
 }
 
 function Table(props) {
@@ -85,6 +97,18 @@ function Table(props) {
                     isSortable={false}
                     {...otherProps}
                   >
+                    {
+                      column.isSortable && onSortPress ?
+                        <Link
+                          className={styles.sortLabel}
+                          title={typeof column.columnLabel === 'function' ? column.columnLabel() : column.columnLabel}
+                          onPress={() => onSortPress(name)}
+                        >
+                          <Icon name={getSortIcon(name, otherProps)} />
+                        </Link> :
+                        null
+                    }
+
                     <TableOptionsModalWrapper
                       columns={columns}
                       optionsComponent={optionsComponent}
