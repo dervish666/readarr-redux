@@ -6,6 +6,8 @@ namespace NzbDrone.Core.IndexerSearch
     {
         public int AuthorId { get; set; }
 
+        public override bool IsTypeExclusive => true;
+
         public override bool SendUpdatesToClient => true;
     }
 }

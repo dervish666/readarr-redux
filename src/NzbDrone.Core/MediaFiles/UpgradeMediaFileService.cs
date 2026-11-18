@@ -420,6 +420,10 @@ namespace NzbDrone.Core.MediaFiles
                 if (file.CalibreSettings != null)
                 {
                     _calibre.AddFormat(new BookFile { CalibreId = file.CalibreId, Path = file.Path }, file.CalibreSettings);
+
+                    // A timed-out conversion may still write later, so retain recovery bytes even after restoration.
+                    _logger.Info("Restored a Calibre format; keeping its recovery copy at {0}", file.Path);
+                    return true;
                 }
                 else if (!_diskProvider.TryCreateHardLink(file.Path, file.OriginalPath))
                 {

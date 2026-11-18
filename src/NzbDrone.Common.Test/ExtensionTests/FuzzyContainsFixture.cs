@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using FluentAssertions;
 using NUnit.Framework;
 using NzbDrone.Common.Extensions;
@@ -9,6 +10,22 @@ namespace NzbDrone.Common.Test
     [TestFixture]
     public class FuzzyContainsFixture : TestBase
     {
+        [Test]
+        public void length_shortcut_should_preserve_the_full_matchers_score()
+        {
+            var random = new System.Random(4721);
+            foreach (var patternLength in new[] { 0, 1, 4, 15, 31, 32, 63, 64, 127, 128, 191 })
+            {
+                foreach (var textLength in new[] { 0, 1, patternLength / 4, (patternLength / 4) + 1, patternLength })
+                {
+                    var text = new string(Enumerable.Range(0, textLength).Select(_ => "abc "[random.Next(4)]).ToArray());
+                    var pattern = new string(Enumerable.Range(0, patternLength).Select(_ => "abc "[random.Next(4)]).ToArray());
+
+                    text.FuzzyContains(pattern).Should().Be(text.FuzzyMatch(pattern, 0.25).Item3);
+                }
+            }
+        }
+
         [TestCase("abcdef", "abcdef", 0.5, 0)]
         [TestCase("", "abcdef", 0.5, -1)]
         [TestCase("abcdef", "", 0.5, -1)]

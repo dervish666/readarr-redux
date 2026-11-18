@@ -140,6 +140,7 @@ namespace Readarr.Api.V1.Queue
             var pagingSpec = pagingResource.MapToPagingSpec<QueueResource, NzbDrone.Core.Queue.Queue>(
                 new HashSet<string>(StringComparer.OrdinalIgnoreCase)
                 {
+                    "actions",
                     "authorMetadata.sortName",
                     "authors.sortName",
                     "authors.sortNameLastFirst",
@@ -207,6 +208,14 @@ namespace Readarr.Api.V1.Queue
                     ? fullQueue.OrderBy(q => q.DownloadClient, StringComparer.InvariantCultureIgnoreCase)
                     : fullQueue.OrderByDescending(q => q.DownloadClient, StringComparer.InvariantCultureIgnoreCase);
             }
+            else if (pagingSpec.SortKey == "actions")
+            {
+                // Group rows by which action buttons they show, then by the first warning text
+                // so identical reasons (e.g. "Not an upgrade") sit together for bulk handling.
+                ordered = ascending
+                    ? fullQueue.OrderBy(GetActionsRank).ThenBy(GetFirstStatusMessage, StringComparer.InvariantCultureIgnoreCase)
+                    : fullQueue.OrderByDescending(GetActionsRank).ThenBy(GetFirstStatusMessage, StringComparer.InvariantCultureIgnoreCase);
+            }
             else if (pagingSpec.SortKey == "quality")
             {
                 ordered = ascending
@@ -235,6 +244,29 @@ namespace Readarr.Api.V1.Queue
         public static int GetLastPage(int totalRecords, int pageSize)
         {
             return (int)Math.Max(Math.Ceiling((decimal)totalRecords / pageSize), 1);
+        }
+
+        // Mirrors the button conditions in frontend QueueRow.tsx: manual import, grab pending, forced download.
+        private static int GetActionsRank(NzbDrone.Core.Queue.Queue q)
+        {
+            if (q.Status == "completed" && q.TrackedDownloadStatus == TrackedDownloadStatus.Warning)
+            {
+                return 3;
+            }
+
+            if (q.Status == "delay" || q.Status == "downloadClientUnavailable")
+            {
+                return 2;
+            }
+
+            return q.DownloadForced ? 1 : 0;
+        }
+
+        private static string GetFirstStatusMessage(NzbDrone.Core.Queue.Queue q)
+        {
+            var first = q.StatusMessages?.FirstOrDefault();
+
+            return first == null ? string.Empty : first.Title + " " + string.Join(" ", first.Messages ?? new List<string>());
         }
 
         private Func<NzbDrone.Core.Queue.Queue, object> GetOrderByFunc(PagingSpec<NzbDrone.Core.Queue.Queue> pagingSpec)

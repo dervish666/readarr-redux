@@ -310,6 +310,18 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                     q = slug;
                 }
 
+                // Seerr forks send a bare Goodreads work id as the lookup term. rreading-glasses' /search answers []
+                // for a number, so look it up as a work too. A title can be a number ("1984"), so text search still runs.
+                if (author == null && IsBareWorkId(q, out var workId))
+                {
+                    var workBooks = SearchByGoodreadsWorkId(workId);
+                    var textBooks = Search(q, getAllEditions);
+
+                    return workBooks
+                        .Concat(textBooks.Where(b => !workBooks.Any(w => w.ForeignBookId == b.ForeignBookId)))
+                        .ToList();
+                }
+
                 return Search(q, getAllEditions);
             }
             catch (HttpException ex)
@@ -322,6 +334,16 @@ namespace NzbDrone.Core.MetadataSource.BookInfo
                 _logger.Warn(ex, ex.Message);
                 throw new GoodreadsException("Search for '{0}' failed. Invalid response received from Goodreads.", ex, title);
             }
+        }
+
+        // ISBN-10 and ISBN-13 can be all digits too, and those lengths stay a plain search
+        private static bool IsBareWorkId(string term, out long workId)
+        {
+            workId = 0;
+
+            return term.Length is > 0 and not 10 and not 13 &&
+                   term.All(char.IsAsciiDigit) &&
+                   long.TryParse(term, out workId);
         }
 
         public List<Book> SearchByIsbn(string isbn)

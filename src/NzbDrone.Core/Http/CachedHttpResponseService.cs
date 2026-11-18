@@ -20,6 +20,8 @@ namespace NzbDrone.Core.Http
         // must not mistake it for current metadata.
         public const string StaleResponseHeader = "X-Readarr-Stale-Response";
 
+        private static readonly object SaveLock = new object();
+
         private readonly ICachedHttpResponseRepository _repo;
         private readonly IHttpClient _httpClient;
         private readonly Logger _logger;
@@ -70,25 +72,10 @@ namespace NzbDrone.Core.Http
 
             if (!result.HasHttpError && IsComplete(result))
             {
-                if (cached == null)
-                {
-                    cached = new CachedHttpResponse
-                    {
-                        Url = request.Url.ToString(),
-                    };
-                }
-
-                var now = DateTime.UtcNow;
-
-                cached.LastRefresh = now;
-                cached.Expiry = now.Add(ttl);
-                cached.Value = result.Content;
-                cached.StatusCode = (int)result.StatusCode;
-
                 // The response is good whether or not it can be cached
                 try
                 {
-                    _repo.Upsert(cached);
+                    Save(request.Url.ToString(), result, ttl);
                 }
                 catch (Exception ex)
                 {
@@ -141,6 +128,24 @@ namespace NzbDrone.Core.Http
             catch (JsonException)
             {
                 return false;
+            }
+        }
+
+        // Concurrent requests for one url all miss the cache and all get here. Looking the row up again under the lock
+        // makes the later ones update it instead of each inserting another.
+        private void Save(string url, HttpResponse result, TimeSpan ttl)
+        {
+            lock (SaveLock)
+            {
+                var cached = _repo.FindByUrl(url) ?? new CachedHttpResponse { Url = url };
+                var now = DateTime.UtcNow;
+
+                cached.LastRefresh = now;
+                cached.Expiry = now.Add(ttl);
+                cached.Value = result.Content;
+                cached.StatusCode = (int)result.StatusCode;
+
+                _repo.Upsert(cached);
             }
         }
 
