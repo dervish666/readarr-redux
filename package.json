@@ -109,7 +109,7 @@
     "knip": "6.44.1",
     "postcss": "8.5.23",
     "postcss-mixins": "9.0.4",
-    "postcss-nested": "7.0.2",
+    "postcss-nested": "9.0.1",
     "postcss-simple-vars": "7.0.1",
     "prettier": "3.10.1",
     "rimraf": "6.1.4",
