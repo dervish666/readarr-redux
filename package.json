@@ -94,7 +94,7 @@
     "@types/react-lazyload": "3.2.3",
     "@typescript-eslint/eslint-plugin": "6.21.0",
     "@typescript-eslint/parser": "6.21.0",
-    "@vitejs/plugin-react": "6.1.1",
+    "@vitejs/plugin-react": "6.3.0",
     "autoprefixer": "10.4.20",
     "core-js": "3.39.0",
     "eslint": "8.57.1",
